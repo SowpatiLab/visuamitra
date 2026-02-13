@@ -1,0 +1,310 @@
+import React, { useState, useRef } from "react";
+import VCFInputPanel from "./VCFInputPanel";
+import { parseTSV } from "../utils/parseTSV";
+import { parseDecompFromTSV } from "../utils/parseDecompInfo";
+import { generatePalette } from "../utils/colorPalette";
+import DecompositionPlot from "./DecompositionPlot";
+import MethylationPlot from "./MethylationPlot";
+import Axis from "./Axis";
+import Legend from "./Legend";
+import MetadataDisplay from "./MetaData";
+import GenomicLocationPicker from "./GenomicLocationPicker";
+
+function safeJson(s) {
+  if (!s) return null;
+  try {
+    return JSON.parse(s.replace(/'/g, '""'));
+  } catch {
+    return null;
+  }
+}
+
+export default function VisuaMiTRaViewer() {
+  const [rows, setRows] = useState([]);
+  const [selectedIdx, setSelectedIdx] = useState(null);
+  const methScrollRef = useRef();
+
+  /*  CONFIG  */
+  const MAX_VISIBLE_BP = 500;
+  const SCROLL_STEP = 150;
+
+  const LEFT_MARGIN = 140;
+  const RIGHT_MARGIN = 30;
+  const SVG_WIDTH = 1200;
+
+  const TOP_PADDING = 60;
+  const GAP = 20;
+
+  const DECOMP_HEIGHT = 160;     //  change 
+  const METH_HEIGHT = 170;       //  change 
+  const AXIS_HEIGHT = 50;
+  const METH_AXIS_OFFSET = 40;
+
+
+  const TOTAL_HEIGHT =
+    TOP_PADDING +
+    DECOMP_HEIGHT +
+    GAP +
+    METH_HEIGHT +
+    GAP +
+    AXIS_HEIGHT;
+
+   
+  /*  File handling  */
+  const handleFile = (e) => {
+    const file = e.target.files[0];
+    if (!file) return;
+
+    const reader = new FileReader();
+    reader.onload = () => {
+      setRows(parseTSV(reader.result));
+      setSelectedIdx(0);
+    };
+    reader.readAsText(file);
+  };
+
+  {/*if (!rows.length) {
+    return (
+      <div style={{ padding: 20 }}>
+        <h2>Upload your TSV file</h2>
+        <input type="file" accept=".tsv" onChange={handleFile} />
+      </div>
+    );
+  }*/}
+
+  if (!rows.length) {
+  return (
+    <VCFInputPanel
+      onLoad={(tsvText) => {
+        const startTime = performance.now();
+        const parsedRows = parseTSV(tsvText);
+        setRows(parsedRows);
+        setSelectedIdx(0);
+        console.log("Time to fetch + parse:", performance.now() - startTime, "ms");
+      }}
+    />
+  );
+}
+  
+  const row = rows[selectedIdx];
+
+  /*  Decomposition  */
+
+  const {
+    ref: decompRef = { motifs: [], lengths: [] },
+    a1: decompA1 = { motifs: [], lengths: [] },
+    a2: decompA2 = { motifs: [], lengths: [] },
+  } = parseDecompFromTSV(row.Decomp_info, row.Decomp_seq) || {};
+
+  const hasDecomposition =
+    decompRef.motifs.length > 0 ||
+    decompA1.motifs.length > 0 ||
+    decompA2.motifs.length > 0;
+
+  /*  Methylation  */
+  const methTags = safeJson(row.Meth_tag) || [];
+  const meth1 = { pos: methTags[0]?.[0] || [], lvl: methTags[0]?.[1] || [] };
+  const meth2 = { pos: methTags[1]?.[0] || [], lvl: methTags[1]?.[1] || [] };
+  const hasAmbiguousMeth =
+  meth1.lvl?.some((v) => v === -1) ||
+  meth2.lvl?.some((v) => v === -1);
+
+
+
+
+  /*  Colors  */
+
+  // only repeating motifs (copy no > 1)
+  const repeatingMotifSet = new Set();
+
+  [decompRef, decompA1, decompA2].forEach((d) => {
+    d.motifs?.forEach((motif, i) => {
+      if (d.copies?.[i] > 1) {
+        repeatingMotifSet.add(motif);
+      }
+    });
+  });
+
+  // Generate colors only for repeating motifs
+  const colorMap = generatePalette([...repeatingMotifSet]);
+
+
+  /*  Scaling  */
+
+  const sum = (arr = []) => arr.reduce((a, b) => a + b, 0);
+
+  const alleleMax = Math.max(
+    sum(decompRef.lengths),
+    sum(decompA1.lengths),
+    sum(decompA2.lengths),
+    row.alleleLen1 || 0,
+    row.alleleLen2 || 0,
+    ...meth1.pos,
+    ...meth2.pos,
+    0
+  );
+
+  const visibleLen = Math.min(alleleMax, MAX_VISIBLE_BP);
+  const needsScroll = alleleMax > MAX_VISIBLE_BP;
+
+  const methSvgWidth = needsScroll
+    ? (alleleMax / visibleLen) * SVG_WIDTH
+    : SVG_WIDTH;
+
+  const scaleX = (v) =>
+    LEFT_MARGIN +
+    (v / alleleMax) * (methSvgWidth - LEFT_MARGIN - RIGHT_MARGIN);
+
+
+  /*  Y OFFSETS  */
+  const decompY = TOP_PADDING;
+  const methY = decompY + DECOMP_HEIGHT + GAP;
+  const axisY = methY + METH_HEIGHT + GAP;
+
+    const goPrev = () => {
+    setSelectedIdx((i) => Math.max(0, i - 1));
+    };
+
+    const goNext = () => {
+    setSelectedIdx((i) => Math.min(rows.length - 1, i + 1));
+    };
+
+  /*  RENDER  */
+  return (
+    <div style={{ padding: 20 }}>
+      <h2 style={{ textAlign: "center" }}>VisuaMiTRa</h2>
+
+      <div
+        style={{
+            display: "flex",
+            alignItems: "center",
+            gap: "8px",
+            marginBottom: "8px",
+        }}
+        >
+        <span style={{ fontWeight: "bold" }}>Location:</span>
+
+        <GenomicLocationPicker
+            rows={rows}
+            selectedIdx={selectedIdx}
+            onSelect={setSelectedIdx}
+        />
+        </div>
+
+      <MetadataDisplay row={row} />
+
+      <div style={{ display: "flex" }}>
+        <div>
+          {/*  MAIN SVG  */}
+          <svg
+            width={SVG_WIDTH}
+            height={TOTAL_HEIGHT}
+            style={{ border: "1px solid #ccc", background: "#fafafa" }}
+          >
+            
+            <DecompositionPlot
+              decompRef={decompRef}
+              decompA1={decompA1}
+              decompA2={decompA2}
+              scaleX={scaleX}
+              leftMargin={LEFT_MARGIN}
+              colorMap={colorMap}
+              yOffset={decompY}
+              rowGap={25}
+            />
+
+            <foreignObject
+              x="0"
+              y={methY}
+              width={SVG_WIDTH}
+              height={METH_HEIGHT + METH_AXIS_OFFSET}
+            >
+              <div
+                ref={methScrollRef}
+                style={{
+                  width: "100%",
+                  height: "100%",
+                  overflowX: needsScroll ? "auto" : "hidden",
+                  overflowY: "hidden",
+                }}
+              >
+                <svg width={methSvgWidth} height={METH_HEIGHT + METH_AXIS_OFFSET}>
+                  
+                  {/* debug – remove later */}
+                  <rect
+                    x={0}
+                    y={METH_HEIGHT}
+                    width={methSvgWidth}
+                    height={METH_AXIS_OFFSET}
+                    fill="rgba(252, 248, 248, 0.1)"
+                  />
+
+                  <MethylationPlot
+                    meth1={meth1}
+                    meth2={meth2}
+                    alleleLen1={row.alleleLen1}
+                    alleleLen2={row.alleleLen2}
+                    scaleX={scaleX}
+                    leftMargin={LEFT_MARGIN}
+                    yStart={20}
+                    rowGap={25}
+                  />
+
+                  <Axis
+                    scale={scaleX}
+                    alleleMax={alleleMax}
+                    width={methSvgWidth}
+                    leftMargin={LEFT_MARGIN}
+                    rightMargin={RIGHT_MARGIN}
+                    bottomY={METH_HEIGHT + 15}
+                  />
+                </svg>
+              </div>
+            </foreignObject>
+
+
+          </svg>
+        </div>
+        <div style={{ marginLeft: 20 }}>
+          <Legend colorMap={colorMap} 
+           hasDecomposition={hasDecomposition}
+           hasAmbiguousMeth={hasAmbiguousMeth}/>
+        </div>
+      </div>
+  
+      {/*  Bottom navigation  */}
+        <div
+        style={{
+            marginTop: "16px",
+            padding: "12px",
+            display: "flex",
+            justifyContent: "center",
+            alignItems: "center",
+            gap: "24px",
+            borderTop: "1px solid #ccc",
+            fontSize: "14px",
+        }}
+        >
+        <button
+            onClick={goPrev}
+            disabled={selectedIdx === 0}
+            style={{ padding: "6px 12px" }}
+        >
+            ⟵ Previous
+        </button>
+
+        <div style={{ fontWeight: "bold" }}>
+            {row.Chrom}:{row.Start}-{row.End}
+        </div>
+
+        <button
+            onClick={goNext}
+            disabled={selectedIdx === rows.length - 1}
+            style={{ padding: "6px 12px" }}
+        >
+            Next ⟶
+        </button>
+        </div>
+    </div>
+  );
+}
