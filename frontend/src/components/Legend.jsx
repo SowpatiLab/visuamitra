@@ -117,6 +117,7 @@ export default function Legend({ colorMap, svgHeight = 440, hasDecomposition, ha
               fontSize: "13px",
             }}
           >
+            {/* Send help! */}
             <span>100%</span>
             <span>50%</span>
             <span>0%</span>
