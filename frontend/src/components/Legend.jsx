@@ -117,16 +117,9 @@ export default function Legend({ colorMap, svgHeight = 440, hasDecomposition, ha
               fontSize: "13px",
             }}
           >
-<<<<<<< HEAD
-            {/* Send help! */}
             <span>100%</span>
             <span>50%</span>
             <span>0%</span>
-=======
-            <span>1.0%</span>
-            <span>0.5%</span>
-            <span>0.0</span>
->>>>>>> b7ffff4 (test)
           </div>
 
           {/* Ambiguous methylation */}
