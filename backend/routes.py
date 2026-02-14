@@ -4,7 +4,7 @@ import tempfile
 from fastapi import APIRouter, UploadFile, File, Form, HTTPException
 from fastapi.responses import StreamingResponse
 
-from app.visuamitra_script import visuamitra_data_extract_stream
+from visuamitra_script import visuamitra_data_extract_stream
 
 router = APIRouter(prefix="/api")
 
@@ -17,27 +17,27 @@ def vcf_to_tsv_upload(
     start: int | None = Form(None),
     end: int | None = Form(None),
 ):
-    # 1️⃣ Create a temp directory
+    # Create a temp directory
     tmpdir = tempfile.mkdtemp(prefix="vcf_")
 
     vcf_path = os.path.join(tmpdir, vcf.filename)
     tbi_path = os.path.join(tmpdir, tbi.filename)
 
-    # 2️⃣ Save uploaded files
+    # Save uploaded files
     with open(vcf_path, "wb") as f:
         shutil.copyfileobj(vcf.file, f)
 
     with open(tbi_path, "wb") as f:
         shutil.copyfileobj(tbi.file, f)
 
-    # 3️⃣ Validate index pairing
+    # Validate index pairing
     if not tbi.filename.startswith(vcf.filename):
         raise HTTPException(
             status_code=400,
             detail="TBI index does not match VCF filename"
         )
 
-    # 4️⃣ TSV byte stream
+    # TSV byte stream
     def byte_generator():
         for line in visuamitra_data_extract_stream(
             vcf_path, chr, start, end

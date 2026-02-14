@@ -29,7 +29,7 @@ export default function VCFUploadPanel({ onLoad }) {
 
     try {
       const response = await fetch(
-        "http://192.168.100.56:8000/api/vcf-to-tsv-upload",
+        "http://localhost:8001/api/vcf-to-tsv-upload",
         {
           method: "POST",
           body: formData,
