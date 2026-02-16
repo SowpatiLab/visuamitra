@@ -5,7 +5,6 @@ const FONTS = ["Arial", "Roboto", "Courier New", "Times New Roman"];
 const METHYLATION_SCALES = [
   "viridis", "plasma", "inferno", "magma", "cividis", "turbo"];
 
-
 export default function SettingsPanel({ settings, onChange }) {
   const [palette, setPalette] = useState(settings.palette || "Set3");
   const [font, setFont] = useState(settings.font || "Arial");
@@ -38,7 +37,6 @@ export default function SettingsPanel({ settings, onChange }) {
   setMethPalette(val);
   onChange({ ...settings, methPalette: val });
 };
-
 
   return (
     <div
@@ -96,14 +94,14 @@ export default function SettingsPanel({ settings, onChange }) {
         </select>
       </div>
 
-      {/* Theme */}
+      {/* Theme 
       <div>
         <label style={{ display: "block", marginBottom: 4 }}>Theme:</label>
         <select value={theme} onChange={handleThemeChange} style={{ width: "100%" }}>
           <option value="light">Light</option>
           <option value="dark">Dark</option>
         </select>
-      </div>
+      </div>*/}
     </div>
   );
 }

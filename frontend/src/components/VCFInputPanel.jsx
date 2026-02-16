@@ -1,6 +1,8 @@
 import React, { useState } from "react";
+import { useNavigate } from "react-router-dom";
 
 export default function VCFUploadPanel({ onLoad }) {
+  const navigate = useNavigate();
   const [vcfFile, setVcfFile] = useState(null);
   const [tbiFile, setTbiFile] = useState(null);
   const [chr, setChr] = useState("");
@@ -34,7 +36,10 @@ export default function VCFUploadPanel({ onLoad }) {
 
   const handleSubmit = async (e) => {
     e.preventDefault();
-    if (!vcfFile || !tbiFile) return;
+    if (!vcfFile || !tbiFile)  {
+      setError("No files selected to visualize");
+      return;
+    };
 
     setLoading(true);
     setError("");
@@ -52,17 +57,35 @@ export default function VCFUploadPanel({ onLoad }) {
         body: formData,
       });
 
-      if (!res.ok) throw new Error("Server error");
-
-      const text = await res.text();
-      onLoad(text);
-    } catch (err) {
-      console.error(err);
-      setError("Failed to parse VCF. Check backend logs.");
-    } finally {
-      setLoading(false);
+      if (!res.ok) {
+      // Try to parse validation response from backend
+      let errorMessage = "Server error";
+      try {
+        const errorJson = await res.json();
+        if (errorJson.detail) errorMessage = errorJson.detail;
+      } catch {
+        // fallback
+      }
+      throw new Error(errorMessage);
     }
-  };
+
+    const text = await res.text();
+    navigate("/viewer", {
+      state: {
+        tsvText: text,
+        vcfFile,
+        tbiFile,
+        chr,
+        start,
+        end,
+      },
+    });
+  } catch (err) {
+    setError(err.message);
+  } finally {
+    setLoading(false);
+  }
+};
 
   return (
     <div style={styles.page}>
@@ -119,7 +142,7 @@ export default function VCFUploadPanel({ onLoad }) {
 
         <button
           type="submit"
-          disabled={loading || !vcfFile || !tbiFile}
+          disabled={loading}
           style={styles.button}
         >
           {loading ? "Processing…" : "Load & Visualize"}
