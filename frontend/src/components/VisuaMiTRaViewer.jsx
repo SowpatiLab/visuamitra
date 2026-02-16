@@ -1,8 +1,8 @@
-import React, { useState, useRef } from "react";
+import React, { useState, useRef, useEffect } from "react";
+import { useLocation, useNavigate } from "react-router-dom";
 import VCFInputPanel from "./VCFInputPanel";
 import { parseTSV } from "../utils/parseTSV";
 import { parseDecompFromTSV } from "../utils/parseDecompInfo";
-import { generatePalette } from "../utils/colorPalette";
 import DecompositionPlot from "./DecompositionPlot";
 import MethylationPlot from "./MethylationPlot";
 import Axis from "./Axis";
@@ -22,6 +22,10 @@ function safeJson(s) {
 }
 
 export default function VisuaMiTRaViewer() {
+
+  const [loading, setLoading] = useState(false);
+  const [error, setError] = useState("");
+
   const [rows, setRows] = useState([]);
   const [selectedIdx, setSelectedIdx] = useState(null);
   const [settings, setSettings] = useState({
@@ -30,25 +34,37 @@ export default function VisuaMiTRaViewer() {
       theme: "light",
       methPalette: "Viridis",
     });
+  
+  const location = useLocation();
+  const navigate = useNavigate();
+
+  const {
+    tsvText,
+    vcfFile,
+    tbiFile,
+    chr: initChr,
+    start: initStart,
+    endPos: initEnd,
+  } = location.state || {};
+
+  const [chr, setChr] = useState(initChr || "");
+  const [start, setStart] = useState(initStart || "");
+  const [endPos, setEndPos] = useState(initEnd || "");
 
   const methScrollRef = useRef();
 
   /*  CONFIG  */
   const MAX_VISIBLE_BP = 500;
   const SCROLL_STEP = 150;
-
   const LEFT_MARGIN = 140;
   const RIGHT_MARGIN = 30;
   const SVG_WIDTH = 1200;
-
   const TOP_PADDING = 60;
   const GAP = 20;
-
-  const DECOMP_HEIGHT = 160;     //  change 
-  const METH_HEIGHT = 170;       //  change 
+  const DECOMP_HEIGHT = 160;        
+  const METH_HEIGHT = 170;          
   const AXIS_HEIGHT = 50;
   const METH_AXIS_OFFSET = 40;
-
 
   const TOTAL_HEIGHT =
     TOP_PADDING +
@@ -57,7 +73,40 @@ export default function VisuaMiTRaViewer() {
     METH_HEIGHT +
     GAP +
     AXIS_HEIGHT;
+  
+  useEffect(() => {
+    if (location.state?.tsvText) {
+      const parsedRows = parseTSV(location.state.tsvText);
+      setRows(parsedRows);
+      setSelectedIdx(0);
+    } else {
+      // refresh case → go back to upload
+      navigate("/");
+    }
+  }, [location.state, navigate]);
 
+  const applyRegionFilter = () => {
+    if (!chr && !start && !endPos) return;
+
+    const s = start ? Number(start) : -Infinity;
+    const e = endPos ? Number(endPos) : Infinity;
+
+    const filtered = rows.filter((r) => {
+      if (chr && r.Chrom !== chr) return false;
+      if (r.End < s) return false;
+      if (r.Start > e) return false;
+      return true;
+    });
+
+    if (!filtered.length) {
+      setError("No data found in this region");
+      return;
+    }
+
+    setError("");
+    setRows(filtered);
+    setSelectedIdx(0);
+  };
    
   /*  File handling  */
   const handleFile = (e) => {
@@ -100,12 +149,10 @@ export default function VisuaMiTRaViewer() {
       }}
     />
   );
-}
-  
+}  
   const row = rows[selectedIdx];
 
   /*  Decomposition  */
-
   const {
     ref: decompRef = { motifs: [], lengths: [] },
     a1: decompA1 = { motifs: [], lengths: [] },
@@ -126,10 +173,8 @@ export default function VisuaMiTRaViewer() {
   meth2.lvl?.some((v) => v === -1);
 
   /*  Colors  */
-
   // only repeating motifs (copy no > 1)
   const repeatingMotifSet = new Set();
-
   [decompRef, decompA1, decompA2].forEach((d) => {
     d.motifs?.forEach((motif, i) => {
       if (d.copies?.[i] > 1) {
@@ -139,11 +184,9 @@ export default function VisuaMiTRaViewer() {
   });
 
   // Generate colors only for repeating motifs
-  //const colorMap = generatePalette([...repeatingMotifSet]);
   const colorMap = generateMotifColors([...repeatingMotifSet], settings.palette);
   // Choose the scale dynamically, e.g., from settings (can add methScale in settings later)
  
-
   /*  Scaling  */
   const sum = (arr = []) => arr.reduce((a, b) => a + b, 0);
   const alleleMax = Math.max(
@@ -159,7 +202,6 @@ export default function VisuaMiTRaViewer() {
 
   const visibleLen = Math.min(alleleMax, MAX_VISIBLE_BP);
   const needsScroll = alleleMax > MAX_VISIBLE_BP;
-
   const methSvgWidth = needsScroll
     ? (alleleMax / visibleLen) * SVG_WIDTH
     : SVG_WIDTH;
@@ -167,7 +209,6 @@ export default function VisuaMiTRaViewer() {
   const scaleX = (v) =>
     LEFT_MARGIN +
     (v / alleleMax) * (methSvgWidth - LEFT_MARGIN - RIGHT_MARGIN);
-
 
   /*  Y OFFSETS  */
   const decompY = TOP_PADDING;
@@ -186,34 +227,92 @@ export default function VisuaMiTRaViewer() {
   return (
     <div
       style={{
-        padding: 20,
+        paddingTop: 30,
+        paddingLeft: 50,
+        paddingRight: 50,
         fontFamily: settings.font,
         background: settings.theme === "dark" ? "#111" : "#fafafa",
         color: settings.theme === "dark" ? "#eee" : "#000",
-        position: "relative", // needed for absolute SettingsPanel
+        position: "relative",
       }}
     >
       <SettingsPanel settings={settings} onChange={setSettings} />
       <h2 style={{ textAlign: "center" }}>VisuaMiTRa</h2>
 
+      {/* REGION FILTER TOOLBAR */}
       <div
         style={{
-            display: "flex",
-            alignItems: "center",
-            gap: "8px",
-            marginBottom: "8px",
+          display: "flex",
+          alignItems: "center",
+          gap: 10,
+          padding: "8px 12px",
+          border: "1px solid #ddd",
+          borderRadius: 8,
+          background: "#f8f9fb",
+          marginBottom: 12,
+          width: "fit-content",
+          whiteSpace: "nowrap",
         }}
-        >
-        <span style={{ fontWeight: "bold" }}>Location:</span>
+      >
+        <span style={{ fontWeight: 600 }}>Genomic Region:</span>
 
-        <GenomicLocationPicker
-            rows={rows}
-            selectedIdx={selectedIdx}
-            onSelect={setSelectedIdx}
+        <input
+          placeholder="chr (chr1)"
+          value={chr}
+          onChange={(e) => setChr(e.target.value)}
+          style={{ width: 80 }}
         />
+
+        <input
+          type="number"
+          placeholder="start"
+          value={start}
+          onChange={(e) => setStart(e.target.value)}
+          style={{ width: 100 }}
+        />
+
+        <input
+          type="number"
+          placeholder="end"
+          value={endPos}
+          onChange={(e) => setEndPos(e.target.value)}
+          style={{ width: 100 }}
+        />
+
+        <button
+          onClick={applyRegionFilter}
+          disabled={loading}
+          style={{
+            marginLeft: "auto",
+            padding: "6px 14px",
+            borderRadius: 6,
+            border: "none",
+            background: "#328547ff",
+            color: "#fff",
+            fontWeight: 600,
+            cursor: "pointer",
+          }}
+        >
+          {loading ? "Applying…" : "Apply"}
+        </button>
+      </div>
+
+      {/* OPTIONAL ERROR MESSAGE */}
+      {error && (
+        <div style={{ color: "#b00020", fontSize: 13, marginBottom: 8 }}>
+          {error}
         </div>
+      )}
+
+      {/* ROW PICKER */}
+      <GenomicLocationPicker
+        rows={rows}
+        selectedIdx={selectedIdx}
+        onSelect={setSelectedIdx}
+      />
 
       <MetadataDisplay row={row} />
+
 
       <div style={{ display: "flex" }}>
         <div>
@@ -222,8 +321,7 @@ export default function VisuaMiTRaViewer() {
             width={SVG_WIDTH}
             height={TOTAL_HEIGHT}
             style={{ border: "1px solid #ccc", background: "#fafafa" }}
-          >
-            
+          >        
             <DecompositionPlot
               decompRef={decompRef}
               decompA1={decompA1}
@@ -234,7 +332,6 @@ export default function VisuaMiTRaViewer() {
               yOffset={decompY}
               rowGap={25}
             />
-
             <foreignObject
               x="0"
               y={methY}
@@ -250,8 +347,7 @@ export default function VisuaMiTRaViewer() {
                   overflowY: "hidden",
                 }}
               >
-                <svg width={methSvgWidth} height={METH_HEIGHT + METH_AXIS_OFFSET}>
-                  
+                <svg width={methSvgWidth} height={METH_HEIGHT + METH_AXIS_OFFSET}>                  
                   {/* debug – remove later */}
                   <rect
                     x={0}
@@ -260,7 +356,6 @@ export default function VisuaMiTRaViewer() {
                     height={METH_AXIS_OFFSET}
                     fill="rgba(252, 248, 248, 0.1)"
                   />
-
                   <MethylationPlot
                     meth1={meth1}
                     meth2={meth2}
@@ -272,7 +367,6 @@ export default function VisuaMiTRaViewer() {
                     rowGap={25}
                     getColor={getMethylationColor}
                   />
-
                   <Axis
                     scale={scaleX}
                     alleleMax={alleleMax}
@@ -284,8 +378,6 @@ export default function VisuaMiTRaViewer() {
                 </svg>
               </div>
             </foreignObject>
-
-
           </svg>
         </div>
         <div style={{ marginLeft: 20 }}>
@@ -294,8 +386,7 @@ export default function VisuaMiTRaViewer() {
            hasDecomposition={hasDecomposition}
            hasAmbiguousMeth={hasAmbiguousMeth}/>
         </div>
-      </div>
-  
+      </div>  
       {/*  Bottom navigation  */}
         <div
         style={{
