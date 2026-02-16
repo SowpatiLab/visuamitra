@@ -1,7 +1,17 @@
-import { palette } from "../utils/gradientColors";
+import { getMethylationColorFactory } from "../utils/colorUtils";
+import { useMemo } from "react";
 
-export default function Legend({ colorMap, svgHeight = 440, hasDecomposition, hasAmbiguousMeth }) {
+export default function Legend({ colorMap, svgHeight = 440, hasDecomposition, hasAmbiguousMeth, methPalette, }) {
   const motifs = Object.entries(colorMap || {});
+  const getMethylationColor = useMemo(() => {
+    return getMethylationColorFactory(methPalette);
+  }, [methPalette]);
+  const gradientSteps = 20;
+  const gradientArray = Array.from({ length: gradientSteps }, (_, i) =>
+    getMethylationColor((i / (gradientSteps - 1)) * 100)
+  );
+  
+
 
   return (
     <div
@@ -100,7 +110,7 @@ export default function Legend({ colorMap, svgHeight = 440, hasDecomposition, ha
             style={{
               width: "15px",
               height: "80%",
-              background: `linear-gradient(to top, ${palette.join(", ")})`,
+              background: `linear-gradient(to top, ${gradientArray.join(", ")})`,
               border: "1px solid #444",
             }}
           />

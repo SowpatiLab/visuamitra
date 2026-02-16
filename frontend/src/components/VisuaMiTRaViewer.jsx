@@ -9,6 +9,8 @@ import Axis from "./Axis";
 import Legend from "./Legend";
 import MetadataDisplay from "./MetaData";
 import GenomicLocationPicker from "./GenomicLocationPicker";
+import { generateMotifColors, getMethylationColorFactory} from "../utils/colorUtils";
+import SettingsPanel from "./SettingsPanel";
 
 function safeJson(s) {
   if (!s) return null;
@@ -22,6 +24,13 @@ function safeJson(s) {
 export default function VisuaMiTRaViewer() {
   const [rows, setRows] = useState([]);
   const [selectedIdx, setSelectedIdx] = useState(null);
+  const [settings, setSettings] = useState({
+      palette: "Set3",
+      font: "Arial",
+      theme: "light",
+      methPalette: "Viridis",
+    });
+
   const methScrollRef = useRef();
 
   /*  CONFIG  */
@@ -62,6 +71,13 @@ export default function VisuaMiTRaViewer() {
     };
     reader.readAsText(file);
   };
+
+  const getMethylationColor = React.useMemo(
+      () =>
+        getMethylationColorFactory(
+          settings.methPalette),
+      [settings.methPalette]
+    );
 
   {/*if (!rows.length) {
     return (
@@ -109,9 +125,6 @@ export default function VisuaMiTRaViewer() {
   meth1.lvl?.some((v) => v === -1) ||
   meth2.lvl?.some((v) => v === -1);
 
-
-
-
   /*  Colors  */
 
   // only repeating motifs (copy no > 1)
@@ -126,13 +139,13 @@ export default function VisuaMiTRaViewer() {
   });
 
   // Generate colors only for repeating motifs
-  const colorMap = generatePalette([...repeatingMotifSet]);
-
+  //const colorMap = generatePalette([...repeatingMotifSet]);
+  const colorMap = generateMotifColors([...repeatingMotifSet], settings.palette);
+  // Choose the scale dynamically, e.g., from settings (can add methScale in settings later)
+ 
 
   /*  Scaling  */
-
   const sum = (arr = []) => arr.reduce((a, b) => a + b, 0);
-
   const alleleMax = Math.max(
     sum(decompRef.lengths),
     sum(decompA1.lengths),
@@ -171,7 +184,16 @@ export default function VisuaMiTRaViewer() {
 
   /*  RENDER  */
   return (
-    <div style={{ padding: 20 }}>
+    <div
+      style={{
+        padding: 20,
+        fontFamily: settings.font,
+        background: settings.theme === "dark" ? "#111" : "#fafafa",
+        color: settings.theme === "dark" ? "#eee" : "#000",
+        position: "relative", // needed for absolute SettingsPanel
+      }}
+    >
+      <SettingsPanel settings={settings} onChange={setSettings} />
       <h2 style={{ textAlign: "center" }}>VisuaMiTRa</h2>
 
       <div
@@ -248,6 +270,7 @@ export default function VisuaMiTRaViewer() {
                     leftMargin={LEFT_MARGIN}
                     yStart={20}
                     rowGap={25}
+                    getColor={getMethylationColor}
                   />
 
                   <Axis
@@ -267,6 +290,7 @@ export default function VisuaMiTRaViewer() {
         </div>
         <div style={{ marginLeft: 20 }}>
           <Legend colorMap={colorMap} 
+           methPalette={settings.methPalette}
            hasDecomposition={hasDecomposition}
            hasAmbiguousMeth={hasAmbiguousMeth}/>
         </div>

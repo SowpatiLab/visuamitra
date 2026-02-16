@@ -1,5 +1,5 @@
 import React from "react";
-import { getGradientColor } from "../utils/gradientColors";
+//import { getGradientColor } from "../utils/gradientColors";
 
 export default function MethylationPlot({
   meth1,
@@ -10,6 +10,7 @@ export default function MethylationPlot({
   leftMargin,
   yStart = 200,
   rowGap = 40,
+  getColor,
 }) {
   const barHeight = 28;
 
@@ -45,7 +46,7 @@ export default function MethylationPlot({
           y={y}
           width={6}
           height={barHeight}
-          fill={getGradientColor(levels[i])} // expects 0–100
+          fill={getColor(levels[i])} // expects 0–100
           stroke="#555"
           strokeWidth={0.8}
         />
