@@ -5,7 +5,7 @@ const FONTS = ["Arial", "Roboto", "Courier New", "Times New Roman"];
 const METHYLATION_SCALES = [
   "viridis", "plasma", "inferno", "magma", "cividis", "turbo"];
 
-export default function SettingsPanel({ settings, onChange }) {
+export default function SettingsPanel({ settings, onChange, onClose }) {
   const [palette, setPalette] = useState(settings.palette || "Set3");
   const [font, setFont] = useState(settings.font || "Arial");
   const [theme, setTheme] = useState(settings.theme || "light");
@@ -52,9 +52,36 @@ export default function SettingsPanel({ settings, onChange }) {
         fontFamily: font,
         zIndex: 1000,
         minWidth: 180,
+        boxShadow: "0 4px 12px rgba(0, 0, 0, 0.15)",
       }}
     >
+
+      <div
+        style={{
+          display: "flex",
+          justifyContent: "space-between",
+          alignItems: "center",
+          marginBottom: 8,
+        }}
+      >
+
       <h4 style={{ margin: "0 0 8px 0" }}>View</h4>
+
+      {/* Close Button */}
+      <div style={{ textAlign: "right" }}>
+          <button 
+            onClick={onClose}
+            style={{
+              background: "transparent",
+              border: "none",
+              fontSize: 18,
+              cursor: "pointer",
+            }}
+          >
+            ×
+          </button>
+        </div>
+      </div>
 
       {/* Motif Palette */}
       <div style={{ marginBottom: 8 }}>

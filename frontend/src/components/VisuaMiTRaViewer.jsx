@@ -11,6 +11,7 @@ import MetadataDisplay from "./MetaData";
 import GenomicLocationPicker from "./GenomicLocationPicker";
 import { generateMotifColors, getMethylationColorFactory} from "../utils/colorUtils";
 import SettingsPanel from "./SettingsPanel";
+import favicon from '../assets/favicon.png'
 
 function safeJson(s) {
   if (!s) return null;
@@ -34,6 +35,8 @@ export default function VisuaMiTRaViewer() {
       theme: "light",
       methPalette: "Viridis",
     });
+  const [showSettings, setShowSettings] = useState(false);
+  const toggleSettings = () => setShowSettings(!showSettings);
   
   const location = useLocation();
   const navigate = useNavigate();
@@ -227,6 +230,13 @@ export default function VisuaMiTRaViewer() {
   return (
     <div
       style={{
+        width: "95%",            // full width of parent
+        minHeight: "95%",       // at least full viewport height
+        display: "flex",
+        flexDirection: "column",
+        justifyContent: "center", // center vertical
+            // center horizontal
+        alignItems: "center",
         paddingTop: 30,
         paddingLeft: 50,
         paddingRight: 50,
@@ -236,8 +246,42 @@ export default function VisuaMiTRaViewer() {
         position: "relative",
       }}
     >
-      <SettingsPanel settings={settings} onChange={setSettings} />
-      <h2 style={{ textAlign: "center" }}>VisuaMiTRa</h2>
+      <div>
+      {/* Settings button */}
+      {!showSettings && (
+        <button
+          onClick={() => setShowSettings(true)}
+          style={{
+            position: "fixed",
+            top: 120,
+            right: 230,
+            padding: "8px 12px",
+            fontSize: 16,
+            cursor: "pointer",
+            zIndex: 1000,
+          }}
+        >
+          ⚙ Settings
+        </button>
+      )}
+
+      {/* Settings Card */}
+      {showSettings && (
+        <SettingsPanel
+          settings={settings}
+          onChange={setSettings}
+          onClose={() => setShowSettings(false)}
+        />
+      )}
+    </div>
+     <div style={{ textAlign: "center", paddingBottom: "40px"}}>
+      <img
+        src={favicon}
+        alt="VisuaMiTRa Icon"
+        style={{ width: "64px", height: "56px", verticalAlign: "middle", marginRight: "8px" }}
+      />
+      <span style={{ fontSize: "24px", fontWeight: "bold" }}>VisuaMiTRa</span>
+      </div>
 
       {/* REGION FILTER TOOLBAR */}
       <div
