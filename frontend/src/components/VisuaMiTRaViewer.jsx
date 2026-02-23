@@ -12,6 +12,7 @@ import GenomicLocationPicker from "./GenomicLocationPicker";
 import { generateMotifColors, getMethylationColorFactory} from "../utils/colorUtils";
 import SettingsPanel from "./SettingsPanel";
 import favicon from '../assets/favicon.png'
+import ChromosomeIdeogram from "./ChromosomeIdeogram";
 
 function safeJson(s) {
   if (!s) return null;
@@ -40,6 +41,7 @@ export default function VisuaMiTRaViewer() {
   
   const location = useLocation();
   const navigate = useNavigate();
+  const [zoomFactor, setZoomFactor] = useState(1); 
 
   const {
     tsvText,
@@ -53,6 +55,8 @@ export default function VisuaMiTRaViewer() {
   const [chr, setChr] = useState(initChr || "");
   const [start, setStart] = useState(initStart || "");
   const [endPos, setEndPos] = useState(initEnd || "");
+
+  const [visibleRange, setVisibleRange] = useState([0, 0]);
 
   const methScrollRef = useRef();
 
@@ -87,6 +91,39 @@ export default function VisuaMiTRaViewer() {
       navigate("/");
     }
   }, [location.state, navigate]);
+
+  // compute alleleMax early (before any return)
+  const alleleMax = React.useMemo(() => {
+    if (!rows.length || selectedIdx === null) return 0;
+
+    const row = rows[selectedIdx];
+    const sum = (arr = []) => arr.reduce((a, b) => a + b, 0);
+
+    const methTags = safeJson(row.Meth_tag) || [];
+    const meth1pos = methTags[0]?.[0] || [];
+    const meth2pos = methTags[1]?.[0] || [];
+
+    const { ref, a1, a2 } =
+      parseDecompFromTSV(row.Decomp_info, row.Decomp_seq) || {};
+
+    return Math.max(
+      sum(ref?.lengths),
+      sum(a1?.lengths),
+      sum(a2?.lengths),
+      row.alleleLen1 || 0,
+      row.alleleLen2 || 0,
+      ...meth1pos,
+      ...meth2pos,
+      0
+    );
+  }, [rows, selectedIdx]);
+
+    useEffect(() => {
+    // only run if we have a valid alleleMax
+    if (alleleMax > 0) {
+      setVisibleRange([0, alleleMax]);
+    }
+  }, [alleleMax]);
 
   const applyRegionFilter = () => {
     if (!chr && !start && !endPos) return;
@@ -153,6 +190,7 @@ export default function VisuaMiTRaViewer() {
     />
   );
 }  
+
   const row = rows[selectedIdx];
 
   /*  Decomposition  */
@@ -192,31 +230,30 @@ export default function VisuaMiTRaViewer() {
  
   /*  Scaling  */
   const sum = (arr = []) => arr.reduce((a, b) => a + b, 0);
-  const alleleMax = Math.max(
-    sum(decompRef.lengths),
-    sum(decompA1.lengths),
-    sum(decompA2.lengths),
-    row.alleleLen1 || 0,
-    row.alleleLen2 || 0,
-    ...meth1.pos,
-    ...meth2.pos,
-    0
-  );
+  
+  const visibleLen = visibleRange[1] - visibleRange[0];
+  const needsScroll = visibleLen > MAX_VISIBLE_BP;
 
-  const visibleLen = Math.min(alleleMax, MAX_VISIBLE_BP);
-  const needsScroll = alleleMax > MAX_VISIBLE_BP;
   const methSvgWidth = needsScroll
-    ? (alleleMax / visibleLen) * SVG_WIDTH
+    ? (visibleLen / MAX_VISIBLE_BP) * SVG_WIDTH
     : SVG_WIDTH;
 
+  const fullLen = alleleMax || 1;
+
+  // scale domain 0→fullLen onto screen 0→(methSvgWidth − margins)
   const scaleX = (v) =>
     LEFT_MARGIN +
-    (v / alleleMax) * (methSvgWidth - LEFT_MARGIN - RIGHT_MARGIN);
+    (v / fullLen) * drawWidth;
+      
 
   /*  Y OFFSETS  */
   const decompY = TOP_PADDING;
   const methY = decompY + DECOMP_HEIGHT + GAP;
   const axisY = methY + METH_HEIGHT + GAP;
+
+  const BASE_DRAW_WIDTH = SVG_WIDTH - LEFT_MARGIN - RIGHT_MARGIN;
+  const drawWidth = BASE_DRAW_WIDTH * zoomFactor;
+  const totalSvgWidth = drawWidth + LEFT_MARGIN + RIGHT_MARGIN;
 
     const goPrev = () => {
     setSelectedIdx((i) => Math.max(0, i - 1));
@@ -225,6 +262,16 @@ export default function VisuaMiTRaViewer() {
     const goNext = () => {
     setSelectedIdx((i) => Math.min(rows.length - 1, i + 1));
     };
+
+  const ZOOM_STEP = 0.2; // each click ± 20%
+
+  const expandRange = () => {
+    setZoomFactor((z) => Math.min(z + ZOOM_STEP, 10));  // cap at ×10
+  };
+
+  const shrinkRange = () => {
+    setZoomFactor((z) => Math.max(0.2, z - ZOOM_STEP)); // min ×0.2
+  };
 
   /*  RENDER  */
   return (
@@ -254,7 +301,7 @@ export default function VisuaMiTRaViewer() {
           style={{
             position: "fixed",
             top: 120,
-            right: 230,
+            right: 200,
             padding: "8px 12px",
             fontSize: 16,
             cursor: "pointer",
@@ -274,7 +321,7 @@ export default function VisuaMiTRaViewer() {
         />
       )}
     </div>
-     <div style={{ textAlign: "center", paddingBottom: "40px"}}>
+     <div style={{ textAlign: "center", paddingBottom: "40px", paddingTop: "0px"}}>
       <img
         src={favicon}
         alt="VisuaMiTRa Icon"
@@ -355,82 +402,126 @@ export default function VisuaMiTRaViewer() {
         onSelect={setSelectedIdx}
       />
 
-      <MetadataDisplay row={row} />
+      {/* IDEOGRAM VIEWER */}
+      <ChromosomeIdeogram
+        chr={row.Chrom}
+        start={row.Start}
+        end={row.End}
+        heigth={200}
+        chrHeight={1000}
+        chrWidth={25}
+      />
 
-
-      <div style={{ display: "flex" }}>
-        <div>
-          {/*  MAIN SVG  */}
-          <svg
-            width={SVG_WIDTH}
-            height={TOTAL_HEIGHT}
-            style={{ border: "1px solid #ccc", background: "#fafafa" }}
-          >        
-            <DecompositionPlot
-              decompRef={decompRef}
-              decompA1={decompA1}
-              decompA2={decompA2}
-              scaleX={scaleX}
-              leftMargin={LEFT_MARGIN}
-              colorMap={colorMap}
-              yOffset={decompY}
-              rowGap={25}
-            />
-            <foreignObject
-              x="0"
-              y={methY}
-              width={SVG_WIDTH}
-              height={METH_HEIGHT + METH_AXIS_OFFSET}
+      <MetadataDisplay row={row} />     
+        {/* MAIN PLOTS + LEGEND WRAPPER */}
+        <div
+          style={{
+            display: "flex",
+            flexDirection: "row",
+            width: "100%",
+            justifyContent: "center",
+            alignItems: "flex-start",
+            gap: "24px",  // space between plot and legend
+          }}
+        >
+          {/* LEFT SIDE: Scrollable Plot Area */}
+          <div>
+            <div
+              style={{
+                width: SVG_WIDTH,
+                display: "block",
+                overflowX: "scroll",
+                overflowY: "hidden",
+                border: "1px solid #ccc",
+                background: "#fafafa",
+                whiteSpace: "nowrap",
+              }}
             >
-              <div
-                ref={methScrollRef}
-                style={{
-                  width: "100%",
-                  height: "100%",
-                  overflowX: needsScroll ? "auto" : "hidden",
-                  overflowY: "hidden",
-                }}
+              <svg
+                style={{ minWidth: totalSvgWidth }}
+                height={TOTAL_HEIGHT}
               >
-                <svg width={methSvgWidth} height={METH_HEIGHT + METH_AXIS_OFFSET}>                  
-                  {/* debug – remove later */}
-                  <rect
-                    x={0}
-                    y={METH_HEIGHT}
-                    width={methSvgWidth}
-                    height={METH_AXIS_OFFSET}
-                    fill="rgba(252, 248, 248, 0.1)"
-                  />
-                  <MethylationPlot
-                    meth1={meth1}
-                    meth2={meth2}
-                    alleleLen1={row.alleleLen1}
-                    alleleLen2={row.alleleLen2}
-                    scaleX={scaleX}
-                    leftMargin={LEFT_MARGIN}
-                    yStart={20}
-                    rowGap={25}
-                    getColor={getMethylationColor}
-                  />
-                  <Axis
-                    scale={scaleX}
-                    alleleMax={alleleMax}
-                    width={methSvgWidth}
-                    leftMargin={LEFT_MARGIN}
-                    rightMargin={RIGHT_MARGIN}
-                    bottomY={METH_HEIGHT + 15}
-                  />
-                </svg>
-              </div>
-            </foreignObject>
-          </svg>
+                {/* decomposition + methylation SVG as before */}
+                <DecompositionPlot
+                  decompRef={decompRef}
+                  decompA1={decompA1}
+                  decompA2={decompA2}
+                  scaleX={scaleX}
+                  leftMargin={LEFT_MARGIN}
+                  colorMap={colorMap}
+                  yOffset={decompY}
+                  rowGap={25}
+                />
+
+                <foreignObject
+                  x="0"
+                  y={methY}
+                  width={totalSvgWidth}
+                  height={METH_HEIGHT + METH_AXIS_OFFSET}
+                >
+                  <div style={{ width: totalSvgWidth, height: "100%" }}>
+                    <svg width={totalSvgWidth} height={METH_HEIGHT + METH_AXIS_OFFSET}>
+                      <rect
+                        x={0}
+                        y={METH_HEIGHT}
+                        width={totalSvgWidth}
+                        height={METH_AXIS_OFFSET}
+                        fill="rgba(252,248,248,0.1)"
+                      />
+                      <MethylationPlot
+                        meth1={meth1}
+                        meth2={meth2}
+                        alleleLen1={row.alleleLen1}
+                        alleleLen2={row.alleleLen2}
+                        scaleX={scaleX}
+                        leftMargin={LEFT_MARGIN}
+                        yStart={20}
+                        rowGap={25}
+                        getColor={getMethylationColor}
+                      />
+
+                      <Axis
+                        scale={scaleX}
+                        visibleRange={[0, fullLen]}
+                        width={totalSvgWidth}
+                        leftMargin={LEFT_MARGIN}
+                        rightMargin={RIGHT_MARGIN}
+                        bottomY={METH_HEIGHT + 15}
+                      />
+                    </svg>
+                  </div>
+                </foreignObject>
+              </svg>
+            </div>
+          </div>
+
+          {/* RIGHT SIDE: Legend */}
+          <div
+            style={{
+              display: "flex",
+              flexDirection: "column",
+              alignItems: "flex-start",
+              maxWidth: "260px", // optional width limit
+            }}
+          >
+            <Legend
+              colorMap={colorMap}
+              methPalette={settings.methPalette}
+              hasDecomposition={hasDecomposition}
+              hasAmbiguousMeth={hasAmbiguousMeth}
+            />
+          </div>
         </div>
-        <div style={{ marginLeft: 20 }}>
-          <Legend colorMap={colorMap} 
-           methPalette={settings.methPalette}
-           hasDecomposition={hasDecomposition}
-           hasAmbiguousMeth={hasAmbiguousMeth}/>
+
+        {/* ZOOM CONTROLS (CENTERED) */}
+        <div style={{ textAlign: "center", padding: "8px 0" }}>
+          <button onClick={shrinkRange}>–</button>
+          <span style={{ margin: "0 12px" }}>
+            Scale: {Math.round(zoomFactor * 100)}%
+          </span>
+          <button onClick={expandRange}>+</button>
         </div>
-      </div>  
+       
       {/*  Bottom navigation  */}
         <div
         style={{

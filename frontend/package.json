@@ -9,6 +9,7 @@
     "@testing-library/user-event": "^13.5.0",
     "d3-scale": "^4.0.2",
     "d3-scale-chromatic": "^3.1.0",
+    "ideogram": "^1.53.0",
     "react": "^19.2.4",
     "react-dom": "^19.2.4",
     "react-router-dom": "^7.13.0",

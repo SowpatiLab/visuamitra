@@ -1,44 +1,40 @@
-import React from "react";
-
-/* Pick a nice step that is a multiple of 10 or100 */
+/* Pick a nice step that is a multiple of 10 or 100 */
 function niceStep(max) {
-  const targetDivs = 7; // ~number of major divisions
+  const targetDivs = 7;
   const raw = max / targetDivs;
   const pow10 = Math.pow(10, Math.floor(Math.log10(raw)));
-
-  const candidates = [10, 20, 25, 50, 100].map((m) => m * pow10 / 10);
-
+  const candidates = [10, 20, 25, 50, 100].map((m) => (m * pow10) / 10);
   return candidates.find((c) => raw <= c) || candidates[candidates.length - 1];
 }
 
 export default function Axis({
   scale,
-  alleleMax,
+  visibleRange,
   width,
   leftMargin,
   rightMargin,
   bottomY,
   label,
 }) {
-  if (!alleleMax || alleleMax <= 0) return null;
+  const [min, max] = visibleRange;
 
-  const step = niceStep(alleleMax);
+  if (max <= min) return null;
 
+  const step = niceStep(max - min);
   const ticks = [];
-  const lastFullTick = Math.floor(alleleMax / step) * step;
 
-  // All multiples of step
+  const lastFullTick = Math.floor((max - min) / step) * step;
+
   for (let v = 0; v <= lastFullTick; v += step) {
-    ticks.push(v);
+    ticks.push(min + v);
   }
 
-  if (ticks[ticks.length - 1] !== alleleMax) {
-    ticks.push(alleleMax);
+  if (ticks[ticks.length - 1] !== max) {
+    ticks.push(max);
   }
 
   return (
     <>
-      {/* Axis baseline */}
       <line
         x1={leftMargin}
         y1={bottomY}
@@ -47,7 +43,6 @@ export default function Axis({
         stroke="#444"
       />
 
-      {/* Ticks */}
       {ticks.map((val, i) => {
         const x = scale(val);
         return (
@@ -72,7 +67,6 @@ export default function Axis({
         );
       })}
 
-       {/* Optional axis label */}
       {label && (
         <text
           x={(leftMargin + width - rightMargin) / 2}
