@@ -1,5 +1,6 @@
 import React, { useEffect, useRef } from "react";
 import Ideogram from "ideogram";
+import "../App.css";
 
 export default function ChromosomeIdeogram({
   chr,
@@ -71,3 +72,4 @@ export default function ChromosomeIdeogram({
     </div>
   );
 }
+

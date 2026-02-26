@@ -7,6 +7,20 @@ function niceStep(max) {
   return candidates.find((c) => raw <= c) || candidates[candidates.length - 1];
 }
 
+
+function getTickStep(min, max, pixelWidth, targetPx = 70) {
+  const span = max - min;
+  // how many ticks to aim for:
+  const approxCount = Math.max(1, Math.floor(pixelWidth / targetPx));
+  const raw = span / approxCount;
+
+  // choose a human-friendly multiple of 1,2,5,10…
+  const pow10 = Math.pow(10, Math.floor(Math.log10(raw)));
+  const candidates = [1,2,5,10,20,25,50,100].map((m) => m * pow10);
+
+  return candidates.find((c) => raw <= c) || candidates[candidates.length - 1];
+}
+
 export default function Axis({
   scale,
   visibleRange,
@@ -20,16 +34,15 @@ export default function Axis({
 
   if (max <= min) return null;
 
-  const step = niceStep(max - min);
+  const pixelWidth = width - leftMargin - rightMargin;
+  const step = getTickStep(min, max, pixelWidth, 70);
+
   const ticks = [];
-
-  const lastFullTick = Math.floor((max - min) / step) * step;
-
-  for (let v = 0; v <= lastFullTick; v += step) {
-    ticks.push(min + v);
+  for (let v = Math.ceil(min / step) * step; v <= max; v += step) {
+    ticks.push(v);
   }
 
-  if (ticks[ticks.length - 1] !== max) {
+  if (!ticks.includes(max)) {
     ticks.push(max);
   }
 

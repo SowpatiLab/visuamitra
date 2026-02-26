@@ -27,9 +27,6 @@ export default function VisuaMiTRaViewer() {
 
   const [loading, setLoading] = useState(false);
   const [error, setError] = useState("");
-
-  const [rows, setRows] = useState([]);
-  const [selectedIdx, setSelectedIdx] = useState(null);
   const [settings, setSettings] = useState({
       palette: "Set3",
       font: "Arial",
@@ -44,19 +41,32 @@ export default function VisuaMiTRaViewer() {
   const [zoomFactor, setZoomFactor] = useState(1); 
 
   const {
-    tsvText,
     vcfFile,
     tbiFile,
     chr: initChr,
     start: initStart,
     endPos: initEnd,
+    pageSize: initPageSize,
+    lastCursor: initLastCursor,
+    tsvText: initialTsvText,
   } = location.state || {};
+
+  // pages of TSV rows
+  const [pages, setPages] = useState([]);
+
+  const [cursorHistory, setCursorHistory] = useState([initLastCursor || null]);
+  const [currentPageIndex, setCurrentPageIndex] = useState(0);
+  const [selectedIdx, setSelectedIdx] = useState(null);
+  const [pageSize, setPageSize] = useState(
+      initPageSize ?? location.state?.pageSize ?? 500
+    );
 
   const [chr, setChr] = useState(initChr || "");
   const [start, setStart] = useState(initStart || "");
   const [endPos, setEndPos] = useState(initEnd || "");
-
   const [visibleRange, setVisibleRange] = useState([0, 0]);
+  //const [filterApplyCount, setFilterApplyCount] = useState(0);
+  const [filterTrigger, setFilterTrigger] = useState(0);
 
   const methScrollRef = useRef();
 
@@ -81,22 +91,65 @@ export default function VisuaMiTRaViewer() {
     GAP +
     AXIS_HEIGHT;
   
-  useEffect(() => {
-    if (location.state?.tsvText) {
-      const parsedRows = parseTSV(location.state.tsvText);
-      setRows(parsedRows);
-      setSelectedIdx(0);
-    } else {
-      // refresh case → go back to upload
-      navigate("/");
-    }
-  }, [location.state, navigate]);
+  const MAX_CACHE_SIZE = 10;
 
+  const fetchPageTSV = async (cursor) => {
+    const formData = new FormData();
+    formData.append("vcf", vcfFile);
+    formData.append("tbi", tbiFile);
+    if (chr) formData.append("chr", chr);
+    if (start) formData.append("start", start);
+    if (endPos) formData.append("end", endPos);
+    if (cursor) formData.append("last_cursor", cursor);
+    formData.append("page_size", pageSize);
+
+    const res = await fetch("http://localhost:8001/api/vcf-to-tsv-cursor", {
+      method: "POST",
+      body: formData,
+    });
+  
+    if (!res.ok) {
+      const err = await res.json();
+      throw new Error(err.detail || "Failed to fetch page");
+    }
+
+    const text = await res.text();
+    const nextCursor = res.headers.get("X-Next-Cursor");
+    console.log("Cursor:", nextCursor);
+    return { text, nextCursor };
+  };
+
+  useEffect(() => {
+    if (!vcfFile || !tbiFile) return;
+
+    const loadFirstPage = async () => {
+      setLoading(true);
+      setError("");
+
+      try {
+        const { text, nextCursor } = await fetchPageTSV(null);
+        const parsed = parseTSV(text);
+
+        setPages([parsed]);
+        setCursorHistory([null, nextCursor]);
+        setCurrentPageIndex(0);
+        setSelectedIdx(parsed.length > 0 ? 0 : null);
+      } catch (err) {
+        setError(err.message);
+      } finally {
+        setLoading(false);
+      }
+    };
+
+    loadFirstPage();
+  }, [vcfFile, tbiFile, pageSize, filterTrigger]);
+  
   // compute alleleMax early (before any return)
   const alleleMax = React.useMemo(() => {
-    if (!rows.length || selectedIdx === null) return 0;
+    const currentRows = pages[currentPageIndex] || [];
+    if (!currentRows.length || selectedIdx === null) return 0;
 
-    const row = rows[selectedIdx];
+    const row = currentRows[selectedIdx] || {};
     const sum = (arr = []) => arr.reduce((a, b) => a + b, 0);
 
     const methTags = safeJson(row.Meth_tag) || [];
@@ -116,7 +169,7 @@ export default function VisuaMiTRaViewer() {
       ...meth2pos,
       0
     );
-  }, [rows, selectedIdx]);
+  }, [pages, currentPageIndex, selectedIdx]);
 
     useEffect(() => {
     // only run if we have a valid alleleMax
@@ -126,40 +179,16 @@ export default function VisuaMiTRaViewer() {
   }, [alleleMax]);
 
   const applyRegionFilter = () => {
-    if (!chr && !start && !endPos) return;
-
-    const s = start ? Number(start) : -Infinity;
-    const e = endPos ? Number(endPos) : Infinity;
-
-    const filtered = rows.filter((r) => {
-      if (chr && r.Chrom !== chr) return false;
-      if (r.End < s) return false;
-      if (r.Start > e) return false;
-      return true;
-    });
-
-    if (!filtered.length) {
-      setError("No data found in this region");
-      return;
-    }
-
+    setPages([]); 
+    setCursorHistory([null]);
+    setCurrentPageIndex(0);
+    setSelectedIdx(null);
     setError("");
-    setRows(filtered);
-    setSelectedIdx(0);
+    //setFilterApplyCount(count => count + 1);
+    setFilterTrigger(prev => prev + 1);
+    // triggers the loadFirstPage useEffect
   };
    
-  /*  File handling  */
-  const handleFile = (e) => {
-    const file = e.target.files[0];
-    if (!file) return;
-
-    const reader = new FileReader();
-    reader.onload = () => {
-      setRows(parseTSV(reader.result));
-      setSelectedIdx(0);
-    };
-    reader.readAsText(file);
-  };
 
   const getMethylationColor = React.useMemo(
       () =>
@@ -177,21 +206,22 @@ export default function VisuaMiTRaViewer() {
     );
   }*/}
 
-  if (!rows.length) {
-  return (
-    <VCFInputPanel
-      onLoad={(tsvText) => {
-        const startTime = performance.now();
-        const parsedRows = parseTSV(tsvText);
-        setRows(parsedRows);
-        setSelectedIdx(0);
-        console.log("Time to fetch + parse:", performance.now() - startTime, "ms");
-      }}
-    />
-  );
-}  
+  if (!pages[currentPageIndex]?.length) {
+    return (
+      <VCFInputPanel
+        onLoad={(tsvText) => {
+          const parsedRows = parseTSV(tsvText);
+          setPages([parsedRows]);
+          setCursorHistory([null]);
+          setCurrentPageIndex(0);
+          setSelectedIdx(parsedRows.length > 0 ? 0 : null);
+        }}
+      />
+    );
+  }
 
-  const row = rows[selectedIdx];
+  const currentRows = pages[currentPageIndex] || [];
+  const row = currentRows[selectedIdx] || {};
 
   /*  Decomposition  */
   const {
@@ -255,13 +285,65 @@ export default function VisuaMiTRaViewer() {
   const drawWidth = BASE_DRAW_WIDTH * zoomFactor;
   const totalSvgWidth = drawWidth + LEFT_MARGIN + RIGHT_MARGIN;
 
-    const goPrev = () => {
-    setSelectedIdx((i) => Math.max(0, i - 1));
-    };
+   const goNext = async () => {
+    // move inside current page rows if available
+    const currentRows = pages[currentPageIndex] || [];
+    if (selectedIdx < currentRows.length - 1) {
+      setSelectedIdx(i => i + 1);
+      return;
+    }
 
-    const goNext = () => {
-    setSelectedIdx((i) => Math.min(rows.length - 1, i + 1));
-    };
+    // otherwise fetch next page
+    const nextCursor = cursorHistory[currentPageIndex + 1];
+    if (!nextCursor) return; // no more pages
+
+    // if already cached just advance
+    if (pages[currentPageIndex + 1]) {
+      setCurrentPageIndex(i => i + 1);
+      setSelectedIdx(0);
+      return;
+    }
+
+    // fetch next page
+    setLoading(true);
+    try {
+      const { text, nextCursor: newNext } = await fetchPageTSV(nextCursor);
+      const parsed = parseTSV(text);
+
+      setPages(prev => {
+        const newPages = [...prev, parsed];
+        if (newPages.length > MAX_CACHE_SIZE) {
+          newPages.shift(); // drop oldest
+        }
+        return newPages;
+      });
+
+      setCursorHistory(prev => {
+        const nextArr = [...prev, newNext];
+        if (nextArr.length > MAX_CACHE_SIZE + 1) {
+          nextArr.shift(); // keep cursorHistory in sync
+        }
+        return nextArr;
+      });
+      setCurrentPageIndex(i => i + 1);
+      setSelectedIdx(parsed.length > 0 ? 0 : null);
+    } catch (err) {
+      setError(err.message);
+    } finally {
+      setLoading(false);
+    }
+  };
+
+  const goPrev = () => {
+    if (selectedIdx > 0) {
+      setSelectedIdx(i => i - 1);
+      return;
+    }
+    if (currentPageIndex > 0) {
+      setCurrentPageIndex(i => i - 1);
+      setSelectedIdx((pages[currentPageIndex - 1]?.length || 1) - 1);
+    }
+  };
 
   const ZOOM_STEP = 0.2; // each click ± 20%
 
@@ -282,7 +364,6 @@ export default function VisuaMiTRaViewer() {
         display: "flex",
         flexDirection: "column",
         justifyContent: "center", // center vertical
-            // center horizontal
         alignItems: "center",
         paddingTop: 30,
         paddingLeft: 50,
@@ -304,8 +385,14 @@ export default function VisuaMiTRaViewer() {
             right: 200,
             padding: "8px 12px",
             fontSize: 16,
+            fontWeight: 600,
             cursor: "pointer",
             zIndex: 1000,
+            border: "none",
+            borderRadius: 8,
+            background: "#328547ff",
+            color: "#fff",
+            boxShadow: "0px 4px 6px rgba(54, 51, 51, 0.2)"
           }}
         >
           ⚙ Settings
@@ -325,7 +412,7 @@ export default function VisuaMiTRaViewer() {
       <img
         src={favicon}
         alt="VisuaMiTRa Icon"
-        style={{ width: "64px", height: "56px", verticalAlign: "middle", marginRight: "8px" }}
+        style={{ width: "64px", height: "56px", verticalAlign: "middle", marginRight: "8px", borderRadius: 8}}
       />
       <span style={{ fontSize: "24px", fontWeight: "bold" }}>VisuaMiTRa</span>
       </div>
@@ -343,6 +430,7 @@ export default function VisuaMiTRaViewer() {
           marginBottom: 12,
           width: "fit-content",
           whiteSpace: "nowrap",
+          boxShadow: "0px 4px 8px rgba(0, 0, 0, 0.1)"
         }}
       >
         <span style={{ fontWeight: 600 }}>Genomic Region:</span>
@@ -397,20 +485,26 @@ export default function VisuaMiTRaViewer() {
 
       {/* ROW PICKER */}
       <GenomicLocationPicker
-        rows={rows}
+        rows={pages[currentPageIndex] || []}
         selectedIdx={selectedIdx}
         onSelect={setSelectedIdx}
       />
 
       {/* IDEOGRAM VIEWER */}
-      <ChromosomeIdeogram
-        chr={row.Chrom}
-        start={row.Start}
-        end={row.End}
-        heigth={200}
-        chrHeight={1000}
-        chrWidth={25}
-      />
+      {row.Chrom && !isNaN(row.Start) && !isNaN(row.End) ? (
+        <ChromosomeIdeogram
+          chr={row.Chrom}
+          start={Number(row.Start)}
+          end={Number(row.End)}
+          height={100}
+          chrHeight={900}
+          chrWidth={25}
+        />
+      ) : (
+        <div style={{ fontSize: 14, margin: "8px 0" }}>
+          No valid location to display ideogram
+        </div>
+      )}
 
       <MetadataDisplay row={row} />     
         {/* MAIN PLOTS + LEGEND WRAPPER */}
@@ -435,6 +529,8 @@ export default function VisuaMiTRaViewer() {
                 border: "1px solid #ccc",
                 background: "#fafafa",
                 whiteSpace: "nowrap",
+                borderRadius: 10,
+                boxShadow: "0px 4px 6px rgba(0, 0, 0, 0.3)"
               }}
             >
               <svg
@@ -502,6 +598,7 @@ export default function VisuaMiTRaViewer() {
               flexDirection: "column",
               alignItems: "flex-start",
               maxWidth: "260px", // optional width limit
+              
             }}
           >
             <Legend
@@ -514,9 +611,9 @@ export default function VisuaMiTRaViewer() {
         </div>
 
         {/* ZOOM CONTROLS (CENTERED) */}
-        <div style={{ textAlign: "center", padding: "8px 0" }}>
+        <div style={{ textAlign: "center", padding: "16px 0" }}>
           <button onClick={shrinkRange}>–</button>
-          <span style={{ margin: "0 12px" }}>
+          <span style={{ margin: "0 12px", fontSize: "15px"}}>
             Scale: {Math.round(zoomFactor * 100)}%
           </span>
           <button onClick={expandRange}>+</button>
@@ -525,7 +622,7 @@ export default function VisuaMiTRaViewer() {
       {/*  Bottom navigation  */}
         <div
         style={{
-            marginTop: "16px",
+            marginTop: "2px",
             padding: "12px",
             display: "flex",
             justifyContent: "center",
@@ -536,23 +633,20 @@ export default function VisuaMiTRaViewer() {
         }}
         >
         <button
-            onClick={goPrev}
-            disabled={selectedIdx === 0}
-            style={{ padding: "6px 12px" }}
+          onClick={goPrev}
+          disabled={currentPageIndex === 0 && selectedIdx === 0}
         >
-            ⟵ Previous
+          ⟵ Previous
         </button>
 
-        <div style={{ fontWeight: "bold" }}>
-            {row.Chrom}:{row.Start}-{row.End}
-        </div>
-
         <button
-            onClick={goNext}
-            disabled={selectedIdx === rows.length - 1}
-            style={{ padding: "6px 12px" }}
+          onClick={goNext}
+          disabled={
+            !cursorHistory[currentPageIndex + 1] &&
+            selectedIdx === (pages[currentPageIndex]?.length - 1)
+          }
         >
-            Next ⟶
+          Next ⟶
         </button>
         </div>
     </div>

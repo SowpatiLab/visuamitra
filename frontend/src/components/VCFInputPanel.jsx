@@ -52,7 +52,7 @@ export default function VCFUploadPanel({ onLoad }) {
     if (end) formData.append("end", end);
 
     try {
-      const res = await fetch("http://localhost:8001/api/vcf-to-tsv-upload", {
+      const res = await fetch("http://localhost:8001/api/vcf-to-tsv-cursor", {
         method: "POST",
         body: formData,
       });
@@ -72,12 +72,14 @@ export default function VCFUploadPanel({ onLoad }) {
     const text = await res.text();
     navigate("/viewer", {
       state: {
-        tsvText: text,
         vcfFile,
         tbiFile,
         chr,
         start,
-        end,
+        endPos: end,
+        pageSize: 10,
+        lastCursor: res.headers.get("X-Next-Cursor") || null,
+        tsvText: text
       },
     });
   } catch (err) {

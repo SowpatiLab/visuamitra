@@ -1,4 +1,5 @@
 import React from "react";
+import { useState } from "react";
 //import { getGradientColor } from "../utils/gradientColors";
 
 export default function MethylationPlot({
@@ -14,30 +15,18 @@ export default function MethylationPlot({
 }) {
   const barHeight = 28;
 
+  const [tooltip, setTooltip] = useState(null);
+  // tooltip = { x, y, text }
+
   /*  CpG bars  */
   const drawCpGs = (positions = [], levels = [], y) =>
     positions.map((pos, i) => {
-
       const x = scaleX(pos);
-
       const lvl = levels[i];
-      
-      if (lvl === -1) {
-        return (
-          <rect
-            key={i}
-            x={x - 3}
-            y={y}
-            width={6}
-            height={barHeight}
-            fill="none"
-            stroke="#888"
-            strokeWidth={0.8}
-          />
-        );
-      }
 
-      if (lvl === -2) return null
+      if (lvl === -2) return null;
+
+      const isAmbiguous = lvl === -1;
 
       return (
         <rect
@@ -46,9 +35,23 @@ export default function MethylationPlot({
           y={y}
           width={6}
           height={barHeight}
-          fill={getColor(levels[i])} // expects 0–100
-          stroke="#555"
+          fill={isAmbiguous ? "none" : getColor(lvl)}   // ✅ gradient preserved
+          stroke={isAmbiguous ? "#888" : "#555"}
           strokeWidth={0.8}
+          onMouseEnter={
+            isAmbiguous
+              ? undefined
+              : () =>
+                  setTooltip({
+                    x,
+                    y,
+                    text: ` ${lvl}%`,
+                  })
+          }
+          onMouseLeave={
+            isAmbiguous ? undefined : () => setTooltip(null)
+          }
+          style={{ cursor: "pointer" }}
         />
       );
     });
@@ -71,8 +74,9 @@ export default function MethylationPlot({
     scaleX(alleleLen2) - startX
     );
     
-console.log("Allele lens:", alleleLen1, alleleLen2);
-console.log("startX:", startX, "endX1:", scaleX(alleleLen1));
+//console.log("Allele lens:", alleleLen1, alleleLen2);
+//console.log("startX:", startX, "endX1:", scaleX(alleleLen1));
+
 
   return (
     <>
@@ -130,6 +134,32 @@ console.log("startX:", startX, "endX1:", scaleX(alleleLen1));
         Allele 2
       </text>
       {drawCpGs(meth2?.pos, meth2?.lvl, y2)}
+
+      {tooltip && (
+        <g pointerEvents="none">
+          <rect
+            x={tooltip.x - 50}
+            y={tooltip.y - 26}
+            width={100}
+            height={20}
+            rx={4}
+            fill="rgba(255,255,255,0.95)"
+            stroke="#bbb"
+            strokeWidth={0.6}
+          />
+          <text
+            x={tooltip.x}
+            y={tooltip.y - 12}
+            fill="#222"
+            fontSize="11"
+            fontWeight="600"
+            textAnchor="middle"
+          >
+            {tooltip.text}
+          </text>
+        </g>
+      )}
+
     </>
   );
 }

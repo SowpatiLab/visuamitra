@@ -36,3 +36,10 @@
     transform: rotate(360deg);
   }
 }
+
+/* Make the Ideogram brush highlight thicker & more visible */
+#ideogram-container svg .brush rect.selection {
+  stroke-width: 4px !important;
+  stroke: rgb(219, 12, 12) !important;
+  fill-opacity: 0.3 !important;
+}

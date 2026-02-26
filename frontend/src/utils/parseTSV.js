@@ -30,12 +30,12 @@ export function parseTSV(text) {
     obj.alleleLen2 = alleleLen2;
 
     // Debug 
-    console.log(
-      `[TSV row ${rowIdx}]`,
-      "alleleLen1:", alleleLen1,
-      "alleleLen2:", alleleLen2,
-      "Sequences:", obj.Sequences
-    );
+//    console.log(
+//      `[TSV row ${rowIdx}]`,
+//      "alleleLen1:", alleleLen1,
+//      "alleleLen2:", alleleLen2,
+      //"Sequences:", obj.Sequences
+//    );
 
     return obj;
   });

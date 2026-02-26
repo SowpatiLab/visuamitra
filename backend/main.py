@@ -27,7 +27,7 @@ async def timing_middleware(request: Request, call_next):
 
 
 # CORS Middleware
-origins = ["http://localhost:3000","http://127.0.0.1:3000, http://192.168.14.145:3000"]   # React dev server
+origins = ["http://localhost:3000","http://127.0.0.1:3000", "http://192.168.14.145:3000"]   # React dev server
            
 app.add_middleware(
     CORSMiddleware,
@@ -35,6 +35,7 @@ app.add_middleware(
     allow_credentials=True,
     allow_methods=["*"],
     allow_headers=["*"],
+    expose_headers=["X-Next-Cursor"], 
 )
 
 app.include_router(router)
