@@ -36,6 +36,9 @@ export default function Legend({ colorMap, svgHeight = 440, hasDecomposition, ha
             columnGap: "16px",
             overflow: "hidden",
             flex: 1,
+            paddingBottom: "12px", 
+            borderBottom: "1px dashed #aaa",
+            
           }}
         >
         <div
@@ -96,9 +99,9 @@ export default function Legend({ colorMap, svgHeight = 440, hasDecomposition, ha
       {/*  Methylation gradient */}
       <div
         style={{
-          marginTop: "16px",
-          paddingTop: "10px",
-          borderTop: "1px dashed #aaa",
+          marginTop: "8px",
+          paddingTop: "8px",
+          
         }}
       >
         <div style={{ fontWeight: "bold", marginBottom: "6px" }}>

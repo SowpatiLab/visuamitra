@@ -3,7 +3,7 @@ import React, { useState } from "react";
 const MOTIF_PALETTES = ["Set1", "Set2", "Set3", "Paired", "Pastel1", "Pastel2", "Dark2", "Accent"];
 const FONTS = ["Arial", "Roboto", "Courier New", "Times New Roman"];
 const METHYLATION_SCALES = [
-  "viridis", "plasma", "inferno", "magma", "cividis", "turbo"];
+  "viridis", "plasma", "magma", "cividis", ];
 
 export default function SettingsPanel({ settings, onChange, onClose }) {
   const [palette, setPalette] = useState(settings.palette || "Set3");

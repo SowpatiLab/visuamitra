@@ -1,0 +1,368 @@
+@router.post("/vcf-to-tsv-upload")
+def vcf_to_tsv_upload(
+    vcf: UploadFile = File(...),
+    tbi: UploadFile = File(...),
+    chr: str | None = Form(None),
+    start: int | None = Form(None),
+    end: int | None = Form(None),
+):
+    # Create temp directory
+    tmpdir = tempfile.mkdtemp(prefix="vcf_")
+    vcf_path = os.path.join(tmpdir, vcf.filename)
+    tbi_path = os.path.join(tmpdir, tbi.filename)
+
+    # Save uploads
+    with open(vcf_path, "wb") as f:
+        shutil.copyfileobj(vcf.file, f)
+    with open(tbi_path, "wb") as f:
+        shutil.copyfileobj(tbi.file, f)
+
+    # Verify index corresponds to VCF
+    if not tbi.filename.startswith(vcf.filename):
+        raise HTTPException(status_code=400, detail="TBI index does not match VCF filename")
+    
+    try:
+        tabix = pysam.TabixFile(vcf_path)
+    except Exception:
+        raise HTTPException(status_code=400, detail="Could not open VCF or index")
+    
+    # Get contigs from VCF index
+    contigs = list(tabix.contigs)
+
+    # Function to check if any variant exists in a region
+    def region_has_variants(contig, start0, end0):
+        try:
+            for _ in tabix.fetch(contig, start0, end0):
+                return True
+        except ValueError:
+            return False
+        return False
+
+        # If chr provided at all: 
+    if chr:        
+            # Check if chromosome exists in index
+        if chr not in tabix.contigs:
+            raise HTTPException(status_code=400, detail=f"Chromosome '{chr}' not found in VCF")
+
+        # Validate start/end ranges, including searching across all contigs if no chr
+    if start is not None or end is not None:
+        if start is not None and start < 1:
+            raise HTTPException(status_code=400, detail="Start must be >= 1")
+        if end is not None and end < 1:
+            raise HTTPException(status_code=400, detail="End must be >= 1")
+        if start is not None and end is not None and start > end:
+            raise HTTPException(status_code=400, detail="Start must be < End")
+
+        fetch_start = 0 if start is None else start - 1
+        fetch_end = None if end is None else end
+
+        # Case A: chr is specified
+        if chr:
+            # Check if region intersects actual data
+            if not region_has_variants(chr, fetch_start, fetch_end):
+                raise HTTPException(
+                    status_code=400,
+                    detail=f"No data found in range {start}-{end} on chromosome {chr}"
+                )
+
+        # Case B: no chr — search across all contigs
+        else:
+            found_any = False
+            for contig in contigs:
+                if region_has_variants(contig, fetch_start, fetch_end):
+                    found_any = True
+                    break
+            if not found_any:
+                raise HTTPException(
+                    status_code=400,
+                    detail=f"No data found in range {start}-{end} across all chromosomes"
+                )
+
+    # Generator for streaming TSV
+    def byte_generator():
+        for line in visuamitra_data_extract_stream(vcf_path, chr, start, end):
+            if isinstance(line, str):
+                yield line.encode("utf-8")
+            else:
+                yield line
+
+    return StreamingResponse(
+        byte_generator(),
+        media_type="text/tab-separated-values",
+        headers={"Content-Disposition": "attachment; filename=visuamitra.tsv"},
+    )
+
+-----------------------------------------------------------------------------------------------------------------------------
+
+import os
+import shutil
+import tempfile
+import base64
+from typing import Optional
+
+import pysam
+from fastapi import APIRouter, UploadFile, File, Form, HTTPException
+from fastapi.responses import StreamingResponse
+
+from visuamitra_script import visuamitra_data_extract_stream
+
+router = APIRouter(prefix="/api")
+
+
+### --- VALIDATION HELPER --- ###
+@router.post("/vcf-loc-validation")
+def vcf_loc_validation(
+    vcf: UploadFile = File(...),
+    tbi: UploadFile = File(...),
+):
+    """
+    Return contigs that have indexed data and position bounds for each.
+    """
+
+    # Save VCF + TBI temporarily
+    tmpdir = tempfile.mkdtemp(prefix="vcf_validate_")
+    vcf_path = os.path.join(tmpdir, vcf.filename)
+    tbi_path = os.path.join(tmpdir, tbi.filename)
+
+    with open(vcf_path, "wb") as vf:
+        shutil.copyfileobj(vcf.file, vf)
+    with open(tbi_path, "wb") as tf:
+        shutil.copyfileobj(tbi.file, tf)
+
+    # Must open via TabixFile to read contigs and fetch safely
+    try:
+        tabix = pysam.TabixFile(vcf_path)
+    except Exception:
+        raise HTTPException(status_code=400, detail="Could not open VCF or its index.")
+
+    # contigs in the index (safe to fetch from)
+    contigs = list(tabix.contigs)
+
+    # compute variant min/max for each contig
+    bounds = {}
+    for c in contigs:
+        try:
+            minp, maxp = None, None
+            for line in tabix.fetch(c):
+                parts = line.split("\t")
+                pos = int(parts[1])
+                if minp is None or pos < minp:
+                    minp = pos
+                if maxp is None or pos > maxp:
+                    maxp = pos
+            if minp is not None:
+                bounds[c] = {"min": minp, "max": maxp}
+        except ValueError:
+            continue
+
+    return {"contigs": contigs, "bounds": bounds}
+
+
+### --- CURSORED TSV EXPORT --- ###
+def encode_cursor(chr, pos):
+    raw = f"{chr}:{pos}"
+    return base64.urlsafe_b64encode(raw.encode()).decode()
+
+
+def decode_cursor(cursor):
+    try:
+        decoded = base64.urlsafe_b64decode(cursor.encode()).decode()
+        c, p = decoded.split(":")
+        return c, int(p)
+    except Exception:
+        raise HTTPException(status_code=400, detail="Invalid cursor format.")
+
+
+@router.post("/vcf-to-tsv-cursor")
+def vcf_to_tsv_cursor(
+    vcf: UploadFile = File(...),
+    tbi: UploadFile = File(...),
+    last_cursor: Optional[str] = Form(None),
+    page_size: int = Form(100),
+    chr: Optional[str] = Form(None),
+    start: Optional[str] = Form(None),
+    end: Optional[str] = Form(None),
+):
+    """
+    Paginated TSV from VCF.
+    Validates chr, start, end against actual variant positions,
+    and only calls the extractor if valid.
+    """
+    import os, shutil, tempfile, base64
+    from fastapi import HTTPException
+    from fastapi.responses import StreamingResponse
+    import pysam
+
+    # Save all files locally
+    tmpdir = tempfile.mkdtemp(prefix="vcf_")
+    vcf_path = os.path.join(tmpdir, vcf.filename)
+    tbi_path = os.path.join(tmpdir, tbi.filename)
+    with open(vcf_path, "wb") as vf:
+        shutil.copyfileobj(vcf.file, vf)
+    with open(tbi_path, "wb") as tf:
+        shutil.copyfileobj(tbi.file, tf)
+
+    # Parse start/end as integers if provided
+    try:
+        start_int = int(start) if start not in (None, "") else None
+    except ValueError:
+        raise HTTPException(status_code=400, detail="Start must be an integer.")
+
+    try:
+        end_int = int(end) if end not in (None, "") else None
+    except ValueError:
+        raise HTTPException(status_code=400, detail="End must be an integer.")
+
+    # Basic numeric validation
+    if start_int is not None and start_int < 1:
+        raise HTTPException(status_code=400, detail="Start must be >= 1.")
+    if end_int is not None and end_int < 1:
+        raise HTTPException(status_code=400, detail="End must be >= 1.")
+    if start_int is not None and end_int is not None and end_int < start_int:
+        raise HTTPException(status_code=400, detail="End must be >= start.")
+
+    # Open tabix index
+    try:
+        tabix = pysam.TabixFile(vcf_path)
+    except Exception:
+        raise HTTPException(status_code=400, detail="Could not open VCF index.")
+
+    valid_contigs = list(tabix.contigs)
+
+    # Only validate chromosome if provided
+    if chr:
+        if chr not in valid_contigs:
+            raise HTTPException(
+                status_code=400,
+                detail=f"Chromosome '{chr}' not found (valid: {valid_contigs})."
+            )
+    else:
+        # No region filtering requested
+        start_int = None
+        end_int = None
+
+   # ---- Correct region validation before extractor ----
+
+    # Build observed variant bounds for this contig
+    contig_bounds = None
+    try:
+        # Fetch only if chr is valid (we already checked contig above)
+        min_pos = None
+        max_pos = None
+        for line in tabix.fetch(chr):
+            parts = line.split("\t")
+            if len(parts) > 1:
+                p = int(parts[1])
+                if min_pos is None:
+                    min_pos = p
+                    max_pos = p
+                else:
+                    if p < min_pos:
+                        min_pos = p
+                    if p > max_pos:
+                        max_pos = p
+        if min_pos is not None:
+            contig_bounds = {"min": min_pos, "max": max_pos}
+    except Exception:
+        raise HTTPException(
+            status_code=400,
+            detail=f"Could not read variant positions for chromosome '{chr}'."
+        )
+
+    # If no bounds found, no variants exist on this contig
+    if contig_bounds is None:
+        raise HTTPException(
+            status_code=400,
+            detail=f"No variants found on chromosome '{chr}'."
+        )
+
+    min_pos = contig_bounds["min"]
+    max_pos = contig_bounds["max"]
+
+    # Check start bounds
+    if start_int is not None:
+        if start_int < min_pos or start_int > max_pos:
+            raise HTTPException(
+                status_code=400,
+                detail=f"Start ({start_int}) must be between {min_pos} and {max_pos} on {chr}."
+            )
+
+    # Check end bounds
+    if end_int is not None:
+        if end_int < min_pos or end_int > max_pos:
+            raise HTTPException(
+                status_code=400,
+                detail=f"End ({end_int}) must be between {min_pos} and {max_pos} on {chr}."
+            )
+
+    # If both start and end present, verify valid interval
+    if start_int is not None and end_int is not None:
+        if end_int < min_pos or start_int > max_pos:
+            raise HTTPException(
+                status_code=400,
+                detail=f"No variants found in region {chr}:{start_int}-{end_int}."
+            )
+
+    # Decode cursor if present
+    cursor_chr, cursor_pos = (None, None)
+    if last_cursor:
+        try:
+            decoded = base64.urlsafe_b64decode(last_cursor.encode()).decode()
+            c0, p0 = decoded.split(":")
+            cursor_chr, cursor_pos = c0, int(p0)
+        except Exception:
+            raise HTTPException(status_code=400, detail="Invalid cursor.")
+
+    # Safe to run extractor now
+    collected = []
+    next_cursor = None
+    count = 0
+    seen_header = False
+
+    for raw_line in visuamitra_data_extract_stream(vcf_path, chr, start_int, end_int):
+        # process as before
+        if isinstance(raw_line, bytes):
+            raw_line = raw_line.decode("utf-8")
+        if not raw_line.strip():
+            continue
+
+        if raw_line.startswith("Chrom") and not seen_header:
+            collected.append(raw_line)
+            seen_header = True
+            continue
+
+        parts = raw_line.strip().split("\t")
+        if len(parts) < 2:
+            continue
+        r_chr, r_pos = parts[0], int(parts[1])
+
+        if r_chr != chr:
+            continue
+        if start_int is not None and r_pos < start_int:
+            continue
+        if end_int is not None and r_pos > end_int:
+            continue
+
+        if cursor_chr and cursor_pos is not None and r_chr == cursor_chr and r_pos <= cursor_pos:
+            continue
+
+        if count >= page_size:
+            next_cursor = encode_cursor(r_chr, r_pos)
+            break
+
+        collected.append(raw_line)
+        count += 1
+
+    def stream_rows():
+        for row in collected:
+            yield row
+
+    headers = {}
+    if next_cursor:
+        headers["X-Next-Cursor"] = next_cursor
+
+    return StreamingResponse(
+        stream_rows(),
+        media_type="text/tab-separated-values",
+        headers=headers,
+    )

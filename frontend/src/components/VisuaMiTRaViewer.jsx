@@ -28,7 +28,7 @@ export default function VisuaMiTRaViewer() {
   const [loading, setLoading] = useState(false);
   const [error, setError] = useState("");
   const [settings, setSettings] = useState({
-      palette: "Set3",
+      palette: "Set2",
       font: "Arial",
       theme: "light",
       methPalette: "Viridis",
@@ -103,7 +103,7 @@ export default function VisuaMiTRaViewer() {
     if (cursor) formData.append("last_cursor", cursor);
     formData.append("page_size", pageSize);
 
-    const res = await fetch("http://localhost:8001/api/vcf-to-tsv-cursor", {
+    const res = await fetch("http://192.168.14.145:8001/api/vcf-to-tsv-cursor", {
       method: "POST",
       body: formData,
     });
@@ -179,10 +179,10 @@ export default function VisuaMiTRaViewer() {
   }, [alleleMax]);
 
   const applyRegionFilter = () => {
-    setPages([]); 
-    setCursorHistory([null]);
-    setCurrentPageIndex(0);
-    setSelectedIdx(null);
+    //setPages([]); 
+    //setCursorHistory([null]);
+    //setCurrentPageIndex(0);
+    //setSelectedIdx(null);
     setError("");
     //setFilterApplyCount(count => count + 1);
     setFilterTrigger(prev => prev + 1);
@@ -206,7 +206,17 @@ export default function VisuaMiTRaViewer() {
     );
   }*/}
 
-  if (!pages[currentPageIndex]?.length) {
+  // Show loading state if needed
+  if (loading) {
+    return (
+      <div style={{ padding: 20 }}>
+        <p>Loading…</p>
+      </div>
+    );
+  }
+
+  // Show upload screen only if there are no files at all
+  if (!vcfFile || !tbiFile) {
     return (
       <VCFInputPanel
         onLoad={(tsvText) => {
@@ -223,12 +233,30 @@ export default function VisuaMiTRaViewer() {
   const currentRows = pages[currentPageIndex] || [];
   const row = currentRows[selectedIdx] || {};
 
+
+  console.log("ROW BEING PARSED", {
+    idx: selectedIdx,
+    Chrom: row.Chrom,
+    Start: row.Start,
+    End: row.End,
+    Decomp_info: row.Decomp_info,
+    Decomp_seq: row.Decomp_seq,
+  });
+
   /*  Decomposition  */
-  const {
-    ref: decompRef = { motifs: [], lengths: [] },
-    a1: decompA1 = { motifs: [], lengths: [] },
-    a2: decompA2 = { motifs: [], lengths: [] },
-  } = parseDecompFromTSV(row.Decomp_info, row.Decomp_seq) || {};
+const parsedDecomp = parseDecompFromTSV(row.Decomp_info, row.Decomp_seq) || {};
+
+const decompRef = parsedDecomp.ref || { motifs: [], lengths: [], copies: [] };
+const decompA1 = parsedDecomp.a1 || { motifs: [], lengths: [], copies: [] };
+const decompA2 = parsedDecomp.a2 || { motifs: [], lengths: [], copies: [] };
+
+console.log("AFTER FIX - parsedDecomp:", { decompRef, decompA1, decompA2 });
+
+  console.log("PARSED DECOMP RESULT", {
+    decompRef,
+    decompA1,
+    decompA2,
+  });
 
   const hasDecomposition =
     decompRef.motifs.length > 0 ||
@@ -286,6 +314,8 @@ export default function VisuaMiTRaViewer() {
   const totalSvgWidth = drawWidth + LEFT_MARGIN + RIGHT_MARGIN;
 
    const goNext = async () => {
+
+    setError("");
     // move inside current page rows if available
     const currentRows = pages[currentPageIndex] || [];
     if (selectedIdx < currentRows.length - 1) {
@@ -335,6 +365,8 @@ export default function VisuaMiTRaViewer() {
   };
 
   const goPrev = () => {
+
+    setError("");
     if (selectedIdx > 0) {
       setSelectedIdx(i => i - 1);
       return;
@@ -408,7 +440,7 @@ export default function VisuaMiTRaViewer() {
         />
       )}
     </div>
-     <div style={{ textAlign: "center", paddingBottom: "40px", paddingTop: "0px"}}>
+     <div style={{ textAlign: "center", paddingBottom: "20px", paddingTop: "0px"}}>
       <img
         src={favicon}
         alt="VisuaMiTRa Icon"
@@ -476,19 +508,61 @@ export default function VisuaMiTRaViewer() {
         </button>
       </div>
 
-      {/* OPTIONAL ERROR MESSAGE */}
+      {/* OPTIONAL ERROR MESSAGE (UNDER FILTER PANEL) */}
       {error && (
-        <div style={{ color: "#b00020", fontSize: 13, marginBottom: 8 }}>
+        <div
+          style={{
+            color: "#b00020",
+            fontSize: 14,
+            marginTop: 4,
+            marginBottom: 8,
+            padding: "6px 12px",
+            //border: "1px solid #b00020",
+            //background: "#fdecea",
+            borderRadius: 4,
+          }}
+        >
           {error}
         </div>
       )}
 
-      {/* ROW PICKER */}
-      <GenomicLocationPicker
-        rows={pages[currentPageIndex] || []}
-        selectedIdx={selectedIdx}
-        onSelect={setSelectedIdx}
-      />
+      {/* Compact combined navigation row */}
+      <div
+        style={{
+          display: "flex",
+          alignItems: "center",
+          justifyContent: "space-evenly",
+          gap: "12px",
+          padding: "4px 0",          
+          width: "100%",
+          maxWidth: "520px",
+        }}
+      >
+        <button
+          onClick={goPrev}
+          style={{ padding: "4px 8px", fontSize: "14px" }}
+        >
+          ⟵ Previous
+        </button>
+
+        <GenomicLocationPicker
+          rows={pages[currentPageIndex] || []}
+          selectedIdx={selectedIdx}
+          onSelect={setSelectedIdx}
+          style={{
+            fontSize: "13px",
+            width: "380px",
+            height: "32px",
+          }}
+        />
+
+        <button
+          onClick={goNext}
+          style={{ padding: "4px 8px", fontSize: "14px" }}
+        >
+          Next ⟶
+        </button>
+      </div>
 
       {/* IDEOGRAM VIEWER */}
       {row.Chrom && !isNaN(row.Start) && !isNaN(row.End) ? (
@@ -619,36 +693,7 @@ export default function VisuaMiTRaViewer() {
           <button onClick={expandRange}>+</button>
         </div>
        
-      {/*  Bottom navigation  */}
-        <div
-        style={{
-            marginTop: "2px",
-            padding: "12px",
-            display: "flex",
-            justifyContent: "center",
-            alignItems: "center",
-            gap: "24px",
-            borderTop: "1px solid #ccc",
-            fontSize: "14px",
-        }}
-        >
-        <button
-          onClick={goPrev}
-          disabled={currentPageIndex === 0 && selectedIdx === 0}
-        >
-          ⟵ Previous
-        </button>
-
-        <button
-          onClick={goNext}
-          disabled={
-            !cursorHistory[currentPageIndex + 1] &&
-            selectedIdx === (pages[currentPageIndex]?.length - 1)
-          }
-        >
-          Next ⟶
-        </button>
-        </div>
+      
     </div>
   );
 }

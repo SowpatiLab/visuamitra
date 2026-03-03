@@ -52,7 +52,7 @@ export default function VCFUploadPanel({ onLoad }) {
     if (end) formData.append("end", end);
 
     try {
-      const res = await fetch("http://localhost:8001/api/vcf-to-tsv-cursor", {
+      const res = await fetch("http://192.168.14.145:8001/api/vcf-to-tsv-cursor", {
         method: "POST",
         body: formData,
       });

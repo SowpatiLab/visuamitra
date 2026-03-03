@@ -35,10 +35,12 @@ export default function ChromosomeIdeogram({
       chromosomes: [chr.replace(/^chr/, "")],
       orientation: "horizontal",
       brush: brushString,
+      cursorPosition: start,   // static red line
+      onCursorMove: null,
       chrHeight,
       chrWidth,
       showBandLabels: true,
-      showChromosomeLabels: true // optional: hide labels for smaller size
+      showChromosomeLabels: true 
     });
 
     // store

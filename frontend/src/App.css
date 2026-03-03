@@ -37,9 +37,8 @@
   }
 }
 
-/* Make the Ideogram brush highlight thicker & more visible */
-#ideogram-container svg .brush rect.selection {
-  stroke-width: 4px !important;
-  stroke: rgb(219, 12, 12) !important;
-  fill-opacity: 0.3 !important;
+#ideogram-container,
+#ideogram-container svg,
+#ideogram-container svg * {
+  cursor: default !important;  /* always use the normal arrow cursor */
 }

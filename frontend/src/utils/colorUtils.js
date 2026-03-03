@@ -1,33 +1,72 @@
-// utils/colorUtils.js
-import * as d3 from "d3-scale";
 import * as d3Chromatic from "d3-scale-chromatic";
+import { rgb, hsl } from "d3-color";
 
-/**
- * Generate unique colors for motifs (categorical)
- * Uses ColorBrewer palettes (Set1, Set2, Set3, etc.)
- * @param {string[]} motifs 
- * @param {string} paletteName - any ColorBrewer categorical palette
- * @returns {object} motif -> color
- */
 export function generateMotifColors(motifs, paletteName = "Set3") {
   const scheme = d3Chromatic[`scheme${paletteName}`];
 
-  if (!scheme) {
-    console.warn(`Unknown ColorBrewer palette: ${paletteName}`);
-    return {};
-  }
+  // fallback if palette not found
+  const rawColors = scheme
+    ? Array.isArray(scheme[0])
+      ? scheme[scheme.length - 1] // take the largest array
+      : scheme
+    : [];
 
-  // ✔ Handle BOTH flat arrays and nested arrays
-  const colors = Array.isArray(scheme[0])
-    ? scheme[Math.min(motifs.length, scheme.length - 1)]
-    : scheme;
-
-  const colorMap = {};
-  motifs.forEach((motif, i) => {
-    colorMap[motif] = colors[i % colors.length];
+  // filter out greyish
+  const baseColors = rawColors.filter((hex) => {
+    const c = rgb(hex);
+    const diff = Math.max(
+      Math.abs(c.r - c.g),
+      Math.abs(c.g - c.b),
+      Math.abs(c.r - c.b),
+    );
+    return diff > 20;
   });
 
+  const used = [];
+  const colorMap = {};
+
+  // first assign baseColors
+  motifs.forEach((motif, i) => {
+    if (i < baseColors.length) {
+      const col = baseColors[i];
+      colorMap[motif] = col;
+      used.push(col);
+    }
+  });
+
+  // generate extra colors if needed
+  if (motifs.length > baseColors.length) {
+    let extraIndex = 0;
+
+    for (let i = baseColors.length; i < motifs.length; i++) {
+      let candidate;
+      do {
+        // evenly distributed hues
+        const hue = (360 * extraIndex) / (motifs.length || 1);
+        candidate = `hsl(${hue}, 75%, 45%)`;
+
+        extraIndex++;
+      } while (
+        isNearGrey(candidate) ||
+        used.some((u) => areEqualRgb(u, candidate))
+      );
+
+      used.push(candidate);
+      colorMap[motifs[i]] = candidate;
+    }
+  }
   return colorMap;
+}
+
+function isNearGrey(color) {
+  const c = hsl(color);
+  return c.s < 0.3;
+}
+
+function areEqualRgb(a, b) {
+  const A = rgb(a);
+  const B = rgb(b);
+  return A.r === B.r && A.g === B.g && A.b === B.b;
 }
 
 /**
