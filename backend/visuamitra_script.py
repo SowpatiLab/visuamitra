@@ -12,6 +12,8 @@ decode64_dict = {'A': 0.0, 'B': 1.56, 'C': 3.12, 'D': 4.69, 'E': 6.25, 'F': 7.81
  'g': 50.0, 'h': 51.56, 'i': 53.12, 'j': 54.69, 'k': 56.25, 'l': 57.81, 'm': 59.38, 'n': 60.94, 'o': 62.5, 'p': 64.06, 'q': 65.62,
  'r': 67.19, 's': 68.75, 't': 70.31, 'u': 71.88, 'v': 73.44, 'w': 75.0, 'x': 76.56, 'y': 78.12, 'z': 79.69, '0': 81.25, '1': 82.81,
  '2': 84.38, '3': 85.94, '4': 87.5, '5': 89.06, '6': 90.62, '7': 92.19, '8': 93.75, '9': 95.31, '+': 96.88, '/': 100.0, '-':-1, '*':-2, '.':-2}
+
+cyclic_motif_registry = {}
  
 def motif_decomp_pos(dseq):
     dseq = dseq.split('-')
@@ -34,7 +36,7 @@ def cg_pos(seq):
     start_positions = [m.start() for m in re.finditer("CG", seq, overlapped=False)]
     return start_positions
 
-def visuamitra_data_extract(file, chr=None, start_coord=None, end_coord=None, outfile='tmp_vismtr.tsv'):
+#def visuamitra_data_extract(file, chr=None, start_coord=None, end_coord=None, outfile='tmp_vismtr.tsv'):
     # out = open('visua_intermediate.tsv', 'w')
     out = open(outfile, 'w')
     header = ['Chrom', 'Start', 'End', 'Motif', 'Motif_size', 'GT', 'Sequences', 'Read_support', 'Decomp_seq', 'Decomp_info', 'Unique_motifs', 'Mean_meth', 'Meth_tag']
@@ -152,7 +154,6 @@ def visuamitra_data_extract(file, chr=None, start_coord=None, end_coord=None, ou
     
     vcf_obj.close()
     out.close()
-
 
 def is_valid_repeat_block(s):
 
@@ -426,7 +427,10 @@ def shift_decomp(seq, motif_size, motif, boundary, state):
         if positions[i] == positions[i - 1] + len(primary_motif):
             count += 1
         else:
-            decomposed_parts.append(f"({primary_motif}){count}")
+            if count > 1:
+                decomposed_parts.append(f"({primary_motif}){count}")
+            else:
+                decomposed_parts.append(primary_motif)
             interspersed = seq[positions[i - 1] + len(primary_motif):positions[i]]
             if interspersed:
                 primary_motif, secondary_motif = get_most_frequent_motif(seq, motif_size, '')
@@ -435,7 +439,12 @@ def shift_decomp(seq, motif_size, motif, boundary, state):
                     decomposed_parts.extend(secondary_decomp)
 
             count = 1
-    decomposed_parts.append(f"({primary_motif}){count}")
+            
+    if count > 1:
+        decomposed_parts.append(f"({primary_motif}){count}")
+    else:
+        decomposed_parts.append(primary_motif)
+    # decomposed_parts.append(f"({primary_motif}){count}")
     last_motif_end = positions[-1] + len(primary_motif)
     leftover_sequence = seq[last_motif_end:]
     if leftover_sequence:
@@ -659,13 +668,24 @@ def refine_decomposition(fseq, motif_size, seq_len):
             else:
                 new_seq_list.append(i)
                 non_repeat += len(i)
+
     
     dlen = len(new_seq_list) - 1
     loc = 0
+    tmp_loc = 1 # different value then 'loc' to start the loop
     refined_list = []
     
     while loc < dlen:
-        current = new_seq_list[loc]
+        if tmp_loc != loc:
+            current = new_seq_list[loc]
+        else:
+            loc += 1
+            # if loc >= dlen: break
+            if (loc == dlen) and current:
+                refined_list.append(current)
+                loc += 1
+                break
+        tmp_loc = loc
         next_item = new_seq_list[loc+1]
 
         current_state = 1 if '(' in current and ')' in current else 0
@@ -689,20 +709,31 @@ def refine_decomposition(fseq, motif_size, seq_len):
                 refined_list.append(current)
                 loc += 1
                 
-        elif current_state == 1 and next_state == 0:  
+        elif current_state == 1 and next_state == 0:
             try:
                 e1 = current.index(')')
                 tmp1 = current[1:e1]
                 
                 if len(next_item) >= len(tmp1) and tmp1 == next_item[0:len(tmp1)]:
                     combined_count = int(current[e1+1:]) + 1
+                    remaining = next_item[len(tmp1):]
+
+                    while tmp1 == remaining[0:len(tmp1)]:
+                        combined_count += 1 
+                        remaining = remaining[len(tmp1):]
+                        if (len(remaining)==1) and tmp1 == remaining:
+                            combined_count += 1
+                            remaining = ''
+                            break
+                    
                     refined_list.append(f'({tmp1}){combined_count}')
                     
-                    remaining = next_item[len(tmp1):]
                     if remaining:
-                        refined_list.append(remaining)
-                    
-                    loc += 2
+                        current = remaining
+                        loc += 1
+                    else:
+                        loc += 2
+                        
                 elif tmp1 == next_item:  
                     combined_count = int(current[e1+1:]) + 1
                     refined_list.append(f'({tmp1}){combined_count}')
@@ -710,11 +741,12 @@ def refine_decomposition(fseq, motif_size, seq_len):
                 else:
                     refined_list.append(current)
                     loc += 1
+                    
             except (ValueError, IndexError):
                 refined_list.append(current)
                 loc += 1
                 
-        elif current_state == 0 and next_state == 1:  
+        elif current_state == 0 and next_state == 1:
             try:
                 e2 = next_item.index(')')
                 tmp2 = next_item[1:e2]
@@ -739,12 +771,13 @@ def refine_decomposition(fseq, motif_size, seq_len):
                 refined_list.append(current)
                 loc += 1
                 
-        else:  
-            refined_list.append(current + next_item)
-            loc += 2
+        else:
+            current = current + next_item
+
     
     if loc == dlen:
         refined_list.append(new_seq_list[loc])
+
     
     final_merged = []
     i = 0
@@ -786,7 +819,6 @@ def refine_decomposition(fseq, motif_size, seq_len):
     
     return final_merged, non_rep_percent
 
-
 # Newly added
 def visuamitra_data_extract_stream(file, chr=None, start_coord=None, end_coord=None):
     header = [
@@ -805,7 +837,7 @@ def visuamitra_data_extract_stream(file, chr=None, start_coord=None, end_coord=N
         if locus[6] != 'PASS':
             continue
 
-        # --- EVERYTHING BELOW IS IDENTICAL ---
+        # 
         CHROM = locus[0]
         START = locus[1]
         REF = locus[3]
@@ -823,14 +855,14 @@ def visuamitra_data_extract_stream(file, chr=None, start_coord=None, end_coord=N
         SAMPLE = locus[9].split(':')
         GT = set([SAMPLE[0][0], SAMPLE[0][2]])
         
-        if SAMPLE[7] != '.,.':
+        if SAMPLE[8] != '.,.':
             MM = [float(i) if i!='.' else 'NA' for i in SAMPLE[7].split(',')]
         else:
             MM = 'NA'
             
-        MV = SAMPLE[10].split(',')
+        MV = SAMPLE[11].split(',')
         
-        SD = [int(i) for i in SAMPLE[3].split(',')]
+        SD = [int(i) for i in SAMPLE[4].split(',')]
         DS = SAMPLE[9].split(',')
         CREATE_DECOMP = ('.' in DS) and MOTIF_DECOMP
         

@@ -28,7 +28,7 @@ export default function VisuaMiTRaViewer() {
   const [loading, setLoading] = useState(false);
   const [error, setError] = useState("");
   const [settings, setSettings] = useState({
-      palette: "Set2",
+      palette: "Set3",
       font: "Arial",
       theme: "light",
       methPalette: "Viridis",

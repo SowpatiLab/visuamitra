@@ -11,8 +11,6 @@ export default function Legend({ colorMap, svgHeight = 440, hasDecomposition, ha
     getMethylationColor((i / (gradientSteps - 1)) * 100)
   );
   
-
-
   return (
     <div
       style={{
@@ -27,139 +25,112 @@ export default function Legend({ colorMap, svgHeight = 440, hasDecomposition, ha
         flexDirection: "column",
       }}
     >
-      {/*  Motif legend */}
+      {/* Motif legend */}
       {hasDecomposition && motifs.length > 0 && (
         <div
           style={{
-            columnCount: "auto",
-            columnWidth: "160px",
-            columnGap: "16px",
-            overflow: "hidden",
-            flex: 1,
-            paddingBottom: "12px", 
+            display: "grid",
+            gridTemplateColumns: "repeat(auto-fit, minmax(160px, 1fr))",
+            gap: "8px 16px",
+            paddingBottom: "12px",
             borderBottom: "1px dashed #aaa",
-            
           }}
         >
-        <div
-          style={{
-            fontWeight: "bold",
-            marginBottom: "8px",
-            breakInside: "avoid",
-          }}
-        >
-          Motif
-        </div>
-
-        {motifs.map(([motif, color]) => (
           <div
-            key={motif}
             style={{
-              marginBottom: "6px",
+              fontWeight: "bold",
+              gridColumn: "1 / -1",
+            }}
+          >
+            Motif
+          </div>
+
+          {motifs.map(([motif, color], index) => (
+            <div
+              key={motif}
+              style={{
+                display: "flex",
+                alignItems: "center",
+              }}
+            >
+              <div
+                style={{
+                  width: "18px",
+                  height: "18px",
+                  background: color,
+                  border: "1px solid #444",
+                  marginRight: "8px",
+                }}
+              />
+              {motif}
+            </div>
+          ))}
+
+          {/* Non-repeating seq */}
+          <div
+            style={{
               display: "flex",
               alignItems: "center",
-              breakInside: "avoid",
             }}
           >
             <div
               style={{
                 width: "18px",
                 height: "18px",
-                background: color,
+                background: "#bdbdbd",
                 border: "1px solid #444",
                 marginRight: "8px",
               }}
             />
-            {motif}
+            Non-repetitive seq
           </div>
-        ))}
+        </div>
+      )}
 
-        {/* Non-repeating seq */}
+      {/* Methylation gradient (horizontal) */}
+      <div style={{ paddingTop: "12px" }}>
+        <div style={{ fontWeight: "bold", marginBottom: "6px" }}>
+          Methylation level
+        </div>
         <div
           style={{
-            marginTop: "12px",
-            display: "flex",
-            alignItems: "center",
-            breakInside: "avoid",
+            height: "15px",
+            width: "90%",
+            background: `linear-gradient(to right, ${gradientArray.join(
+              ", "
+            )})`,
+            border: "1px solid #444",
+            marginBottom: "4px",
           }}
-        >
-          <div
-            style={{
-              width: "18px",
-              height: "18px",
-              background: "#bdbdbd",
-              border: "1px solid #444",
-              marginRight: "8px",
-            }}
-          />
-          Non-repetitive seq
+        />
+        <div style={{ display: "flex", justifyContent: "space-between", fontSize: "12px" }}>
+          <span>0%</span>
+          <span>50%</span>
+          <span>100%</span>
         </div>
-      </div>
-      )}
-      {/*  Methylation gradient */}
-      <div
-        style={{
-          marginTop: "8px",
-          paddingTop: "8px",
-          
-        }}
-      >
-        <div style={{ fontWeight: "bold", marginBottom: "6px" }}>
-          Methylation level {/* Add the 0.8 cutoff */}
-        </div>
-
-        <div style={{ position: "relative", height: "160px" }}>
+        {hasAmbiguousMeth && (
           <div
             style={{
-              width: "15px",
-              height: "80%",
-              background: `linear-gradient(to top, ${gradientArray.join(", ")})`,
-              border: "1px solid #444",
-            }}
-          />
-
-          <div
-            style={{
-              position: "absolute",
-              top: 0,
-              left: "30px",
-              height: "80%",
+              marginTop: "8px",
               display: "flex",
-              flexDirection: "column",
-              justifyContent: "space-between",
+              alignItems: "center",
               fontSize: "13px",
             }}
           >
-            <span>100%</span>
-            <span>50%</span>
-            <span>0%</span>
-          </div>
-
-          {/* Ambiguous methylation */}
-          {hasAmbiguousMeth && (
             <div
               style={{
-                marginTop: "10px",
-                display: "flex",
-                alignItems: "center",
-                fontSize: "13px",
+                width: "6px",
+                height: "18px",
+                border: "1px solid #888",
+                background: "rgba(200,200,200,0.25)",
+                marginRight: "8px",
               }}
-            >
-              <div
-                style={{
-                  width: "6px",
-                  height: "18px",
-                  border: "1px solid #888",
-                  background: "rgba(200,200,200,0.25)",
-                  marginRight: "8px",
-                }}
-              />
-              Ambiguous methylation
-            </div>
-          )}
-
-        </div>
+            />
+            Ambiguous methylation
+          </div>
+        )}
       </div>
-    </div>
+      </div>
+    
   );
 }
