@@ -684,7 +684,7 @@ console.log("AFTER FIX - parsedDecomp:", { decompRef, decompA1, decompA2 });
           </div>
         </div>
 
-        {/* ZOOM CONTROLS (CENTERED) */}
+        {/* ZOOM CONTROLS */}
         <div style={{ textAlign: "center", padding: "16px 0" }}>
           <button onClick={shrinkRange}>–</button>
           <span style={{ margin: "0 12px", fontSize: "15px"}}>

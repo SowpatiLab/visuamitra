@@ -1,0 +1,2 @@
+[console_scripts]
+visuamitra = visuamitra.main:run_server

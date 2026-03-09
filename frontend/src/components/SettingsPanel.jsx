@@ -42,8 +42,8 @@ export default function SettingsPanel({ settings, onChange, onClose }) {
     <div
       style={{
         position: "absolute",
-        top: 60,
-        right: 60,
+        top: 120,
+        right: 80,
         padding: 12,
         border: "1px solid #ccc",
         borderRadius: 8,

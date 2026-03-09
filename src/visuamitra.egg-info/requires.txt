@@ -1,0 +1,7 @@
+fastapi
+uvicorn
+pysam
+pandas
+python-multipart
+bitarray
+regex

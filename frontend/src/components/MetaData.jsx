@@ -1,31 +1,33 @@
 import React from "react";
+import Tooltip from "./motifTooltip";
 
 export default function MetadataDisplay({ row }) {
   if (!row) return null;
 
   const motif = row.Motif ?? "NA";
-  const motifSize = row.Motif_size ?? "NA"
+  const motifSize = Number(row.Motif_size) || 0;
   const gt = row.GT ?? "NA";
-  const motifDisplay =
-  typeof motif === "string" && motifSize > 20
-    ? `${motif.slice(0, 20)}…`
+
+  const isLong = motif.length > 15;
+
+  const motifDisplay = isLong
+    ? `${motif.slice(0, 15)}…`
     : motif;
 
-const showMotifTooltip =
-  typeof motif === "string" && motifSize > 20 ? motif : undefined;
-
+  const showMotifTooltip = isLong
+    ? `${motif} (length ${motif.length})`
+    : "";
 
   const formatAlleles = (value) => {
     if (!value) return "NA";
 
     let arr = value;
 
-    // If value is a string that looks like an array, parse it
     if (typeof value === "string" && value.startsWith("[")) {
       try {
         arr = JSON.parse(value);
-      } catch (e) {
-        return value; // fallback if parsing fails
+      } catch {
+        return value;
       }
     }
 
@@ -54,25 +56,36 @@ const showMotifTooltip =
     >
       <div>
         <strong>Expected Motif:</strong>{" "}
-        <span
-          title={showMotifTooltip}
-          style={{
-            cursor: motifSize > 20 ? "help" : "default",
-            borderBottom: motifSize > 20 ? "1px dotted #888" : "none",
-          }}
-        >
-          {motifDisplay}
-        </span>
+
+        {isLong ? (
+          <Tooltip text={showMotifTooltip}>
+            <span
+              style={{
+                borderBottom: "1px dotted #888",
+                cursor: "zoom-in",
+                fontFamily: "monospace"
+              }}
+            >
+              {motifDisplay}
+            </span>
+          </Tooltip>
+        ) : (
+          motifDisplay
+        )}
       </div>
+
       <div>
-        <strong>Motif size:</strong> {motifSize}
+        <strong>Motif size:</strong> {motifSize || "NA"}
       </div>
+
       <div>
         <strong>Genotype:</strong> {gt}
       </div>
+
       <div>
         <strong>Read support:</strong> {readSupport}
       </div>
+
       <div>
         <strong>Mean methylation:</strong> {meanMeth}
       </div>

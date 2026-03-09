@@ -11,48 +11,46 @@ export default function DecompositionPlot({
   rowGap = 28,
 }) {
   const barHeight = 28;
+  const MAGNIFY_SIZE = 6; // How many pixels to expand
   const [hover, setHover] = useState(null);
 
-  const plotOne = (data, y) => {
-    const motifs = data?.motifs || [];
-    const lengths = data?.lengths || [];
-    const copies = data?.copies || [];
+  const renderMotifs = (data, baseY, trackLabel) => {
+    const { motifs = [], lengths = [], copies = [] } = data || {};
+    if (!lengths.length) return null;
 
-    if (!lengths.length) {
-      return (
-        <text x={leftMargin} y={y + barHeight / 2} fill="#888">
-          No decomposition available
-        </text>
-      );
-    }
-
-    let offset = 0;
+    let currentOffset = 0;
 
     return lengths.map((len, i) => {
-      const x1 = scaleX(offset);
-      const w = scaleX(offset + len) - x1;
-      offset += len;
+      const x1 = scaleX(currentOffset);
+      const w = scaleX(currentOffset + len) - x1;
+      const motifStart = currentOffset;
+      currentOffset += len;
 
       const copy = copies[i];
       const isNonRepeating = copy == null || copy <= 1;
+      const id = `${trackLabel}-${i}`;
+      const isHovered = hover?.id === id;
 
       return (
         <rect
-          key={`${y}-${i}`}
-          x={x1}
-          y={y}
-          width={w}
-          height={barHeight}
+          key={id}
+          // Magnification Logic: decrease x/y and increase width/height
+          x={isHovered ? x1 - MAGNIFY_SIZE / 2 : x1}
+          y={isHovered ? baseY - MAGNIFY_SIZE / 2 : baseY}
+          width={isHovered ? w + MAGNIFY_SIZE : w}
+          height={isHovered ? barHeight + MAGNIFY_SIZE : barHeight}
           fill={isNonRepeating ? "#bdbdbd" : colorMap[motifs[i]] || "#888"}
-          stroke="#444"
-          strokeWidth={1}
+          stroke={isHovered ? "#000" : "#444"}
+          strokeWidth={isHovered ? 2 : 1}
           rx={2}
+          style={{ transition: "all 0.1s ease-out", cursor: "pointer" }}
           onMouseEnter={() =>
             setHover({
+              id,
               x: x1 + w / 2,
-              y: y - 8,
+              y: baseY - 12,
               motif: motifs[i],
-              copy: copy,
+              copy,
               isNonRepeating,
             })
           }
@@ -65,65 +63,54 @@ export default function DecompositionPlot({
   const yRef = yOffset;
   const yA1 = yOffset + barHeight + rowGap;
   const yA2 = yOffset + 2 * (barHeight + rowGap);
-  const titleY = yOffset - 10;
 
   return (
     <>
-      {/* Title */}
-      <text
-        x={leftMargin}
-        y={titleY}
-        fontSize="18"
-        fontWeight="bold"
-        fill="#222"
-      >
-        Decomposition
-      </text>
+      <text x={leftMargin} y={yOffset - 15} fontSize="18" fontWeight="bold" fill="#222">Decomposition</text>
 
-      {/* Reference */}
-      <text x={leftMargin - 90} y={yRef + barHeight / 1.5} fontSize="14" fontWeight="bold">
-        Reference
-      </text>
-      {plotOne(decompRef, yRef)}
+      <text x={leftMargin - 95} y={yRef + barHeight / 1.5} fontSize="14" fontWeight="bold">Ref. Allele</text>
+      {renderMotifs(decompRef, yRef, "ref")}
 
-      {/* Allele 1 */}
-      <text x={leftMargin - 90} y={yA1 + barHeight / 1.5} fontSize="14" fontWeight="bold">
-        Allele 1
-      </text>
-      {plotOne(decompA1, yA1)}
+      <text x={leftMargin - 95} y={yA1 + barHeight / 1.5} fontSize="14" fontWeight="bold">Allele 1</text>
+      {renderMotifs(decompA1, yA1, "a1")}
 
-      {/* Allele 2 */}
-      <text x={leftMargin - 90} y={yA2 + barHeight / 1.5} fontSize="14" fontWeight="bold">
-        Allele 2
-      </text>
-      {plotOne(decompA2, yA2)}
+      <text x={leftMargin - 95} y={yA2 + barHeight / 1.5} fontSize="14" fontWeight="bold">Allele 2</text>
+      {renderMotifs(decompA2, yA2, "a2")}
 
       {/* Tooltip */}
       {hover && (
         <g pointerEvents="none">
-          <rect
-            x={hover.x - 80}
-            y={hover.y - 28}
-            width={160}
-            height={26}
-            rx={4}
-            fill="white"
-            stroke="#444"
-          />
-          <text
-            x={hover.x}
-            y={hover.y - 10}
-            textAnchor="middle"
-            fontSize="12"
-            fill="#222"
+          {/* Use foreignObject to allow dynamic HTML sizing */}
+          <foreignObject
+            x={hover.x - 75} // Initial centering attempt
+            y={hover.y - 45} // Positioned above the motif
+            width="150"      // Sufficient width for the text to flow
+            height="40"
+            style={{ overflow: "visible" }}
           >
-            {hover.isNonRepeating
-              ?  hover.motif
-              : `${hover.motif} × ${hover.copy}`}
-          </text>
+            <div
+              style={{
+                display: "inline-block",
+                padding: "4px 10px",
+                background: "white",
+                border: "1px solid #d3d3d3ff",
+                borderRadius: "4px",
+                fontSize: "12px",
+                fontWeight: "550",
+                color: "#222",
+                whiteSpace: "nowrap", // Prevents wrapping to keep the box tight
+                boxShadow: "0 2px 4px rgba(0,0,0,0.2)",
+                transform: "translateX(-50%)", // Perfect horizontal centering
+                marginLeft: "75px" // Offsets the foreignObject starting X
+              }}
+            >
+              {hover.isNonRepeating
+                ? hover.motif
+                : `${hover.motif} × ${hover.copy}`}
+            </div>
+          </foreignObject>
         </g>
       )}
-
     </>
   );
 }
