@@ -1,77 +1,70 @@
 import React, { useEffect, useRef } from "react";
 import Ideogram from "ideogram";
-import "../App.css";
 
 export default function ChromosomeIdeogram({
   chr,
   start,
   end,
-  width = "100%",
-  height = 120,       // container height
-  chrHeight = 80,     // smaller chromosome graphic
-  chrWidth = 8        // thinner chromosome bar
+  height = 120,
+  chrHeight = 80,
+  chrWidth = 8
 }) {
-  // use a ref to avoid re-render conflicts
   const ideogramRef = useRef(null);
+  const SMALL_TRI_HEIGHT = 7;
 
   useEffect(() => {
-    if (!chr) return;
+    if (!chr || !start || !end) return;
 
-    // make brush if both start/end
-    let brushString = null;
-    if (start && end) {
-      brushString = `${chr}:${start}-${end}`;
-    }
+    const pureChr = chr.replace(/^chr/i, "");
+    const container = document.getElementById("ideogram-container");
+    if (container) container.innerHTML = "";
 
-    // cleanup old instance if any
-    if (ideogramRef.current?.node) {
-      ideogramRef.current.node().remove();
-    }
-
-    // create new ideogram
     const ideo = new Ideogram({
       organism: "human",
       container: "#ideogram-container",
-      chromosomes: [chr.replace(/^chr/, "")],
+      chromosomes: [pureChr],
       orientation: "horizontal",
-      brush: brushString,
-      cursorPosition: start,   // static red line
-      onCursorMove: null,
       chrHeight,
       chrWidth,
       showBandLabels: true,
-      showChromosomeLabels: true 
+      showChromosomeLabels: true,
+      // Use annotations instead of a brush/cursor
+      annotations: [
+        {
+          name: "TR Locus",
+          chr: pureChr,
+          start: start,
+          stop: end,
+          color: "#fa4242", 
+          shape: "triangle" 
+        }
+      ],
+      annotationHeight: SMALL_TRI_HEIGHT,
     });
 
-    // store
     ideogramRef.current = ideo;
 
     return () => {
-      // remove on unmount
-      if (ideogramRef.current?.node) {
-        ideogramRef.current.node().remove();
-      }
+      if (container) container.innerHTML = "";
     };
   }, [chr, start, end, chrHeight, chrWidth]);
 
   return (
-    <div
-      style={{
-        display: "flex",               // makes flex container
-        justifyContent: "center",      // horizontally centers children
-        width: "100%",                // full width available
-        marginBottom: "0px",         // spacing below
-      }}
-    >
+    <div style={{ 
+      display: "flex", 
+      justifyContent: "center", 
+      width: "100%",
+      pointerEvents: "none", 
+      userSelect: "none" 
+    }}>
       <div
         id="ideogram-container"
         style={{
           width: "1100px",
-          margin: "0 auto",                       // this can be % or px
-          height: `${height}px`,       // container height
+          height: `${height}px`,
+          margin: "0 auto",
         }}
       />
     </div>
   );
 }
-

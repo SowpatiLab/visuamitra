@@ -42,12 +42,17 @@ export default function Viewer() {
   const {
     loading, error, pages, currentPageIndex, selectedIdx,
     chr, setChr, start, setStart, endPos, setEndPos,
-    setSelectedIdx, applyRegionFilter, goNext, goPrev
+    setSelectedIdx, applyRegionFilter, goNext, goPrev, methThreshold
   } = useVisuaMiTRaLogic(vcfFile, tbiFile, location.state);
 
   // 3. Derived Data for Current Row
   const currentRows = pages[currentPageIndex] || [];
   const row = currentRows[selectedIdx] || {};
+
+  // Reset scale to 100% whenever the data row changes
+  React.useEffect(() => {
+    setZoomFactor(1); 
+  }, [row.Chrom, row.Start, row.End, selectedIdx]);
 
   // Decomposition Parsing
   const { ref: decompRef, a1: decompA1, a2: decompA2 } = useMemo(() => 
@@ -57,6 +62,18 @@ export default function Viewer() {
 
   // Methylation Parsing
   const methTags = useMemo(() => safeJson(row.Meth_tag) || [], [row.Meth_tag]);
+
+  React.useEffect(() => {
+    if (row.Chrom) {
+      console.group(`VCF Data Check: ${row.ID || 'Unknown Gene'}`);
+      console.log("Raw row object:", row);
+      console.log("Mean Methylation (Column 12 in TSV):", row.Mean_meth);
+      console.log("Decomposition Seq (Column 9 in TSV):", row.Decomp_seq);
+      console.log("Parsed Methylation Tags:", methTags);
+      console.groupEnd();
+    }
+  }, [row, methTags]);
+
   const meth1 = { pos: methTags[0]?.[0] || [], lvl: methTags[0]?.[1] || [] };
   const meth2 = { pos: methTags[1]?.[0] || [], lvl: methTags[1]?.[1] || [] };
   
@@ -73,6 +90,22 @@ export default function Viewer() {
     });
     return generateMotifColors([...repeatingMotifSet], settings.palette);
   }, [decompRef, decompA1, decompA2, settings.palette]);
+
+
+  // Calculate specific lengths for tooltips (handles NA decomposition cases)
+  const calculatedAlleleLens = useMemo(() => {
+    const refLen = (Number(row.End) - Number(row.Start)) || 0;
+    
+    // Parse the sequences string "['seq1', 'seq2', 'seq3']"
+    const seqs = safeJson(row.Sequences) || [];
+    
+    return {
+      ref: refLen,
+      // If row.alleleLen1 is missing, use length of the sequence string
+      a1: row.alleleLen1 || (seqs[1] ? seqs[1].length : 0),
+      a2: row.alleleLen2 || (seqs[2] ? seqs[2].length : 0)
+    };
+  }, [row]);
 
   // Scaling Logic
   const alleleMax = useMemo(() => {
@@ -92,7 +125,8 @@ export default function Viewer() {
   // 4. Render Logic
   if (loading && pages.length === 0) return <div style={{ padding: 50 }}>Loading Genomic Data...</div>;
   if (!vcfFile) return <div style={{ padding: 50 }}>No VCF file provided. Please go back to home.</div>;
-
+  //console.log("Current methThreshold state:", methThreshold);
+  
   return (
     <div style={{
       width: "100%", minHeight: "100vh", display: "flex", flexDirection: "column", alignItems: "center",
@@ -122,19 +156,34 @@ export default function Viewer() {
         error={error}
       />
 
-      <NavigationControls 
-        onPrev={goPrev} onNext={goNext} rows={currentRows} 
-        selectedIdx={selectedIdx} onSelect={setSelectedIdx} 
-        onOpenSettings={() => setShowSettings(true)}
+      <div style={{ zIndex: 10, width: "100%", display: "flex", justifyContent: "center", marginTop: "-10px" }}>
+        <NavigationControls 
+          onPrev={goPrev} onNext={goNext} rows={currentRows} 
+          selectedIdx={selectedIdx} onSelect={setSelectedIdx} 
+          onOpenSettings={() => setShowSettings(true)}
+        />
+      </div>
 
-      />
+      <div style={{ marginTop: "-30px", marginBottom: "50px", position: "relative" }}>
+        {row.Chrom && (
+          <ChromosomeIdeogram 
+            chr={row.Chrom} start={Number(row.Start)} end={Number(row.End)} 
+            height={80} 
+            chrHeight={900}
+            chrWidth={20} 
+          />
+        )}
+      </div>
 
-      {row.Chrom && <ChromosomeIdeogram chr={row.Chrom} start={Number(row.Start)} end={Number(row.End)} 
-          height={100}
-          chrHeight={900}
-          chrWidth={25} />}
-
-      <MetadataDisplay row={row} />
+      <div style={{ 
+        width: totalSvgWidth + 224, 
+        display: "flex", 
+        justifyContent: "flex-start", 
+        marginBottom: "-15px", 
+        paddingLeft: "20px"   
+      }}>
+         <MetadataDisplay row={row} />
+      </div>
 
       <div style={{ display: "flex", width: "100%", justifyContent: "center", gap: "24px", marginTop: 20 }}>
         <VisualizerCanvas 
@@ -142,7 +191,7 @@ export default function Viewer() {
           scaleX={scaleX}
           decompData={{ decompRef, decompA1, decompA2 }}
           methData={{ meth1, meth2 }}
-          alleleLens={{ a1: row.alleleLen1, a2: row.alleleLen2 }}
+          alleleLens={calculatedAlleleLens}
           getMethylationColor={getMethylationColor}
           colorMap={colorMap}
           fullLen={alleleMax}
@@ -154,6 +203,7 @@ export default function Viewer() {
           methPalette={settings.methPalette} 
           hasDecomposition={hasDecomposition} 
           hasAmbiguousMeth={hasAmbiguousMeth} 
+          methThreshold={methThreshold}
         />
       </div>
 

@@ -1,6 +1,37 @@
 import { useState, useEffect, useCallback } from "react";
 import { parseTSV } from "../utils/parseTSV";
 
+const extractMetadataAndClean = (text, setMethThreshold) => {
+  if (!text) return "";
+  
+  // LOG THE RAW START OF THE DATA
+  console.log("DEBUG RAW START:", JSON.stringify(text.substring(0, 100)));
+
+  const lines = text.split("\n");
+  let metadataFound = false;
+
+  const filteredLines = lines.filter(line => {
+    // Be flexible with whitespace/hidden chars
+    if (line.includes("##METADATA")) {
+      const parts = line.split("\t");
+      if (parts.length > 1) {
+        const val = parts[1].trim();
+        //console.log("!!! STATE UPDATE TRIGGERED WITH:", val);
+        setMethThreshold(val);
+        metadataFound = true;
+        return false;
+      }
+    }
+    return true;
+  });
+
+  if (!metadataFound) {
+      console.warn("FAILED TO FIND ##METADATA IN THIS CHUNK");
+  }
+
+  return filteredLines.join("\n");
+};
+
 export function useVisuaMiTRaLogic(vcfFile, tbiFile, initialState) {
   const [loading, setLoading] = useState(false);
   const [error, setError] = useState("");
@@ -15,6 +46,7 @@ export function useVisuaMiTRaLogic(vcfFile, tbiFile, initialState) {
   const [endPos, setEndPos] = useState(initialState?.endPos || "");
   const [filterTrigger, setFilterTrigger] = useState(0);
   const pageSize = initialState?.pageSize || 500;
+  const [methThreshold, setMethThreshold] = useState("");
 
   const fetchPageTSV = useCallback(async (cursor) => {
     const formData = new FormData();
@@ -50,7 +82,8 @@ export function useVisuaMiTRaLogic(vcfFile, tbiFile, initialState) {
       setError("");
       try {
         const { text, nextCursor } = await fetchPageTSV(null);
-        const parsed = parseTSV(text);
+        const cleanText = extractMetadataAndClean(text, setMethThreshold);
+        const parsed = parseTSV(cleanText);
         setPages([parsed]);
         setCursorHistory([null, nextCursor]);
         setCurrentPageIndex(0);
@@ -69,28 +102,32 @@ export function useVisuaMiTRaLogic(vcfFile, tbiFile, initialState) {
 
   const goNext = async () => {
     const currentRows = pages[currentPageIndex] || [];
+    
+    // Move to next item in current page
     if (selectedIdx < currentRows.length - 1) {
       setSelectedIdx(i => i + 1);
       return;
     }
 
+    // Reach end of page? Check for cursor
     const nextCursor = cursorHistory[currentPageIndex + 1];
-    if (!nextCursor) return;
-
-    if (pages[currentPageIndex + 1]) {
-      setCurrentPageIndex(i => i + 1);
-      setSelectedIdx(0);
+    if (!nextCursor) {
+      alert(chr ? `End of ${chr} reached.` : "End of genomic data reached.");
       return;
     }
 
     setLoading(true);
     try {
       const { text, nextCursor: newNext } = await fetchPageTSV(nextCursor);
-      const parsed = parseTSV(text);
-      setPages(prev => [...prev, parsed].slice(-10)); // Max cache 10
-      setCursorHistory(prev => [...prev, newNext].slice(-11));
+      const parsed = parseTSV(extractMetadataAndClean(text, setMethThreshold));
+      
+      // Update everything together
+      setPages(prev => [...prev, parsed]);
+      setCursorHistory(prev => [...prev, newNext]);
+      
+      // Jump to the first item of the new page
       setCurrentPageIndex(i => i + 1);
-      setSelectedIdx(0);
+      setSelectedIdx(0); 
     } catch (err) {
       setError(err.message);
     } finally {
@@ -110,6 +147,6 @@ export function useVisuaMiTRaLogic(vcfFile, tbiFile, initialState) {
   return {
     loading, error, pages, currentPageIndex, selectedIdx,
     chr, setChr, start, setStart, endPos, setEndPos,
-    setSelectedIdx, applyRegionFilter, goNext, goPrev
+    setSelectedIdx, applyRegionFilter, goNext, goPrev, methThreshold
   };
 }

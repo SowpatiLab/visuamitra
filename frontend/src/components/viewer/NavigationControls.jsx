@@ -32,7 +32,7 @@ const navWrapperStyle = {
   alignItems: "center", 
   justifyContent: "space-between", 
   width: "100%", 
-  maxWidth: "1240px", // Matches your Canvas width
+  maxWidth: "1240px", 
   margin: "10px 0",
   padding: "0 10px"
 };

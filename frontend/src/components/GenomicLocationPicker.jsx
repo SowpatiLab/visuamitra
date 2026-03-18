@@ -45,7 +45,7 @@ export default function GenomicLocationPicker({
   });
 
   const selectedLabel =
-    selectedIdx != null
+    selectedIdx != null && rows && rows[selectedIdx]
       ? `${rows[selectedIdx].Chrom}:${rows[selectedIdx].Start}-${rows[selectedIdx].End}`
       : "";
 

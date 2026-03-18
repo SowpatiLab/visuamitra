@@ -820,7 +820,30 @@ def refine_decomposition(fseq, motif_size, seq_len):
     return final_merged, non_rep_percent
 
 # Newly added
+
+def extract_methcutoff(file):
+    try:
+        vcf_obj = pysam.VariantFile(file)
+        # This accesses the "Description" attribute of the MPC INFO record
+        cutoff_desc = vcf_obj.header.info["MPC"].description
+        vcf_obj.close()
+        return cutoff_desc
+    except (KeyError, AttributeError):
+        # Fallback if MPC isn't in this specific file
+        return "Not specified"
+    except Exception as e:
+        return f"Error: {str(e)}"
+
 def visuamitra_data_extract_stream(file, chr=None, start_coord=None, end_coord=None):
+    
+    # ADD THIS LOG HERE
+    print(f"!!! FUNCTION CALLED with: {chr}, {start_coord}, {end_coord}")
+
+    cutoff_info = extract_methcutoff(file)
+    
+    # Yield a unique metadata line (prefixed with ##)
+    yield f"##METADATA\t{cutoff_info}\n"
+
     header = [
         'Chrom', 'Start', 'End', 'ID', 'Motif', 'Motif_size', 'GT',
         'Sequences', 'Read_support', 'Decomp_seq', 'Decomp_info',
@@ -841,36 +864,41 @@ def visuamitra_data_extract_stream(file, chr=None, start_coord=None, end_coord=N
         CHROM = locus[0]
         START = locus[1]
         REF = locus[3]
-        INFO = locus[7].split(';')
-        ID = INFO[5].split('=')[1]
-        if ID == '.':
-            ID = 'NA'
-        END = INFO[4].split('=')[1]
-        MOTIF = INFO[2].split('=')[1]
+        # INFO = locus[7].split(';')
+        # OLD way
+        # ID = INFO[5].split('=')[1]
+
+        # NEW way
+        info_dict = dict(x.split('=') for x in locus[7].split(';') if '=' in x)
+        ID = info_dict.get('ID', 'NA')
+        END = info_dict.get('END', START) # Fallback to START if END missing
+        MOTIF = info_dict.get('MOTIF', 'NA')
         MOTIF_SIZE = len(MOTIF)
         MOTIF_DECOMP = True
         if MOTIF_SIZE > 10:
             MOTIF_DECOMP = False
-        REF_DECOMP, _ = motif_decomposition(REF, MOTIF_SIZE) if MOTIF_SIZE < 11 else [None,None]
+        REF_DECOMP, _ = motif_decomposition(REF, MOTIF_SIZE) if MOTIF_DECOMP else [None,None]
         SAMPLE = locus[9].split(':')
         GT = set([SAMPLE[0][0], SAMPLE[0][2]])
         
-        if SAMPLE[8] != '.,.':
-            MM = [float(i) if i!='.' else 'NA' for i in SAMPLE[7].split(',')]
+        if len(SAMPLE) > 8 and SAMPLE[8] != '.,.':
+            MM = [float(i) if i!='.' else 0.0 for i in SAMPLE[8].split(',')]
         else:
             MM = 'NA'
             
-        MV = SAMPLE[11].split(',')
+        MV = SAMPLE[11].split(',') if len(SAMPLE) > 11 else []
         
-        SD = [int(i) for i in SAMPLE[4].split(',')]
-        DS = SAMPLE[9].split(',')
+        SD = [int(i) if i != '.' else 0 for i in SAMPLE[4].split(',')]
+        DS = SAMPLE[10].split(',') if len(SAMPLE) > 10 else ['.', '.']
         CREATE_DECOMP = ('.' in DS) and MOTIF_DECOMP
         
         alt = locus[4]
         if alt == '.':
             alt1 = REF
             alt2 = REF
-            DS = [REF_DECOMP, REF_DECOMP]
+            # Ensure we fall back to REF_DECOMP if the VCF field is '.'
+            DS = [DS[0] if (len(DS) > 0 and DS[0] != '.') else REF_DECOMP, 
+                  DS[1] if (len(DS) > 1 and DS[1] != '.') else REF_DECOMP]
         else:
             alt = alt.split(',')
             if len(alt)==2:
@@ -899,11 +927,11 @@ def visuamitra_data_extract_stream(file, chr=None, start_coord=None, end_coord=N
                     DS = [dseq] * 2
                 else:
                     DS = DS * 2
-        if '.' in DS:
+        if DS == ['.', '.'] or DS is None:
             DS = [None, None]
     
         complete_seqs = [REF, alt1, alt2]
-        if SAMPLE[10] != '.,.':
+        if len(SAMPLE) > 11 and SAMPLE[11] != '.,.':
             decoded_MV = [[cg_pos(complete_seqs[idx+1]), [decode64_dict[i] for i in tag]] for idx,tag in enumerate(MV)]
         else:
             decoded_MV = 'NA'
@@ -926,6 +954,8 @@ def visuamitra_data_extract_stream(file, chr=None, start_coord=None, end_coord=N
             DS_info = 'NA'
             motif_set = 'NA'
 
+        
+        #print(f"DEBUG BACKEND: ID={ID} | MM_VAL={MM} | MOTIF_SZ={MOTIF_SIZE}")
         values = [
             CHROM, START, END, ID, MOTIF, MOTIF_SIZE,
             SAMPLE[0], complete_seqs, SD,
@@ -936,3 +966,5 @@ def visuamitra_data_extract_stream(file, chr=None, start_coord=None, end_coord=N
         yield "\t".join(map(str, values)) + "\n"
 
     vcf_obj.close()
+
+    

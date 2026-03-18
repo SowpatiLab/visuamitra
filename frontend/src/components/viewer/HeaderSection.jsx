@@ -6,7 +6,6 @@ export default function HeaderSection({
   onApply, loading, error 
 }) {
   return (
-    /* Added margin: "0 auto" and display: "block" to ensure it centers in the parent */
     <div style={{ 
       width: "100%", 
       maxWidth: "1200px", 
@@ -14,7 +13,6 @@ export default function HeaderSection({
       display: "block" 
     }}>
       
-      {/* Top Row: Logo - Simplified centering */}
       <div style={{ 
         display: "flex", 
         justifyContent: "center", 

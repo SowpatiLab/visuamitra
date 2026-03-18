@@ -4,6 +4,7 @@ import Tooltip from "./motifTooltip";
 export default function MetadataDisplay({ row }) {
   if (!row) return null;
 
+  const locusID = row.ID ?? "NA";
   const motif = row.Motif ?? "NA";
   const motifSize = Number(row.Motif_size) || 0;
   const gt = row.GT ?? "NA";
@@ -46,7 +47,10 @@ export default function MetadataDisplay({ row }) {
   return (
     <div
       style={{
+        width: "1320px",
+        margin: "0 auto",
         display: "flex",
+        flexWrap: "wrap",
         gap: "24px",
         fontSize: "14px",
         alignItems: "baseline",
@@ -54,6 +58,10 @@ export default function MetadataDisplay({ row }) {
         marginBottom: "8px",
       }}
     >
+
+      <div>
+        <strong>Locus ID: </strong>{locusID}        
+      </div>
       <div>
         <strong>Expected Motif:</strong>{" "}
 

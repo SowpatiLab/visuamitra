@@ -18,6 +18,9 @@ export default function VisualizerCanvas({
       <svg style={{ minWidth: totalSvgWidth }} height={TOTAL_HEIGHT}>
         <DecompositionPlot
           {...decompData}
+          alleleLenRef={alleleLens.ref}
+          alleleLen1={alleleLens.a1}
+          alleleLen2={alleleLens.a2}
           scaleX={scaleX}
           leftMargin={margins.left}
           colorMap={colorMap}

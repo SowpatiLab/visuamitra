@@ -105,48 +105,89 @@ async def vcf_to_tsv_cursor(
             detail=f"Invalid genomic region: chr={chr}, start={start}, end={end}"
         )
 
-    # CURSOR
+   # --- 1. CURSOR & CONTIG SETUP ---
     cursor_chr, cursor_pos = (None, None)
     if last_cursor:
         cursor_chr, cursor_pos = decode_cursor(last_cursor)
+
+    # Get a sorted list of chromosomes from the Tabix index
+    all_contigs = sorted(list(tabix.contigs)) 
+
+    # Determine starting chromosome and position
+    # If no specific 'chr' is locked by the user, we use the cursor or start from the first contig
+    start_chr = cursor_chr if cursor_chr else (chr if chr else all_contigs[0])
+    start_pos = cursor_pos if cursor_pos is not None else start
+
+    try:
+        start_index = all_contigs.index(start_chr)
+    except ValueError:
+        start_index = 0
 
     collected = []
     next_cursor = None
     seen_header = False
     count = 0
 
-    # SAFE STREAMING (no errors possible now)
-    for raw_line in visuamitra_data_extract_stream(vcf_path, chr, start, end):
-        if isinstance(raw_line, bytes):
-            raw_line = raw_line.decode("utf-8")
-
-        if not raw_line.strip():
-            continue
-
-        if raw_line.startswith("Chrom") and not seen_header:
-            collected.append(raw_line)
-            seen_header = True
-            continue
-
-        parts = raw_line.split("\t")
-        if len(parts) < 2:
-            continue
-
-        row_chr = parts[0]
-        try:
-            row_pos = int(parts[1])
-        except:
-            continue
-
-        if cursor_chr and row_pos <= cursor_pos and row_chr == cursor_chr:
-            continue
-
-        if count >= page_size:
-            next_cursor = encode_cursor(row_chr, row_pos)
+    # --- 2. MULTI-CHROMOSOME STREAMING LOOP ---
+    # This loop allows the code to "jump" to the next chromosome if the current one ends
+    for i in range(start_index, len(all_contigs)):
+        current_iter_chr = all_contigs[i]
+        
+        # Only use the specific 'start_pos' for the very first chromosome we check
+        # For subsequent chromosomes, we start at coordinate 0
+        iter_start = start_pos if current_iter_chr == start_chr else 0
+        
+        # If the user locked a specific 'chr', and we've finished it, stop looking at others
+        if chr and current_iter_chr != chr:
             break
 
-        collected.append(raw_line)
-        count += 1
+        # Call your extraction script for the current chromosome
+        for raw_line in visuamitra_data_extract_stream(
+            vcf_path, 
+            chr=current_iter_chr, 
+            start_coord=iter_start, 
+            end_coord=None if last_cursor else end
+        ):
+            if isinstance(raw_line, bytes):
+                raw_line = raw_line.decode("utf-8")
+            if not raw_line.strip():
+                continue
+
+            # Handle Metadata and Headers (only append once)
+            if raw_line.startswith("##"):
+                if not last_cursor: # Only add metadata on page 1
+                    collected.append(raw_line)
+                continue
+            if raw_line.startswith("Chrom"):
+                if not seen_header:
+                    collected.append(raw_line)
+                    seen_header = True
+                continue
+
+            parts = raw_line.split("\t")
+            if len(parts) < 2: continue
+            
+            row_chr = parts[0]
+            try:
+                row_pos = int(parts[1])
+            except:
+                continue
+
+            # Skip the specific record pointed to by the cursor to avoid duplicates
+            if cursor_chr and row_pos <= cursor_pos and row_chr == cursor_chr:
+                continue
+
+            # If we've reached the page limit, set the cursor and STOP EVERYTHING
+            if count >= page_size:
+                next_cursor = encode_cursor(row_chr, row_pos)
+                break
+
+            collected.append(raw_line)
+            count += 1
+
+        # Break the outer chromosome loop if we have enough data for a page
+        if next_cursor:
+            break
 
     def stream_rows():
         for row in collected:

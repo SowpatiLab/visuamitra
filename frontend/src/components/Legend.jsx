@@ -1,7 +1,7 @@
 import React, { useMemo } from "react";
 import { getMethylationColorFactory } from "../utils/colorUtils";
 
-export default function Legend({ colorMap, hasDecomposition, hasAmbiguousMeth, methPalette }) {
+export default function Legend({ colorMap, hasDecomposition, hasAmbiguousMeth, methPalette, methThreshold }) {
   const motifs = Object.entries(colorMap || {});
   
   const getMethylationColor = useMemo(() => {
@@ -39,7 +39,7 @@ export default function Legend({ colorMap, hasDecomposition, hasAmbiguousMeth, m
       {/* 1. Motif Legend Section */}
       {hasDecomposition && (
         <div style={{ paddingBottom: "12px", borderBottom: methPalette ? "1px dashed #aaa" : "none" }}>
-          <div style={{ fontWeight: "600", marginBottom: "8px", fontSize: "13px", color: "#555" }}>
+          <div style={{ fontWeight: "600", marginBottom: "8px", fontSize: "13px", color: "#333" }}>
             Motifs
           </div>
           <div style={{ display: "flex", flexDirection: "column", gap: "6px" }}>
@@ -61,8 +61,8 @@ export default function Legend({ colorMap, hasDecomposition, hasAmbiguousMeth, m
       {/* 2. Methylation Section */}
       {methPalette && (
         <div style={{ paddingTop: hasDecomposition ? "12px" : "0px" }}>
-          <div style={{ fontWeight: "600", marginBottom: "8px", fontSize: "13px", color: "#555" }}>
-            Methylation Level
+          <div style={{ fontWeight: "600", marginBottom: "8px", fontSize: "13px", color: "#333" }}>
+            Methylation Level %
           </div>
           <div
             style={{
@@ -73,10 +73,10 @@ export default function Legend({ colorMap, hasDecomposition, hasAmbiguousMeth, m
               marginBottom: "4px",
             }}
           />
-          <div style={{ display: "flex", justifyContent: "space-between", fontSize: "11px", color: "#666" }}>
-            <span>0%</span>
-            <span>50%</span>
-            <span>100%</span>
+          <div style={{ display: "flex", justifyContent: "space-between", fontSize: "11px", color: "#222" }}>
+            <span>0</span>
+            <span>50</span>
+            <span>100</span>
           </div>
 
           {/* Ambiguous Methylation Sub-section */}
@@ -86,6 +86,43 @@ export default function Legend({ colorMap, hasDecomposition, hasAmbiguousMeth, m
               Ambiguous state
             </div>
           )}
+        </div>
+      )}
+
+      {/* 3. Methylation Cutoff Section */}
+      {methThreshold && (
+        <div 
+          style={{ 
+            marginTop: "16px", 
+            padding: "2px", 
+            //backgroundColor: "#f0fdf4", // Very light green tint
+            //border: "1px solid #dcfce7", 
+            borderRadius: "6px",
+            display: "flex",
+            justifyContent: "space-between",
+            alignItems: "center"
+          }}
+        >
+          <span style={{ 
+            fontSize: "12px", 
+            fontWeight: "700", 
+            color: "#333", 
+            letterSpacing: "0.5px"
+          }}>
+            Methylation-Cutoff
+          </span>
+          
+          <span style={{ 
+            fontSize: "13px", 
+            fontWeight: "700", 
+            color: "#fff", 
+            backgroundColor: "#328547", 
+            padding: "2px 8px", 
+            borderRadius: "4px",
+          
+          }}>
+            {methThreshold}
+          </span>
         </div>
       )}
     </div>

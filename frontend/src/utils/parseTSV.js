@@ -3,7 +3,7 @@ export function parseTSV(text) {
   const header = lines[0].split("\t");
   const body = lines.slice(1);
 
-  return body.map((l, rowIdx) => {
+  return body.map((l) => {
     const fields = l.split("\t");
     const obj = {};
 
@@ -15,27 +15,21 @@ export function parseTSV(text) {
     let alleleLen2 = 0;
 
     if (obj.Sequences) {
-      const matches = obj.Sequences.match(/['"]([ACGTNacgtn]+)['"]/g);
-
-      if (matches && matches.length >= 3) {
-        const seq1 = matches[1].replace(/['"]/g, "");
-        const seq2 = matches[2].replace(/['"]/g, "");
-
-        alleleLen1 = seq1.length;
-        alleleLen2 = seq2.length;
+      try {
+        // Clean the Python list string format to valid JSON
+        const seqArray = JSON.parse(obj.Sequences.replace(/'/g, '"'));
+        if (Array.isArray(seqArray)) {
+          // seqArray[0] is REF, [1] is Alt1, [2] is Alt2
+          alleleLen1 = seqArray[1]?.length || 0;
+          alleleLen2 = seqArray[2]?.length || alleleLen1;
+        }
+      } catch (e) {
+        console.error("Error parsing sequences for lengths:", e);
       }
     }
 
     obj.alleleLen1 = alleleLen1;
     obj.alleleLen2 = alleleLen2;
-
-    // Debug 
-//    console.log(
-//      `[TSV row ${rowIdx}]`,
-//      "alleleLen1:", alleleLen1,
-//      "alleleLen2:", alleleLen2,
-      //"Sequences:", obj.Sequences
-//    );
 
     return obj;
   });
