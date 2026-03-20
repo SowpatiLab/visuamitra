@@ -1,0 +1,21 @@
+# --- Python ---
+__pycache__/
+*.py[cod]
+*$py.class
+venv/
+test_env/
+.env
+build/
+dist/
+*.egg-info/
+
+# --- React / Frontend ---
+**/node_modules/
+**/build/
+.eslintcache
+npm-debug.log*
+
+# --- OS / IDE ---
+.DS_Store
+.vscode/
+.idea/

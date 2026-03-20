@@ -44,33 +44,43 @@ app.add_middleware(
 # Include your API routes
 app.include_router(router, prefix="/api")
 
-# --- NEW: STATIC FILE SERVING LOGIC ---
+# --- FIXED: STATIC FILE SERVING LOGIC ---
 
-# 1. Determine where the static files are located
-# This assumes you copied the 'build' folder into 'backend/static'
-# In main.py
-from pathlib import Path
-
-# Use Pathlib for cleaner cross-platform path handling
+# 1. Determine where the React build files are located
 package_dir = Path(__file__).parent.resolve()
-static_dir = package_dir / "static"
 
-if static_dir.exists():
-    # Mount the /static/static subfolder
-    app.mount("/static", StaticFiles(directory=str(static_dir / "static")), name="static")
+# Match the folder name you actually used in src/visuamitra/
+frontend_build_dir = package_dir / "frontend" / "build"
+
+if frontend_build_dir.exists():
+    # React's 'npm run build' puts assets in a 'static' subfolder
+    # We mount that so the browser can find CSS/JS files
+    static_assets = frontend_build_dir / "static"
+    if static_assets.exists():
+        app.mount("/static", StaticFiles(directory=str(static_assets)), name="static")
     
     @app.get("/{rest_of_path:path}")
     async def serve_frontend(rest_of_path: str):
+        # Let the API routes handle themselves
         if rest_of_path.startswith("api/"):
-            return {"error": "API route not found"}
-        return FileResponse(str(static_dir / "index.html"))
+             return {"error": "API route not found"}
+        
+        # Check if the requested file exists (e.g. favicon.ico)
+        file_path = frontend_build_dir / rest_of_path
+        if file_path.is_file():
+            return FileResponse(str(file_path))
+            
+        # Default to index.html (for React Router support)
+        return FileResponse(str(frontend_build_dir / "index.html"))
 else:
-    # Fallback for development if static folder isn't built yet
     @app.get("/")
     def health_check():
-        return {"status": "Visuamitra backend running (Frontend build missing)"}
+        return {
+            "status": "Visuamitra backend running (Frontend build missing)",
+            "searched_at": str(frontend_build_dir)
+        }
 
-# --- NEW: ENTRY POINT FOR PIP ---
+# ENTRY POINT FOR PIP 
 
 def run_server():
     """Launcher for the visuamitra CLI command."""

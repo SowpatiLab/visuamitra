@@ -4,7 +4,7 @@ build-backend = "setuptools.build_meta"
 
 [project]
 name = "visuamitra"
-version = "0.1.0"
+version = "0.2.0"
 description = "A Tandem Repeats visualization tool for Decomposition of Motifs and Methylation across alleles."
 readme = "README.md"
 requires-python = ">=3.8"
@@ -22,9 +22,11 @@ dependencies = [
 [project.scripts]
 visuamitra = "visuamitra.main:run_server"
 
-[tool.setuptools.packages.find]
-where = ["src"]
+[tool.setuptools]
+include-package-data = true
 
 [tool.setuptools.package-data]
-# This ensures all your React build files are included in the pip wheel
-visuamitra = ["static/**/*"]
+visuamitra = ["frontend/build/**/*"]
+
+[tool.setuptools.packages.find]
+where = ["src"]
