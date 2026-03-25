@@ -32,9 +32,9 @@ export default function Axis({
 }) {
   const [min, max] = visibleRange;
 
-  if (max <= min) return null;
+  if (max <= min || isNaN(max)) return null;
 
-  const pixelWidth = width - leftMargin - rightMargin;
+  const pixelWidth = scale(max) - scale(min);
   const step = getTickStep(min, max, pixelWidth, 70);
 
   const ticks = [];

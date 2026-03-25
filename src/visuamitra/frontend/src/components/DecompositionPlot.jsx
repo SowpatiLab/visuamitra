@@ -11,33 +11,33 @@ export default function DecompositionPlot({
   leftMargin,
   colorMap,
   yOffset = 60,
-  rowGap = 28,
+  rowGap = 14,
 }) {
-  const barHeight = 28;
+  const barHeight = 20;
   const MAGNIFY_SIZE = 6;
   const [hover, setHover] = useState(null);
 
   const renderMotifs = (data, baseY, trackLabel, totalLen) => {
     const { motifs = [], lengths = [], copies = [] } = data || {};
     
-    // MATCHING METHYLATION LOGIC: Use leftMargin as the physical start
-    const startX = leftMargin;
-    
-    // Calculate width: Ensure totalLen is treated as the relative distance from 0
-    // If scaleX(totalLen) already includes the margin, we subtract it. 
-    // If it doesn't, we just use scaleX(totalLen).
-    const endX = scaleX(totalLen);
+    // Calculate the actual visual sum of segments
+    const sumOfSegments = lengths.reduce((a, b) => a + b, 0);
+    // Use the larger of the two to ensure the grey bar covers everything
+    const visualTotal = Math.max(totalLen, sumOfSegments);
+
+    const startX = scaleX(0);
+    const endX = scaleX(visualTotal);
     const fullBarWidth = Math.max(0, endX - startX);
 
     return (
       <g>
-        {/* Blank Grey Bar */}
+        {/* Background Bar */}
         <rect
           x={startX}
           y={baseY}
           width={fullBarWidth}
           height={barHeight}
-          fill="rgba(200,200,200,0.25)" // Matching Methylation background style
+          fill="rgba(200,200,200,0.25)"
           stroke="#AAA"
           strokeWidth={1}
           rx={4}
@@ -46,29 +46,20 @@ export default function DecompositionPlot({
               id: `${trackLabel}-total`,
               x: startX + fullBarWidth / 2,
               y: baseY - 12,
-              motif: `Allele Length: ${totalLen} bp`, // We reuse the motif field for the text
-              isNonRepeating: true, // This ensures it displays the string directly
+              motif: `Total Allele: ${visualTotal} bp`, // This is the 123/125 label
+              isNonRepeating: true,
             })
           }
           onMouseLeave={() => setHover(null)}
         />
-        
-        {/* Keep this title as a backup for accessibility */}
-        <title>{`Allele Length: ${totalLen} bp`}</title>
-            
 
-        {/* Individual Motifs */}
         {lengths.map((len, i) => {
           const currentOffset = lengths.slice(0, i).reduce((a, b) => a + b, 0);
-          
-          // Ensure x1 is relative to the scale
           const x1 = scaleX(currentOffset);
-          const w = scaleX(currentOffset + len) - x1;
+          const w = scaleX(currentOffset + len) - x1; // Width based on actual bp length
           
           const id = `${trackLabel}-${i}`;
           const isHovered = hover?.id === id;
-          const copy = copies[i];
-          const isNonRepeating = copy == null || copy <= 1;
 
           return (
             <rect
@@ -77,21 +68,22 @@ export default function DecompositionPlot({
               y={isHovered ? baseY - MAGNIFY_SIZE / 2 : baseY}
               width={isHovered ? Math.max(0, w + MAGNIFY_SIZE) : Math.max(0, w)}
               height={isHovered ? barHeight + MAGNIFY_SIZE : barHeight}
-              fill={isNonRepeating ? "#bdbdbd" : colorMap[motifs[i]] || "#888"}
+              fill={copies[i] <= 1 ? "#bdbdbd" : colorMap[motifs[i]] || "#888"}
               stroke={isHovered ? "#000" : "#444"}
               strokeWidth={isHovered ? 2 : 1}
               rx={2}
-              style={{ transition: "all 0.1s ease-out", cursor: "pointer" }}
-              onMouseEnter={() =>
+              onMouseEnter={(e) => {
+                e.stopPropagation(); // CRITICAL: Prevents background bar from overriding
                 setHover({
                   id,
                   x: x1 + w / 2,
                   y: baseY - 12,
                   motif: motifs[i],
-                  copy,
-                  isNonRepeating,
-                })
-              }
+                  copy: copies[i],
+                  len: len,
+                  isNonRepeating: copies[i] <= 1,
+                });
+              }}
               onMouseLeave={() => setHover(null)}
             />
           );
@@ -106,7 +98,7 @@ export default function DecompositionPlot({
 
   return (
     <>
-      <text x={leftMargin} y={yOffset - 15} fontSize="18" fontWeight="bold" fill="#222">Decomposition</text>
+      
 
       <text x={leftMargin - 95} y={yRef + barHeight / 1.5} fontSize="14" fontWeight="bold">Ref. Allele</text>
       {renderMotifs(decompRef, yRef, "ref", alleleLenRef)}
@@ -117,20 +109,32 @@ export default function DecompositionPlot({
       <text x={leftMargin - 95} y={yA2 + barHeight / 1.5} fontSize="14" fontWeight="bold">Allele 2</text>
       {renderMotifs(decompA2, yA2, "a2", alleleLen2)}
 
-      {/* Tooltip implementation remains the same */}
+      {/* Tooltip implementation */}
       {hover && (
-         <g pointerEvents="none">
-            <foreignObject x={hover.x - 75} y={hover.y - 45} width="150" height="40" style={{ overflow: "visible" }}>
-                <div style={{
-                    display: "inline-block", padding: "4px 10px", background: "white",
-                    border: "1px solid #d3d3d3ff", borderRadius: "4px", fontSize: "12px",
-                    fontWeight: "550", color: "#222", whiteSpace: "nowrap",
-                    boxShadow: "0 2px 4px rgba(0,0,0,0.2)", transform: "translateX(-50%)", marginLeft: "75px"
-                }}>
-                    {hover.isNonRepeating ? hover.motif : `${hover.motif} × ${hover.copy}`}
+        <g pointerEvents="none">
+          <foreignObject x={hover.x - 75} y={hover.y - 65} width="150" height="60" style={{ overflow: "visible" }}>
+            <div style={{
+              display: "inline-block", padding: "6px 12px", background: "#f8f9fa",
+              border: "1px solid #666", borderRadius: "4px", fontSize: "12px",
+              fontWeight: "600", color: "#222", whiteSpace: "nowrap",
+              boxShadow: "0 4px 8px rgba(0,0,0,0.15)", transform: "translateX(-50%)", marginLeft: "75px"
+            }}>
+              {/* Logic to differentiate between Total Bar and Specific Motif */}
+              {hover.id.includes('-total') ? (
+                <span>{hover.motif}</span>
+              ) : (
+                <div style={{ display: "flex", flexDirection: "column", alignItems: "center" }}>
+                  <span style={{ borderBottom: "1px solid #ddd", marginBottom: "2px", width: "100%", textAlign: "center" }}>
+                    {hover.motif} {hover.copy > 1 ? `× ${hover.copy}` : ""}
+                  </span>
+                  <span style={{ fontSize: "11px", color: "#444" }}>
+                    {hover.len} bp
+                  </span>
                 </div>
-            </foreignObject>
-         </g>
+              )}
+            </div>
+          </foreignObject>
+        </g>
       )}
     </>
   );

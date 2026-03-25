@@ -11,7 +11,10 @@ export default function VCFUploadPanel({ onLoad }) {
   const [loading, setLoading] = useState(false);
   const [error, setError] = useState("");
 
-  const handleFileChange = (e) => {
+  const [availableSamples, setAvailableSamples] = useState([]);
+  const [selectedSamples, setSelectedSamples] = useState([]);
+
+  const handleFileChange = async (e) => {
     const selectedFiles = Array.from(e.target.files);
     setError("");
 
@@ -26,6 +29,26 @@ export default function VCFUploadPanel({ onLoad }) {
 
     setVcfFile(vcf);
     setTbiFile(tbi || null);
+
+    if (vcf && tbi) {
+      const formData = new FormData();
+      formData.append("vcf", vcf);
+      formData.append("tbi", tbi);
+      formData.append("page_size", 1); // Only need the header/first row
+
+      try {
+        const res = await fetch("/api/vcf-to-tsv-cursor", { method: "POST", body: formData });
+        const text = await res.text();
+        const sampleLine = text.split("\n").find(l => l.startsWith("##SAMPLES"));
+        if (sampleLine) {
+          const names = sampleLine.split("\t")[1].split(",").map(n => n.trim());
+          setAvailableSamples(names);
+          setSelectedSamples([names[0]]); // Default to first sample
+        }
+      } catch (err) {
+        console.error("Sample pre-scan failed:", err);
+      }
+    }
 
     if (!tbi) {
       setError(
@@ -44,12 +67,25 @@ export default function VCFUploadPanel({ onLoad }) {
     setLoading(true);
     setError("");
 
+    // 1. Determine final selection (Default to ALL if empty)
+    const finalSelectedNames = selectedSamples.length > 0 
+      ? selectedSamples 
+      : availableSamples;
+
+    const indices = finalSelectedNames
+    .map(name => availableSamples.indexOf(name))
+    .filter(idx => idx !== -1);
+
     const formData = new FormData();
     formData.append("vcf", vcfFile);
     formData.append("tbi", tbiFile);
     if (chr) formData.append("chr", chr);
     if (start) formData.append("start", start);
     if (end) formData.append("end", end);
+    
+    if (indices.length > 0) {
+      formData.append("samples", indices.join(","));
+    }
 
     try {
       const res = await fetch("/api/vcf-to-tsv-cursor", {
@@ -79,7 +115,10 @@ export default function VCFUploadPanel({ onLoad }) {
         endPos: end,
         pageSize: 10,
         lastCursor: res.headers.get("X-Next-Cursor") || null,
-        tsvText: text
+        tsvText: text,
+        allSamples: availableSamples,
+        selectedSamples: selectedSamples,
+        initialIndices: indices.length > 0 ? indices : availableSamples.map((_, i) => i)
       },
     });
   } catch (err) {
@@ -141,7 +180,41 @@ export default function VCFUploadPanel({ onLoad }) {
             onChange={(e) => setEnd(e.target.value)}
           />
         </div>
-
+        
+        {availableSamples.length > 0 && (
+          <div style={{ marginBottom: 16 }}>
+            <label style={{ fontSize: "14px", fontWeight: "600", color: "#333", display: "block", marginBottom: 6 }}>
+              Select Samples ({selectedSamples.length} selected):
+            </label>
+            <div style={{ 
+              maxHeight: "120px", 
+              overflowY: "auto", 
+              border: "1px solid #ccc", 
+              borderRadius: "6px",
+              padding: "8px",
+              background: "#fafafa" 
+            }}>
+              {availableSamples.map((name) => (
+                <label key={name} style={{ display: "flex", alignItems: "center", gap: "8px", padding: "4px 0", cursor: "pointer", fontSize: "13px" }}>
+                  <input
+                    type="checkbox"
+                    checked={selectedSamples.includes(name)}
+                    onChange={(e) => {
+                      if (e.target.checked) {
+                        setSelectedSamples([...selectedSamples, name]);
+                      } else {
+                        setSelectedSamples(selectedSamples.filter(s => s !== name));
+                      }
+                    }}
+                  />
+                  {name}
+                </label>
+              ))}
+            </div>
+            <small style={{ color: "#777", fontSize: "11px" }}>If left empty, all samples will be loaded.</small>
+          </div>
+        )}
+        
         <button
           type="submit"
           disabled={loading}

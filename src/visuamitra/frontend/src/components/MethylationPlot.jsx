@@ -11,7 +11,7 @@ export default function MethylationPlot({
   rowGap = 40,
   getColor,
 }) {
-  const barHeight = 28;
+  const barHeight = 20;
   const MAGNIFY_SIZE = 7; // Expansion amount in pixels
   const [tooltip, setTooltip] = useState(null);
 
@@ -55,17 +55,14 @@ export default function MethylationPlot({
   const titleY = 18;
   const y1 = yStart + 20;
   const y2 = y1 + barHeight + rowGap;
-  const startX = leftMargin;
+  const startX = scaleX(0);
 
   const bgWidth1 = Math.max(1, scaleX(alleleLen1) - startX);
   const bgWidth2 = Math.max(1, scaleX(alleleLen2) - startX);
 
   return (
     <>
-      <text x={leftMargin} y={titleY} fontSize="18" fontWeight="bold" fill="#222">
-        Methylation
-      </text>
-
+      
       {/* Allele 1 */}
       <rect x={startX} y={y1} width={bgWidth1} height={barHeight} fill="rgba(200,200,200,0.25)" stroke="#AAA" strokeWidth={1} rx={4} />
       <text x={leftMargin - 95} y={y1 + barHeight / 1.5} fontSize="14" fontWeight="bold" fill="#222">Allele 1</text>

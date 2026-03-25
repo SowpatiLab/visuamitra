@@ -38,16 +38,16 @@ export default function GenomicLocationPicker({
     return () => document.removeEventListener("mousedown", handler);
   }, []);
 
-  const filtered = rows.filter((r) => {
+  const filtered = (rows || []).filter((r) => {
     if (!query) return true;
     const label = `${r.Chrom}:${r.Start}-${r.End}`.toLowerCase();
     return label.includes(query.toLowerCase());
   });
 
-  const selectedLabel =
-    selectedIdx != null && rows && rows[selectedIdx]
-      ? `${rows[selectedIdx].Chrom}:${rows[selectedIdx].Start}-${rows[selectedIdx].End}`
-      : "";
+  const selectedRow = rows && selectedIdx != null ? rows[selectedIdx] : null;
+  const selectedLabel = selectedRow?.Chrom 
+    ? `${selectedRow.Chrom}:${selectedRow.Start}-${selectedRow.End}` 
+    : "Select Locus...";
 
   return (
     <div ref={ref} style={{ position: "relative", width: "280px" }}>

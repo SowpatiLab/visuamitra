@@ -7,7 +7,7 @@ import pysam
 from typing import Optional
 import base64
 
-from .visuamitra_script import visuamitra_data_extract_stream
+from .visuamitra_script import visuamitra_data_extract_stream, extract_methcutoff
 
 router = APIRouter()
 
@@ -23,6 +23,29 @@ def decode_cursor(cursor):
     except Exception:
         raise HTTPException(status_code=400, detail="Invalid cursor format")
 
+# New - Samples Endpoint
+
+@router.post("/get-vcf-metadata")
+async def get_vcf_metadata(
+    vcf: UploadFile = File(...),
+):
+    """Returns the list of samples and metadata description without streaming data."""
+    tmpdir = tempfile.mkdtemp(prefix="vcf_meta_")
+    vcf_path = os.path.join(tmpdir, vcf.filename)
+    
+    with open(vcf_path, "wb") as f:
+        shutil.copyfileobj(vcf.file, f)
+    
+    try:
+        cutoff_info, total_samples = extract_methcutoff(vcf_path)
+        return {
+            "meth_cutoff": cutoff_info,
+            "samples": total_samples
+        }
+    finally:
+        if os.path.exists(vcf_path):
+            shutil.rmtree(tmpdir)
+
 @router.post("/vcf-to-tsv-cursor")
 async def vcf_to_tsv_cursor(
     vcf: UploadFile = File(...),
@@ -32,7 +55,17 @@ async def vcf_to_tsv_cursor(
     chr: Optional[str] = Form(None),
     start: Optional[int] = Form(None),
     end: Optional[int] = Form(None),
+    samples: Optional[str] = Form(None),
 ):
+    
+    sample_indices = [0]
+    if samples:
+        try:
+            sample_indices = [int(i) for i in samples.split(",")]
+        except ValueError:
+            raise HTTPException(status_code=400, detail="Samples must be comma-separated integers")
+
+
     tmpdir = tempfile.mkdtemp(prefix="vcf_")
     vcf_path = f"{tmpdir}/{vcf.filename}"
     tbi_path = f"{tmpdir}/{tbi.filename}"
@@ -146,7 +179,8 @@ async def vcf_to_tsv_cursor(
             vcf_path, 
             chr=current_iter_chr, 
             start_coord=iter_start, 
-            end_coord=None if last_cursor else end
+            end_coord=None if last_cursor else end,
+            samples_index=sample_indices
         ):
             if isinstance(raw_line, bytes):
                 raw_line = raw_line.decode("utf-8")
