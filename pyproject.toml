@@ -4,7 +4,7 @@ build-backend = "setuptools.build_meta"
 
 [project]
 name = "visuamitra"
-version = "0.2.0"
+version = "0.3.0"
 description = "A Tandem Repeats visualization tool for Decomposition of Motifs and Methylation across alleles."
 readme = "README.md"
 requires-python = ">=3.8"

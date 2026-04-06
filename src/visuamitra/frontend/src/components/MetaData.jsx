@@ -6,7 +6,11 @@ const formatValue = (val) => {
   if (val === undefined || val === null || val === "" || val === "NA") return "—";
   let parsed = val;
   if (typeof val === "string" && val.includes("[")) {
-    try { parsed = JSON.parse(val.replace(/'/g, '"')); } catch { parsed = val; }
+    try { 
+      parsed = JSON.parse(val.replace(/'/g, '"')); 
+    } catch { 
+      parsed = val; 
+    }
   }
   if (Array.isArray(parsed)) {
     return parsed.map(v => (typeof v === 'number' ? v.toFixed(2) : v)).join(" | ");
@@ -19,9 +23,8 @@ export default function MetadataDisplay({ row, selectedIndices = [], availableSa
   if (!row || !row.samples) return null;
 
   // 2. Global Data (Top Pills)
-  // We grab Motif/Size from the row or the first available sample as a fallback
   const firstAvailable = row.samples[Object.keys(row.samples)[0]] || {};
-  const locusID = row.ID || row.id || "N/A";
+  const locusID = row.ID || row.id || firstAvailable.ID || firstAvailable.id || "N/A";
   const motif = row.Motif || firstAvailable.Motif || "N/A";
   const motifSize = row.Motif_size || firstAvailable.Motif_size || "—";
 
@@ -68,39 +71,56 @@ export default function MetadataDisplay({ row, selectedIndices = [], availableSa
           </thead>
           <tbody>
             {selectedIndices.map((idx) => {
+              const sampleName = availableSamples[idx];
+              
+              const sample = row.samples[sampleName] || 
+                             row.samples[idx] ||
+                             row.samples[String(idx)] ||
+                             Object.values(row.samples).find(s => s.SampleID === sampleName);
 
-              const sampleName = availableSamples[idx]
-              // 2. Find the data in row.samples that matches this name
-              // This handles cases where row.samples is an object keyed by name or an array
-              const sample = Object.values(row.samples || {}).find(s => s.SampleID === sampleName) 
-                            || row.samples[idx]; 
-
-              if (!sample) return null;
+              // If the sample data isn't in this specific VCF row, 
+              // show a placeholder row instead of returning null.
+              if (!sample) {
+                return (
+                  <tr key={idx} style={trStyle}>
+                    <td style={sampleNameTdStyle}>{sampleName}</td>
+                    <td colSpan="3" style={{ ...tdStyle, color: "#999", fontStyle: "italic" }}>
+                      Metadata not linked for index {idx}
+                    </td>
+                  </tr>
+                );
+              }
 
               return (
                 <tr key={idx} style={trStyle}>
-                  <td style={sampleNameTdStyle}>{sampleName}</td> {/* Use the master name */}
+                  <td style={sampleNameTdStyle}>{sampleName}</td>
                   <td style={tdStyle}>{sample.GT || "—"}</td>
-                  {/* Read Support - Formats [x, y] to x | y (no decimals) */}
+                  
+                  {/* Read Support Calculation */}
                   <td style={tdStyle}>
                     {(() => {
                       const val = sample.Read_support;
                       if (val === undefined || val === null || val === "" || val === "NA") return "—";
                       
-                      // Convert to array if it's a string like "[288, 272]" or a real array
                       let parsed = val;
                       if (typeof val === "string" && val.includes("[")) {
-                        try { parsed = JSON.parse(val.replace(/'/g, '"')); } catch { parsed = val; }
+                        try { 
+                          parsed = JSON.parse(val.replace(/'/g, '"')); 
+                        } catch { 
+                          parsed = val; 
+                        }
                       }
-
-                      // Join with pipe if array, otherwise return value as-is
                       return Array.isArray(parsed) ? parsed.join(" | ") : parsed;
                     })()}
                   </td>
-                  <td style={tdStyle}>{formatValue(sample.Mean_meth || sample.meanMeth)}</td>
+
+                  <td style={tdStyle}>
+                    {formatValue(sample.Mean_meth || sample.meanMeth)}
+                  </td>
                 </tr>
               );
             })}
+
             {selectedIndices.length === 0 && (
               <tr>
                 <td colSpan="4" style={{ ...tdStyle, textAlign: 'center', color: '#999' }}>
@@ -115,7 +135,7 @@ export default function MetadataDisplay({ row, selectedIndices = [], availableSa
   );
 }
 
-// Minimalist & Translucent Styles 
+// --- Styles remain exactly as provided ---
 const containerStyle = { width: "100%", maxWidth: "1240px", marginBottom: "25px" };
 const headerStyle = { display: "flex", gap: "10px", marginBottom: "12px" };
 const pillStyle = { background: "rgba(0,0,0,0.03)", padding: "5px 15px", borderRadius: "100px", fontSize: "12px", color: "#666", border: "1px solid rgba(0,0,0,0.05)" };

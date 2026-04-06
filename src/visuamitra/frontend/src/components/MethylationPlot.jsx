@@ -10,6 +10,7 @@ export default function MethylationPlot({
   yStart = 200,
   rowGap = 40,
   getColor,
+  onHoverX,
 }) {
   const barHeight = 20;
   const MAGNIFY_SIZE = 7; // Expansion amount in pixels
@@ -30,7 +31,7 @@ export default function MethylationPlot({
       return (
         <rect
           key={id}
-          // Magnification Logic: offset x and y, increase width and height
+          // Magnification Logic
           x={isHovered ? x - 3 - MAGNIFY_SIZE / 2 : x - 3}
           y={isHovered ? baseY - MAGNIFY_SIZE / 2 : baseY}
           width={isHovered ? 6 + MAGNIFY_SIZE : 6}
@@ -39,15 +40,23 @@ export default function MethylationPlot({
           stroke={isHovered ? "#000" : (isAmbiguous ? "#888" : "#555")}
           strokeWidth={isHovered ? 1.5 : 0.8}
           style={{ cursor: "pointer", transition: "all 0.1s ease-out" }}
-          onMouseEnter={() =>
+          onMouseEnter={() => {
+            // 1. Local Tooltip State
             setTooltip({
               id,
               x,
               y: baseY,
               text: isAmbiguous ? "Ambiguous" : `${lvl}%`,
-            })
-          }
-          onMouseLeave={() => setTooltip(null)}
+            });
+            // 2. Global Guide State (statelogic.js)
+            if (onHoverX) onHoverX(x);
+          }}
+          onMouseLeave={() => {
+            // 1. Clear Local Tooltip
+            setTooltip(null);
+            // 2. Clear Global Guide (statelogic.js)
+            if (onHoverX) onHoverX(null);
+          }}
         />
       );
     });
@@ -77,8 +86,8 @@ export default function MethylationPlot({
       {tooltip && (
         <g pointerEvents="none">
           <foreignObject
-            x={tooltip.x - 50} 
-            y={tooltip.y - 35} 
+            x={tooltip.x - 10} 
+            y={tooltip.y - 25} 
             width="100" 
             height="30"
             style={{ overflow: "visible" }}

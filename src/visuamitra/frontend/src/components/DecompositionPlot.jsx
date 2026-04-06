@@ -18,11 +18,12 @@ export default function DecompositionPlot({
   const [hover, setHover] = useState(null);
 
   const renderMotifs = (data, baseY, trackLabel, totalLen) => {
+    // If no data exists for this track, render nothing
+    if (!data) return null;
+
     const { motifs = [], lengths = [], copies = [] } = data || {};
     
-    // Calculate the actual visual sum of segments
     const sumOfSegments = lengths.reduce((a, b) => a + b, 0);
-    // Use the larger of the two to ensure the grey bar covers everything
     const visualTotal = Math.max(totalLen, sumOfSegments);
 
     const startX = scaleX(0);
@@ -46,7 +47,7 @@ export default function DecompositionPlot({
               id: `${trackLabel}-total`,
               x: startX + fullBarWidth / 2,
               y: baseY - 12,
-              motif: `Total Allele: ${visualTotal} bp`, // This is the 123/125 label
+              motif: `Total Allele: ${visualTotal} bp`,
               isNonRepeating: true,
             })
           }
@@ -56,7 +57,7 @@ export default function DecompositionPlot({
         {lengths.map((len, i) => {
           const currentOffset = lengths.slice(0, i).reduce((a, b) => a + b, 0);
           const x1 = scaleX(currentOffset);
-          const w = scaleX(currentOffset + len) - x1; // Width based on actual bp length
+          const w = scaleX(currentOffset + len) - x1;
           
           const id = `${trackLabel}-${i}`;
           const isHovered = hover?.id === id;
@@ -73,7 +74,7 @@ export default function DecompositionPlot({
               strokeWidth={isHovered ? 2 : 1}
               rx={2}
               onMouseEnter={(e) => {
-                e.stopPropagation(); // CRITICAL: Prevents background bar from overriding
+                e.stopPropagation();
                 setHover({
                   id,
                   x: x1 + w / 2,
@@ -92,34 +93,50 @@ export default function DecompositionPlot({
     );
   };
 
+  // Dynamic Y positions: 
+  // If decompRef is missing, yA1 moves to the top (yOffset).
   const yRef = yOffset;
-  const yA1 = yOffset + barHeight + rowGap;
-  const yA2 = yOffset + 2 * (barHeight + rowGap);
-
+  const yA1 = decompRef ? (yOffset + barHeight + rowGap) : yOffset;
+  const yA2 = decompRef 
+    ? (yOffset + 2 * (barHeight + rowGap)) 
+    : (yOffset + barHeight + rowGap);
+    
   return (
     <>
-      
+      {/* --- Reference Track --- */}
+      {decompRef && (
+        <g>
+          <text x={leftMargin - 95} y={yRef + barHeight / 1.5} fontSize="14" fontWeight="bold">Ref. Allele</text>
+          {renderMotifs(decompRef, yRef, "ref", alleleLenRef)}
+        </g>
+      )}
 
-      <text x={leftMargin - 95} y={yRef + barHeight / 1.5} fontSize="14" fontWeight="bold">Ref. Allele</text>
-      {renderMotifs(decompRef, yRef, "ref", alleleLenRef)}
+      {/* --- Allele 1 Track --- */}
+      {decompA1 && (
+        <g>
+          <text x={leftMargin - 95} y={yA1 + barHeight / 1.5} fontSize="14" fontWeight="bold">Allele 1</text>
+          {renderMotifs(decompA1, yA1, "a1", alleleLen1)}
+        </g>
+      )}
 
-      <text x={leftMargin - 95} y={yA1 + barHeight / 1.5} fontSize="14" fontWeight="bold">Allele 1</text>
-      {renderMotifs(decompA1, yA1, "a1", alleleLen1)}
-
-      <text x={leftMargin - 95} y={yA2 + barHeight / 1.5} fontSize="14" fontWeight="bold">Allele 2</text>
-      {renderMotifs(decompA2, yA2, "a2", alleleLen2)}
+      {/* --- Allele 2 Track --- */}
+      {decompA2 && (
+        <g>
+          <text x={leftMargin - 95} y={yA2 + barHeight / 1.5} fontSize="14" fontWeight="bold">Allele 2</text>
+          {renderMotifs(decompA2, yA2, "a2", alleleLen2)}
+        </g>
+      )}
 
       {/* Tooltip implementation */}
       {hover && (
         <g pointerEvents="none">
-          <foreignObject x={hover.x - 75} y={hover.y - 65} width="150" height="60" style={{ overflow: "visible" }}>
+          <foreignObject x={hover.x - 75} y={hover.y - 30} width="150" height="60" style={{ overflow: "visible" }}>
             <div style={{
               display: "inline-block", padding: "6px 12px", background: "#f8f9fa",
               border: "1px solid #666", borderRadius: "4px", fontSize: "12px",
               fontWeight: "600", color: "#222", whiteSpace: "nowrap",
               boxShadow: "0 4px 8px rgba(0,0,0,0.15)", transform: "translateX(-50%)", marginLeft: "75px"
             }}>
-              {/* Logic to differentiate between Total Bar and Specific Motif */}
               {hover.id.includes('-total') ? (
                 <span>{hover.motif}</span>
               ) : (

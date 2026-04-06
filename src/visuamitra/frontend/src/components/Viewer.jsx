@@ -48,7 +48,8 @@ export default function Viewer() {
     availableSamples = [],
     selectedSampleIndices = [],
      setSelectedSampleIndices,
-     paginatedIndices, currentPage, setCurrentPage, totalPages
+     paginatedIndices, currentPage, setCurrentPage, totalPages,
+     hoverX, setHoverX
   } = useVisuaMiTRaLogic(vcfFile, tbiFile, location.state);
 
 // --- 3. Derived Data for Current Row ---
@@ -82,7 +83,7 @@ export default function Viewer() {
         [ref, a1, a2].forEach((d) => {
           if (d?.motifs) {
             d.motifs.forEach((motif, i) => { 
-              if (d.copies?.[i] > 1) repeatingMotifSet.add(motif); 
+              if (d.copies?.[i] >= 1) repeatingMotifSet.add(motif); 
             });
           }
         });
@@ -195,7 +196,7 @@ export default function Viewer() {
         }}>
           <MetadataDisplay 
               row={row}
-              selectedIndices={paginatedIndices}
+              selectedIndices={selectedSampleIndices}
               availableSamples={availableSamples} 
             />
         </div>
@@ -269,6 +270,8 @@ export default function Viewer() {
           colorMap={colorMap}
           fullLen={alleleMax}
           margins={{ left: LEFT_MARGIN, right: RIGHT_MARGIN }}
+          hoverX={hoverX}
+          onHoverX={setHoverX}
         />
 
         <Legend 

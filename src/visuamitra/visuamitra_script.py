@@ -861,8 +861,20 @@ def visuamitra_data_extract_stream(file, chr=None, start_coord=None, end_coord=N
     vcf_obj = pysam.TabixFile(file)
 
     try:
-        for locus_raw in vcf_obj.fetch(chr, start_coord, end_coord):
+        for i, locus_raw in enumerate(vcf_obj.fetch(chr, start_coord, end_coord)):
             locus = locus_raw.strip().split('\t')
+
+        # --- PLACE DEBUG BLOCK HERE ---
+            if i == 0: 
+                print("-" * 50)
+                print(f"FULL LINE SPLIT: {locus}")
+                print(f"INDEX 0 (CHROM): {locus[0]}")
+                print(f"INDEX 1 (START): {locus[1]}")
+                print(f"INDEX 2 (ID):    {locus[2]}") 
+                print(f"INDEX 7 (INFO):  {locus[7]}")
+                print("-" * 50)
+            # ------------------------------
+
             if locus[6] not in ['PASS', '.', '0', '']:
                 continue
 

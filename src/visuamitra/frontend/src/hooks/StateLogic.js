@@ -56,6 +56,8 @@ export function useVisuaMiTRaLogic(vcfFile, tbiFile, initialState) {
 
   const totalPages = Math.ceil(selectedSampleIndices.length / SAMPLES_PER_PAGE);
 
+  const [hoverX, setHoverX] = useState(null);
+
   // Reset to page 1 if selection changes and current page becomes empty
   useEffect(() => {
     if (currentPage > totalPages && totalPages > 0) {
@@ -97,40 +99,32 @@ export function useVisuaMiTRaLogic(vcfFile, tbiFile, initialState) {
     // Use a flag to prevent state updates if component unmounts
     let isMounted = true;
 
+    // Inside useVisuaMiTRaLogic "Engine" useEffect
     (async () => {
       setLoading(true);
       setError(""); 
       try {
-        const { text, nextCursor } = await fetchPageTSV(null);
+        // CHANGE: Use the cursor for the current page to stay at the same location
+        const currentCursor = cursorHistory[currentPageIndex] || null;
+        const { text, nextCursor } = await fetchPageTSV(currentCursor);
+        
         if (!isMounted) return;
 
         const cleanText = extractMetadataAndClean(text, setMethThreshold);
         const parsed = parseTSV(cleanText);
 
-        // 1. Check if we actually got data first
         if (parsed.length > 0) {
-          // 2. Only update sample names if we haven't already initialized them
-          if (availableSamples.length === 0) {
-            const sampleNamesInFile = new Set();
-            parsed.forEach(l => {
-              if (l.samples) {
-                Object.values(l.samples).forEach(s => sampleNamesInFile.add(s.SampleID));
-              }
-            });
-            setAvailableSamples(Array.from(sampleNamesInFile).sort());
-          }
+          // CHANGE: Update the current page's data without resetting indices
+          setPages([parsed]); 
+          setCursorHistory([currentCursor, nextCursor]);
           
-          // Clear any previous errors since we have data
+          // Remove setCurrentPageIndex(0) and setSelectedIdx(0) from here
+          if (selectedIdx === null) setSelectedIdx(0); 
+
           setError(""); 
         } else {
-          // 3. THIS is the only time the error should trigger
           setError("No data found for the selected region/samples.");
         }
-
-        setPages([parsed]);
-        setCursorHistory([null, nextCursor]);
-        setCurrentPageIndex(0);
-        setSelectedIdx(parsed.length > 0 ? 0 : null);
       } catch (err) { 
         if (isMounted) setError(err.message); 
       } finally { 
@@ -140,7 +134,7 @@ export function useVisuaMiTRaLogic(vcfFile, tbiFile, initialState) {
 
     return () => { isMounted = false; };
     
-  }, [filterTrigger, vcfFile, tbiFile]); 
+  }, [filterTrigger, vcfFile, tbiFile, selectedSampleIndices]); 
 
   const goNext = async () => {
     const currentRows = pages[currentPageIndex] || [];
@@ -184,6 +178,7 @@ export function useVisuaMiTRaLogic(vcfFile, tbiFile, initialState) {
     setSelectedIdx, applyRegionFilter: () => setFilterTrigger(p => p + 1), 
     goNext, goPrev, methThreshold,
     availableSamples, selectedSampleIndices, setSelectedSampleIndices,
-    paginatedIndices, currentPage, setCurrentPage, totalPages
+    paginatedIndices, currentPage, setCurrentPage, totalPages,
+    hoverX, setHoverX
   };
 }
