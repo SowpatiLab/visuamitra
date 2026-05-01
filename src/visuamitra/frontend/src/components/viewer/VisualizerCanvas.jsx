@@ -13,17 +13,19 @@ export default function VisualizerCanvas({
   data,               
   viewMode = "decomposition",           
   selectedSamples = [],    
+  availableSamples = [],
   totalSvgWidth, 
   scaleX, 
   getMethylationColor, 
   colorMap, 
   margins,
   hoverX,
-  onHoverX
+  onHoverX,
+  loading,
+  fullLen
 }) {
   const isDecomp = viewMode === "decomposition";
   
-  // Minimal Change: Reduce height for samples since they only have 2 tracks now
   const SAMPLE_HEIGHT = isDecomp ? 100 : 130; 
   const REF_HEIGHT = isDecomp ? 60 : 0; 
   const HEADER_TOP = 40; 
@@ -31,15 +33,19 @@ export default function VisualizerCanvas({
   
   const TOTAL_HEIGHT = HEADER_TOP + REF_HEIGHT + (selectedSamples.length * SAMPLE_HEIGHT) + AXIS_HEIGHT;
 
-  if (!data || !data.samples) return <div style={containerStyle}>No data available</div>;
+  // SAFE CHECK: If data doesn't exist yet, return a skeleton or null
+  if (!data || !data.samples || Object.keys(data.samples).length === 0) {
+    return (
+      <div style={containerStyle}>
+        <div style={{ padding: 40, textAlign: "center", color: "#666" }}>
+          {loading ? "Fetching genomic data..." : "No sample data available for this locus."}
+        </div>
+      </div>
+    );
+  }
 
   const sampleKeys = Object.keys(data.samples);
-  const firstSampleForRef = data.samples[sampleKeys[0]];
-  const { ref: globalRef } = parseDecompFromTSV(
-    firstSampleForRef?.Decomp_info, 
-    firstSampleForRef?.Decomp_seq
-  ) || {};
-
+  const globalRef = data.refTrack;
   return (
     <div style={containerStyle}>
       <svg width={totalSvgWidth} height={TOTAL_HEIGHT}>
@@ -59,16 +65,17 @@ export default function VisualizerCanvas({
           />
         )}
 
-        {/* 1. REFERENCE SECTION */}
+        {/* REFERENCE SECTION */}
         {isDecomp && (
           <g transform={`translate(0, ${HEADER_TOP})`}>
             <DecompositionPlot
               decompRef={globalRef} 
               decompA1={null} 
               decompA2={null}
-              alleleLenRef={globalRef?.totalLen || 0}
+              alleleLenRef={(globalRef?.lengths || []).reduce((a, b) => a + b, 0)}
               scaleX={scaleX}
               leftMargin={margins.left}
+              refMotif={data.Motif}
               colorMap={colorMap}
               yOffset={0}
               rowGap={0}
@@ -77,22 +84,88 @@ export default function VisualizerCanvas({
           </g>
         )}
 
-        {/* 2. SAMPLES SECTION */}
+        {/* SAMPLES SECTION */}
         {selectedSamples.map((sIdx, i) => {
-          let sample = data.samples[sIdx];
-          if (!sample) {
-            const availableKeys = Object.keys(data.samples);
-            if (availableKeys.length > 0) sample = data.samples[availableKeys[0]];
-          }
-          if (!sample) return null;
-
-          // Minimal Change: Dynamic yOffset calculation
+          const sample = data.samples[sIdx];
+          const sampleName = availableSamples[sIdx] || `Index ${sIdx}`;
           const yOffset = HEADER_TOP + REF_HEIGHT + (i * SAMPLE_HEIGHT);
 
-          const { a1: dA1, a2: dA2 } = parseDecompFromTSV(sample.Decomp_info, sample.Decomp_seq) || {};
+          if (!sample && loading) {
+          return (
+            <g key={sIdx} transform={`translate(0, ${yOffset})`}>
+              <text x={margins.left} y={15} fill="#666" fontStyle="italic">
+                Loading data for {sampleName}...
+              </text>
+            </g>
+          );
+        }
+
+          // DATA MISSING HANDLER: Render a labeled placeholder instead of skipping
+          if (!sample) {
+            return (
+              <g key={sIdx} transform={`translate(0, ${yOffset})`}>
+                <text x={margins.left} y={-5} style={{ fontWeight: "bold", fontSize: "12px", fill: "#d93025" }}>
+                  {sampleName} (Data not available for this sample)
+                </text>
+                <rect 
+                  x={margins.left} y={10} 
+                  width={totalSvgWidth - margins.left - margins.right} height={20} 
+                  fill="#f9f9f9" stroke="#ddd" strokeDasharray="4,4" rx={4}
+                />
+                <line x1={0} y1={SAMPLE_HEIGHT - 20} x2={totalSvgWidth} y2={SAMPLE_HEIGHT - 20} stroke="#eee" />
+              </g>
+            );
+          }
+
+
+          // Parse Decomposition
+          const dA1 = sample.parsedDecomp?.[1]; 
+          const dA2 = sample.parsedDecomp?.[2];
+
+          // Sum lengths using a helper to prevent NaN and leakage
+          const sumLengths = (arr) => (arr || []).reduce((a, b) => a + (Number(b) || 0), 0);
+          const decompLen1 = sumLengths(dA1.lengths);
+          const decompLen2 = sumLengths(dA2.lengths);
+
           const methTags = safeJson(sample.Meth_tag) || [];
-          const m1 = { pos: methTags[0]?.[0] || [], lvl: methTags[0]?.[1] || [] };
-          const m2 = { pos: methTags[1]?.[0] || [], lvl: methTags[1]?.[1] || [] };
+
+          // Check the first position to decide if we need to subtract startOffset
+          const firstPos = methTags[0]?.[0]?.[0] || 0;
+          const startOffset = (firstPos > 100000) ? Number(data.Start || 0) : 0; 
+
+          const m1 = { 
+            pos: (methTags[0]?.[0] || []).flat().map(p => Number(p) - startOffset), 
+            // REMOVE the check that turns things into -1 here. Keep the raw value.
+            lvl: (methTags[0]?.[1] || []).flat().map(l => Number(l))    
+          };
+
+          const m2 = { 
+            pos: (methTags[1]?.[0] || []).flat().map(p => Number(p) - startOffset), 
+            lvl: (methTags[1]?.[1] || []).flat().map(l => Number(l))
+          };
+
+          const lastCpGPos1 = Math.max(...(m1.pos || [0]));
+          const lastCpGPos2 = Math.max(...(m2.pos || [0]));
+
+          // We ensure Allele 2 ONLY looks at Allele 2 data (index [2] and alleleLen2)
+          const visualLen1 = Math.max(Number(sample.alleleLen1 || 0), lastCpGPos1, decompLen1);
+          const visualLen2 = Math.max(Number(sample.alleleLen2 || 0), lastCpGPos2, decompLen2);
+
+          // 1. Calculate pixel widths manually to verify independence
+          const startX = scaleX(0);
+          const width1 = Math.max(1, scaleX(visualLen1) - startX);
+          const width2 = Math.max(1, scaleX(visualLen2) - startX);
+
+          console.log(`[Width Debug] ${sample.SampleID}: A1=${visualLen1} (${width1}px), A2=${visualLen2} (${width2}px)`);
+
+          // Add this inside the selectedSamples.map loop
+console.log(`--- Data Debug: ${sample.SampleID} ---`);
+console.log("Positions (A1):", m1.pos);
+console.log("Levels (A1):", m1.lvl);
+console.log("Lengths match?", m1.pos.length === m1.lvl.length);
+
+// If lengths don't match, the 'N/A' is happening because 
+// there is no level at index 'i' for position 'pos'
 
           return (
             <g key={sIdx} transform={`translate(0, ${yOffset})`}>
@@ -111,14 +184,17 @@ export default function VisualizerCanvas({
                   scaleX={scaleX}
                   leftMargin={margins.left}
                   colorMap={colorMap}
-                  yOffset={5} // Starts right under the text
+                  refMotif={data.Motif}
+                  yOffset={5} 
                   rowGap={10}
                 />
               ) : (
                 <MethylationPlot
                   meth1={m1} meth2={m2}
-                  alleleLen1={sample.alleleLen1 || dA1?.totalLen || 0}
-                  alleleLen2={sample.alleleLen2 || dA2?.totalLen || 0}
+                  alleleLen1={visualLen1}
+                  alleleLen2={visualLen2}
+                  bgWidth1={width1}
+                  bgWidth2={width2}
                   scaleX={scaleX}
                   leftMargin={margins.left}
                   yStart={10}
@@ -133,7 +209,7 @@ export default function VisualizerCanvas({
         })}
 
         <g transform={`translate(0, ${TOTAL_HEIGHT - AXIS_HEIGHT})`}>
-          <Axis scale={scaleX} visibleRange={[0, data.maxAlleleLen]} width={totalSvgWidth}
+          <Axis scale={scaleX} visibleRange={[0, fullLen]} width={totalSvgWidth}
             leftMargin={margins.left} rightMargin={margins.right} bottomY={20} />
         </g>
       </svg>

@@ -10,7 +10,7 @@ from .routes import router
 from pathlib import Path
 
 from . import visuamitra_script
-print(f"!!! BACKEND SCRIPT LOCATION: {visuamitra_script.__file__}")
+#print(f"!!! BACKEND SCRIPT LOCATION: {visuamitra_script.__file__}")
 
 # Setup Logging
 logging.basicConfig(level=logging.INFO)

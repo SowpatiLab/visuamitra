@@ -1,60 +1,102 @@
 import * as d3Chromatic from "d3-scale-chromatic";
 import { rgb, hsl } from "d3-color";
 
-export function generateMotifColors(motifs, paletteName = "Set3") {
-  const scheme = d3Chromatic[`scheme${paletteName}`];
+/**
+ * Generates all cyclic rotations of a string.
+ * Example: "CAG" -> ["CAG", "AGC", "GCA"]
+ */
+function getCyclicVariants(motif) {
+  const n = motif.length;
+  const variants = [];
+  for (let i = 0; i < n; i++) {
+    variants.push(motif.slice(i) + motif.slice(0, i));
+  }
+  
+  return variants;
+}
 
-  // fallback if palette not found
-  const rawColors = scheme
-    ? Array.isArray(scheme[0])
-      ? scheme[scheme.length - 1] // take the largest array
-      : scheme
-    : [];
+export function getCanonicalMotif(motif, rMotif, allowFragments = false) {
+  if (!motif) return "";
+  const upperM = motif.toUpperCase();
+  const upperR = rMotif ? rMotif.toUpperCase() : null;
 
-  // filter out greyish
-  const baseColors = rawColors.filter((hex) => {
-    const c = rgb(hex);
-    const diff = Math.max(
-      Math.abs(c.r - c.g),
-      Math.abs(c.g - c.b),
-      Math.abs(c.r - c.b),
-    );
-    return diff > 20;
-  });
+  // NEW: Fragment logic for the parser
+ // if (allowFragments && upperR && upperM.length < upperR.length) {
+   // if ((upperR + upperR).includes(upperM)) return upperR;
+  //}
+  
+  if (upperR && upperR.length === upperM.length) {
+    const variants = getCyclicVariants(upperM);
+    if (variants.includes(upperR)) return upperR;
+  }
 
-  const used = [];
+  const variants = getCyclicVariants(upperM);
+  return variants.sort()[0];
+}
+
+export function generateMotifColors(motifs, paletteName = "Observable10", refMotif = "") {
+  // 1. Safety Guard: If motifs isn't an array, return empty map immediately
+  if (!Array.isArray(motifs)) return {};
+
+  // 2. Canonicalize and filter out any nulls/undefined
+  const uniqueCanonical = [...new Set(
+    motifs
+    .filter(m => !!m)
+    .map(m => getCanonicalMotif(m, refMotif))
+  )].sort();
+  
+  const paletteMap = {
+    Tableau10: d3Chromatic.schemeTableau10,
+    Observable10: d3Chromatic.schemeObservable10, // Excellent color separation
+    Set1: d3Chromatic.schemeSet1,
+    Set2: d3Chromatic.schemeSet2,
+    Set3: d3Chromatic.schemeSet3,
+    Paired: d3Chromatic.schemePaired,
+    Dark2: d3Chromatic.schemeDark2,
+    Accent: d3Chromatic.schemeAccent,
+    Pastel1: d3Chromatic.schemePastel1,
+    Pastel2: d3Chromatic.schemePastel2,
+  };
+
+  // Fallback to Tableau10 if the passed paletteName doesn't exist
+  const baseColors = paletteMap[paletteName] || d3Chromatic.schemeTableau10;
+
   const colorMap = {};
+  const used = [];
 
-  // first assign baseColors
-  motifs.forEach((motif, i) => {
+  // 3. IMPORTANT: Use uniqueCanonical for the loop, not 'motifs'
+  // 3. Loop through canonical motifs and apply saturation control
+  uniqueCanonical.forEach((motif, i) => {
+    let finalColor;
+
     if (i < baseColors.length) {
+      // Get the base color from the palette
       const col = baseColors[i];
-      colorMap[motif] = col;
-      used.push(col);
-    }
-  });
-
-  // generate extra colors if needed
-  if (motifs.length > baseColors.length) {
-    let extraIndex = 0;
-
-    for (let i = baseColors.length; i < motifs.length; i++) {
+      
+      const h = hsl(col);
+      //h.s = 0.8; // Set saturation to 40% (0.0 to 1.0)
+      //h.l = 0.6; // Optional: Adjust lightness too if needed
+     // h.opacity = 0.9;  //opacity 
+      finalColor = h.toString();
+      
+      colorMap[motif] = finalColor;
+      used.push(finalColor);
+    } else {
+      // Fallback for high-diversity regions (already uses HSL)
+      let extraIndex = i - baseColors.length;
       let candidate;
       do {
-        // evenly distributed hues
-        const hue = (360 * extraIndex) / (motifs.length || 1);
-        candidate = `hsl(${hue}, 75%, 45%)`;
-
+        const hue = (360 * extraIndex) / (uniqueCanonical.length || 1);
+        // Ensure fallback also matches the lower saturation (e.g., 40%)
+        candidate = hsl(hue, 0.4, 0.5).toString(); 
         extraIndex++;
-      } while (
-        isNearGrey(candidate) ||
-        used.some((u) => areEqualRgb(u, candidate))
-      );
-
+      } while (used.some((u) => areEqualRgb(u, candidate)));
+      
+      colorMap[motif] = candidate;
       used.push(candidate);
-      colorMap[motifs[i]] = candidate;
     }
-  }
+  });
+  console.log("Final colormap keys:", Object.keys(colorMap));
   return colorMap;
 }
 

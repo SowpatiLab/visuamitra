@@ -1,12 +1,12 @@
 import React, { useState } from "react";
 
-const MOTIF_PALETTES = ["Set1", "Set2", "Set3", "Paired", "Pastel1", "Pastel2", "Dark2", "Accent"];
+const MOTIF_PALETTES = ["Set1", "Set2", "Set3", "Paired", "Pastel1", "Pastel2", "Dark2", "Accent", "Tableau", "Observable10"];
 const FONTS = ["Arial", "Roboto", "Courier New", "Times New Roman"];
 const METHYLATION_SCALES = [
   "viridis", "plasma", "magma", "cividis", ];
 
 export default function SettingsPanel({ settings, onChange, onClose }) {
-  const [palette, setPalette] = useState(settings.palette || "Set3");
+  const [palette, setPalette] = useState(settings.palette || "Observable10");
   const [font, setFont] = useState(settings.font || "Arial");
   const [theme, setTheme] = useState(settings.theme || "light");
 

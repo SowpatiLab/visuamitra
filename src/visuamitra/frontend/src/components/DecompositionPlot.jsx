@@ -1,4 +1,5 @@
 import React, { useState } from "react";
+import { getCanonicalMotif } from "../utils/colorUtils";
 
 export default function DecompositionPlot({
   decompRef,
@@ -12,31 +13,33 @@ export default function DecompositionPlot({
   colorMap,
   yOffset = 60,
   rowGap = 14,
+  refMotif,
 }) {
   const barHeight = 20;
   const MAGNIFY_SIZE = 6;
   const [hover, setHover] = useState(null);
 
   const renderMotifs = (data, baseY, trackLabel, totalLen) => {
-    // If no data exists for this track, render nothing
-    if (!data) return null;
-
-    const { motifs = [], lengths = [], copies = [] } = data || {};
+    // 1. Check if we actually have motif data
+    const hasData = data && data.lengths && data.lengths.length > 0;
     
-    const sumOfSegments = lengths.reduce((a, b) => a + b, 0);
-    const visualTotal = Math.max(totalLen, sumOfSegments);
+    // 2. Determine the width of our "container"
+    // If no data: use the full reported allele length (fallback)
+    // If data exists: use the sum of segments (no "ghost" tail)
+    const sumOfSegments = hasData ? data.lengths.reduce((a, b) => a + b, 0) : 0;
+    const visualTotal = hasData ? sumOfSegments : totalLen;
 
     const startX = scaleX(0);
     const endX = scaleX(visualTotal);
-    const fullBarWidth = Math.max(0, endX - startX);
+    const containerWidth = Math.max(0, endX - startX);
 
     return (
       <g>
-        {/* Background Bar */}
+        {/* Background Bar: Only acts as a placeholder when segments are missing */}
         <rect
           x={startX}
           y={baseY}
-          width={fullBarWidth}
+          width={containerWidth}
           height={barHeight}
           fill="rgba(200,200,200,0.25)"
           stroke="#AAA"
@@ -45,22 +48,27 @@ export default function DecompositionPlot({
           onMouseEnter={() =>
             setHover({
               id: `${trackLabel}-total`,
-              x: startX + fullBarWidth / 2,
+              x: startX + containerWidth / 2,
               y: baseY - 12,
-              motif: `Total Allele: ${visualTotal} bp`,
+              motif: hasData ? `Total Data: ${sumOfSegments} bp` : `Estimated: ${totalLen} bp`,
               isNonRepeating: true,
             })
           }
           onMouseLeave={() => setHover(null)}
         />
 
-        {lengths.map((len, i) => {
-          const currentOffset = lengths.slice(0, i).reduce((a, b) => a + b, 0);
+        {/* Motif Segments: Only render if data exists */}
+        {hasData && data.lengths.map((len, i) => {
+          const currentOffset = data.lengths.slice(0, i).reduce((a, b) => a + b, 0);
           const x1 = scaleX(currentOffset);
           const w = scaleX(currentOffset + len) - x1;
           
           const id = `${trackLabel}-${i}`;
           const isHovered = hover?.id === id;
+          const canonical = getCanonicalMotif(data.motifs[i] || "", refMotif);
+          //const isMainMotif = canonical === (refMotif || "").toUpperCase();
+          const isKnown = !!colorMap[canonical];  
+          const fillColor = isKnown ? colorMap[canonical] : "#bdbdbd";
 
           return (
             <rect
@@ -69,22 +77,26 @@ export default function DecompositionPlot({
               y={isHovered ? baseY - MAGNIFY_SIZE / 2 : baseY}
               width={isHovered ? Math.max(0, w + MAGNIFY_SIZE) : Math.max(0, w)}
               height={isHovered ? barHeight + MAGNIFY_SIZE : barHeight}
-              fill={copies[i] <= 1 ? "#bdbdbd" : colorMap[motifs[i]] || "#888"}
+              fill={fillColor}
               stroke={isHovered ? "#000" : "#444"}
               strokeWidth={isHovered ? 2 : 1}
               rx={2}
               onMouseEnter={(e) => {
-                e.stopPropagation();
-                setHover({
-                  id,
-                  x: x1 + w / 2,
-                  y: baseY - 12,
-                  motif: motifs[i],
-                  copy: copies[i],
-                  len: len,
-                  isNonRepeating: copies[i] <= 1,
-                });
-              }}
+              e.stopPropagation();
+              const rawMotif = (data.motifs[i] || "").toUpperCase();
+              const canonical = getCanonicalMotif(data.motifs[i] || "", refMotif);
+
+              setHover({
+                id,
+                x: x1 + w / 2,
+                y: baseY - 12,
+                motif: rawMotif,
+                // Use the parsed copies and lengths directly for perfect sync
+                copy: data.copies[i], 
+                len: len,
+                isNonRepeating: data.copies[i] <= 1,
+              });
+            }}
               onMouseLeave={() => setHover(null)}
             />
           );
@@ -103,7 +115,7 @@ export default function DecompositionPlot({
     
   return (
     <>
-      {/* --- Reference Track --- */}
+      {/* Reference Track */}
       {decompRef && (
         <g>
           <text x={leftMargin - 95} y={yRef + barHeight / 1.5} fontSize="14" fontWeight="bold">Ref. Allele</text>
@@ -111,7 +123,7 @@ export default function DecompositionPlot({
         </g>
       )}
 
-      {/* --- Allele 1 Track --- */}
+      {/* Allele 1 Track */}
       {decompA1 && (
         <g>
           <text x={leftMargin - 95} y={yA1 + barHeight / 1.5} fontSize="14" fontWeight="bold">Allele 1</text>
@@ -119,7 +131,7 @@ export default function DecompositionPlot({
         </g>
       )}
 
-      {/* --- Allele 2 Track --- */}
+      {/* Allele 2 Track */}
       {decompA2 && (
         <g>
           <text x={leftMargin - 95} y={yA2 + barHeight / 1.5} fontSize="14" fontWeight="bold">Allele 2</text>

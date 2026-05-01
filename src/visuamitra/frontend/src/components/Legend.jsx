@@ -1,8 +1,17 @@
 import React, { useMemo } from "react";
-import { getMethylationColorFactory } from "../utils/colorUtils";
+import { getMethylationColorFactory, getCanonicalMotif } from "../utils/colorUtils";
 
-export default function Legend({ colorMap, hasDecomposition, hasAmbiguousMeth, methPalette, methThreshold, showMethylation }) {
-  const motifs = Object.entries(colorMap || {});
+export default function Legend({ colorMap, refMotif, hasDecomposition, hasAmbiguousMeth, methPalette, methThreshold, showMethylation }) {
+  // Collapse redundant motifs into a unique list
+  const canonicalMotifs = useMemo(() => {
+    if (!colorMap) return [];
+    
+    // Since colorMap keys are already canonical from Viewer.js,
+    // we just need to convert the object to a sorted array.
+    return Object.entries(colorMap)
+      .filter(([motif]) => motif !== "Non-repetitive seq") // safety filter
+      .sort((a, b) => a[0].localeCompare(b[0]));
+  }, [colorMap]);
   
   const getMethylationColor = useMemo(() => {
     return getMethylationColorFactory(methPalette);
@@ -40,7 +49,7 @@ export default function Legend({ colorMap, hasDecomposition, hasAmbiguousMeth, m
             Motifs
           </div>
           <div style={{ display: "flex", flexDirection: "column", gap: "6px" }}>
-            {motifs.map(([motif, color]) => (
+            {canonicalMotifs.map(([motif, color]) => (
               <div key={motif} style={{ display: "flex", alignItems: "center" }}>
                 <div style={{ width: "16px", height: "16px", background: color, border: "1px solid #444", marginRight: "8px", borderRadius: "2px" }} />
                 <span style={{ fontSize: "13px" }}>{motif}</span>

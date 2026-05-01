@@ -1,70 +1,134 @@
 import React from "react";
 import favicon from '../../assets/favicon.png';
 
+// --- Sub-Component 1: LogoPanel (Left-aligned) ---
+const LogoPanel = () => (
+  <div style={logoContainerStyle}>
+    <img 
+      src={favicon} 
+      alt="Logo" 
+      style={logoImageStyle} 
+    />
+  </div>
+);
+
+// --- Sub-Component 2: FilterToolbar (Centered and Pushed Up) ---
+const FilterToolbar = ({ chr, setChr, start, setStart, endPos, setEndPos, onApply, loading }) => (
+  <div style={filterToolbarStyle}>
+    <span style={{ fontWeight: 600 }}>Genomic Region:</span>
+    <input placeholder="chr" value={chr} onChange={(e) => setChr(e.target.value)} style={inputStyle(80)} />
+    <input type="number" placeholder="start" value={start} onChange={(e) => setStart(e.target.value)} style={inputStyle(100)} />
+    <input type="number" placeholder="end" value={endPos} onChange={(e) => setEndPos(e.target.value)} style={inputStyle(100)} />
+    <button onClick={onApply} disabled={loading} style={applyButtonStyle}>
+      {loading ? "Applying..." : "Apply"}
+    </button>
+  </div>
+);
+
+// --- Main Component: HeaderSection ---
 export default function HeaderSection({ 
   chr, setChr, start, setStart, endPos, setEndPos, 
   onApply, loading, error 
 }) {
   return (
-    <div style={{ 
-      width: "100%", 
-      maxWidth: "1200px", 
-      margin: "0 auto 20px auto", 
-      display: "block" 
-    }}>
+    <div style={parentContainer}>
       
-      <div style={{ 
-        display: "flex", 
-        justifyContent: "center", 
-        alignItems: "center", 
-        marginBottom: "15px",
-        padding: "0 10px" 
-      }}>
-        <div style={{ textAlign: "center" }}>
-          <img 
-            src={favicon} 
-            alt="Logo" 
-            style={{ width: "56px", height: "50px", verticalAlign: "middle", borderRadius: 8, marginRight: "10px" }} 
-          />
-          <span style={{ fontSize: "26px", fontWeight: "bold", letterSpacing: "-0.5px" }}>VisuaMiTRa</span>
-        </div>
+      {/* Top Row: Contains the Logo on the left */}
+      <div style={topRowStyle}>
+        <LogoPanel />
       </div>
 
-      {/* Filter Toolbar Row */}
-      <div style={filterToolbarStyle}>
-        <span style={{ fontWeight: 600 }}>Genomic Region:</span>
-        <input placeholder="chr" value={chr} onChange={(e) => setChr(e.target.value)} style={inputStyle(80)} />
-        <input type="number" placeholder="start" value={start} onChange={(e) => setStart(e.target.value)} style={inputStyle(100)} />
-        <input type="number" placeholder="end" value={endPos} onChange={(e) => setEndPos(e.target.value)} style={inputStyle(100)} />
-        <button onClick={onApply} disabled={loading} style={applyButtonStyle}>
-          {loading ? "Applying..." : "Apply"}
-        </button>
+      {/* Toolbar Row: Centered and shifted up via negative margin */}
+      <div style={toolbarWrapperStyle}>
+        <FilterToolbar 
+          chr={chr} setChr={setChr} 
+          start={start} setStart={setStart} 
+          endPos={endPos} setEndPos={setEndPos} 
+          onApply={onApply} 
+          loading={loading} 
+        />
       </div>
       
-      {error && <div style={{ color: "#b00020", fontSize: "13px", textAlign: "center", marginTop: "8px" }}>{error}</div>}
+      {error && <div style={errorTextStyle}>{error}</div>}
     </div>
   );
 }
+
+// --- Styles ---
+
+const parentContainer = {
+  width: "100%",
+  maxWidth: "1200px",
+  margin: "0 auto 20px auto",
+};
+
+const topRowStyle = {
+  display: "flex",
+  justifyContent: "flex-start",
+  alignItems: "center",
+  padding: "0 10px",
+  height: "100px", // Provides space for the logo and the toolbar "lift"
+};
+
+const logoContainerStyle = {
+  background: "#f0fbfd", // Light pastel blue panel
+  padding: "8px",
+  borderRadius: "24px",
+  border: "1px solid #dcfce7",
+  display: "flex",
+  alignItems: "center",
+  justifyContent: "center"
+};
+
+const logoImageStyle = {
+  width: "100px",
+  height: "100px",
+  borderRadius: 8,
+  objectFit: "contain"
+};
+
+const toolbarWrapperStyle = {
+  marginTop: "-65px", // THIS PUSHES THE TOOLBAR UPWARDS
+  display: "flex",
+  justifyContent: "center",
+  position: "relative", // Ensures it stays above the layout flow
+  zIndex: 2
+};
 
 const filterToolbarStyle = {
   display: "flex", 
   justifyContent: "center", 
   alignItems: "center", 
   gap: "12px", 
-  padding: "10px 16px", 
+  padding: "10px 20px", 
   border: "1px solid #ddd", 
-  borderRadius: "8px", 
-  background: "#f8f9fb", 
-  boxShadow: "0px 4px 8px rgba(0,0,0,0.05)", 
-  margin: "0 auto", // Centers the toolbar itself
+  borderRadius: "12px", 
+  background: "#fff", // Pure white to pop against the background
+  boxShadow: "0px 6px 15px rgba(0,0,0,0.08)", 
   width: "fit-content"
 };
 
 const inputStyle = (w) => ({
-  width: w, padding: "4px 8px", borderRadius: "4px", border: "1px solid #ccc"
+  width: w, 
+  padding: "6px 10px", 
+  borderRadius: "6px", 
+  border: "1px solid #ccc",
+  outline: "none"
 });
 
 const applyButtonStyle = {
-  padding: "6px 16px", borderRadius: "6px", border: "none", background: "#328547", 
-  color: "#fff", fontWeight: "600", cursor: "pointer"
+  padding: "7px 18px", 
+  borderRadius: "8px", 
+  border: "none", 
+  background: "#328547", 
+  color: "#fff", 
+  fontWeight: "600", 
+  cursor: "pointer"
+};
+
+const errorTextStyle = {
+  color: "#b00020", 
+  fontSize: "13px", 
+  textAlign: "center", 
+  marginTop: "12px"
 };

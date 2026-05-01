@@ -15,7 +15,8 @@ decode64_dict = {'A': 0.0, 'B': 1.56, 'C': 3.12, 'D': 4.69, 'E': 6.25, 'F': 7.81
 
 cyclic_motif_registry = {}
  
-def motif_decomp_pos(dseq):
+def motif_decomp_pos(dseq, MOTIF):
+
     dseq = dseq.split('-')
     motif_order = []
     unique_motif = set()
@@ -24,6 +25,11 @@ def motif_decomp_pos(dseq):
         if '(' in i:
             end_idx = i.index(')')
             tmp_motif = i[1:end_idx]
+            #if tmp_motif != MOTIF:
+                #tmp_motif = get_canonical_motif(tmp_motif, MOTIF)
+            #else:
+                #print('*********', tmp_motif)
+            tmp_motif = get_canonical_motif(tmp_motif, MOTIF)
             motif_order.append(tmp_motif)
             unique_motif.add(tmp_motif)
             length_order.append(int(i[end_idx+1:]) * len(tmp_motif))
@@ -178,8 +184,12 @@ def get_cyclic_variants(motif):
     n = len(motif)
     return [motif[i:] + motif[:i] for i in range(n)]
 
-def get_canonical_motif(motif):
-    return min(get_cyclic_variants(motif))
+def get_canonical_motif(motif, r_motif=None):
+    motif_list = get_cyclic_variants(motif)
+    if r_motif and r_motif in motif_list:
+        return r_motif 
+    else:
+        return min(motif_list)
 
 def register_and_get_motif(motif):
     if not motif or len(motif) == 0:
@@ -835,16 +845,18 @@ def extract_methcutoff(file):
         return f"Error: {str(e)}", []
 
 def visuamitra_data_extract_stream(file, chr=None, start_coord=None, end_coord=None, samples_index=None):
-    
-    # ADD THIS LOG HERE
-    print(f"!!! FUNCTION CALLED with: {chr}, {start_coord}, {end_coord}, samples: {samples_index}")
+    #print("!!! VERSION CHECK: [B-12] - April 27th !!!")
+    # 1. Normalize Chromosome
+    if chr and not str(chr).startswith('chr'):
+        chr = f"chr{chr}"
+
+    # DEBUG 1: Input Check
+    print(f"\n[BACKEND DEBUG] Requesting: {chr}:{start_coord}-{end_coord}")
 
     cutoff_info, total_samples = extract_methcutoff(file)
-
     if samples_index is None:
         samples_index = [0]
     
-    # Yield a unique metadata line (prefixed with ##)
     yield f"##METADATA\t{cutoff_info}\n"
     yield f"##SAMPLES\t{','.join(total_samples)}\n"
 
@@ -854,159 +866,189 @@ def visuamitra_data_extract_stream(file, chr=None, start_coord=None, end_coord=N
         'Sequences', 'Read_support', 'Decomp_seq', 'Decomp_info',
         'Unique_motifs', 'Mean_meth', 'Meth_tag'
     ]
-
-    # yield header
     yield "\t".join(header) + "\n"
 
     vcf_obj = pysam.TabixFile(file)
+    row_yielded_count = 0 # Initialized here to avoid NameError
 
     try:
-        for i, locus_raw in enumerate(vcf_obj.fetch(chr, start_coord, end_coord)):
-            locus = locus_raw.strip().split('\t')
+        # DEBUG 2: Index Check
+        if chr not in vcf_obj.contigs:
+            print(f"[BACKEND DEBUG] ERROR: Chromosome '{chr}' not in VCF index.")
+            return
 
-        # --- PLACE DEBUG BLOCK HERE ---
-            if i == 0: 
-                print("-" * 50)
-                print(f"FULL LINE SPLIT: {locus}")
-                print(f"INDEX 0 (CHROM): {locus[0]}")
-                print(f"INDEX 1 (START): {locus[1]}")
-                print(f"INDEX 2 (ID):    {locus[2]}") 
-                print(f"INDEX 7 (INFO):  {locus[7]}")
-                print("-" * 50)
-            # ------------------------------
+        # 1. Handle Start: fallback to 0 if None
+        start_val = int(start_coord) if start_coord is not None else 0
+        search_start = max(0, start_val - 1)
 
-            if locus[6] not in ['PASS', '.', '0', '']:
-                continue
+        # 2. Handle End: fallback to max integer if None (pysam handles this as EOF)
+        if end_coord is not None:
+            search_end = int(end_coord)
+        else:
+            search_end = 2147483647 # Max 32-bit int; pysam will just read until the last record
+            print(f"[BACKEND DEBUG] end_coord is None. Falling back to end of chromosome.")
 
-            # --- Common Locus Info ---
-            CHROM = locus[0]
-            START = locus[1]
-            REF = locus[3]
-            ALT = locus[4].split(',')
-            
-            info_dict = dict(x.split('=') for x in locus[7].split(';') if '=' in x)
-            ID = info_dict.get('ID', 'NA')
-            END = info_dict.get('END', START)
-            MOTIF = info_dict.get('MOTIF', 'NA')
-            MOTIF_SIZE = len(MOTIF)
-            MOTIF_DECOMP = MOTIF_SIZE <= 10
-            
-            REF_DECOMP, _ = motif_decomposition(REF, MOTIF_SIZE) if MOTIF_DECOMP else [None, None]
+        for i, locus_raw in enumerate(vcf_obj.fetch(chr, search_start, search_end)):
+            try: 
+                locus = locus_raw.strip().split('\t')
+                if len(locus) < 10: continue
 
-            #  Extract Sample Data 
-            sample_fields = locus[9:]
-            SAMPLE_dict = sample_collector(sample_fields, samples_index, ALT, MOTIF_DECOMP, REF_DECOMP, REF, MOTIF_SIZE)
 
-            #  Yield one line per selected sample 
-            for s_idx in samples_index:
-                data = SAMPLE_dict.get(s_idx)
-                if data is None: continue # Skip if no data for this sample
+                # Safely parse Info
+                info_parts = [x.split('=') for x in locus[7].split(';') if '=' in x]
+                info_dict = {x[0]: x[1] for x in info_parts}
+
+                if locus[6] not in ['PASS', '.', '0', '']:
+                    continue
+
+                CHROM, START, REF = locus[0], locus[1], locus[3]
+                ALT = locus[4].split(',')
                 
-                s_name = total_samples[s_idx]
+                # Use ID from info if column 2 is empty
+                ID, END = info_dict.get('ID', locus[2]), info_dict.get('END', START)
+                MOTIF = info_dict.get('MOTIF', 'NA')
+                MOTIF_SIZE = len(MOTIF)
+                MOTIF_DECOMP = MOTIF_SIZE <= 10
                 
-                # data format from sample_collector: 
-                # [gt_value, complete_seqs, SD, complete_DS, DS_info, motif_set, MM, decoded_MV]
-                values = [
-                    CHROM, START, END, ID, MOTIF, MOTIF_SIZE,
-                    s_name, s_idx, data[0], 
-                    data[1], data[2], data[3], data[4], 
-                    data[5], data[6], data[7]
-                ]
-                yield "\t".join(map(str, values)) + "\n"
+                if REF.islower(): REF = REF.upper()
+                REF_DECOMP, _ = motif_decomposition(REF, MOTIF_SIZE) if MOTIF_DECOMP else [None, None]
+
+                sample_fields = locus[9:]
+                valid_indices = [idx for idx in samples_index if idx < len(sample_fields)]
+
+                if not valid_indices: continue
+
+                # This is where the crash usually happens
+                SAMPLE_dict = sample_collector(sample_fields, valid_indices, ALT, MOTIF_DECOMP, REF_DECOMP, REF, MOTIF_SIZE, MOTIF)
+
+                for s_idx in valid_indices:
+                    data = SAMPLE_dict.get(s_idx)
+                    if data is None: continue
+                    
+                    s_name_full = total_samples[s_idx] if s_idx < len(total_samples) else f"S{s_idx}"
+                    # Clean name for frontend matching
+                    s_name_clean = s_name_full
+
+                    values = [
+                        CHROM, START, END, ID, MOTIF, MOTIF_SIZE,
+                        s_name_clean, s_idx, data[0], 
+                        data[1], data[2], data[3], data[4], 
+                        data[5], data[6], data[7]
+                    ]
+                    yield "\t".join(map(str, values)) + "\n"
+                    row_yielded_count += 1
+
+            except Exception as row_err: 
+                # This catches the "index out of range" for just THIS row
+                print(f"[DEBUG] Skipping malformed row {i} at {locus[1] if len(locus)>1 else 'unknown'}: {row_err}")
+                continue 
+
+        print(f"[BACKEND DEBUG] Successfully yielded {row_yielded_count} data rows.")
 
     except Exception as e:
-        print(f"Error during fetch: {e}")
+        print(f"[BACKEND DEBUG] CRASH: {str(e)}")
+        import traceback
+        traceback.print_exc()
     finally:
         vcf_obj.close()
 
-def sample_collector(sample_fields, sample_index, ALT, MOTIF_DECOMP, REF_DECOMP, REF, MOTIF_SIZE):
+def sample_collector(sample_fields, sample_index, ALT, MOTIF_DECOMP, REF_DECOMP, REF, MOTIF_SIZE, MOTIF):
     """Logic to process specific sample columns."""
     SAMPLE_dict = {}
     
     for each_sidx in sample_index:
-        if each_sidx >= len(sample_fields): continue
+        if each_sidx >= len(sample_fields): 
+            SAMPLE_dict[each_sidx] = ['./.', 'NA', 'NA', 'NA', 'NA', 'NA', 'NA', 'NA']
+            continue
         
         SAMPLE = sample_fields[each_sidx].split(':')
         gt_value = SAMPLE[0]
         
-        if gt_value == '.' or gt_value == './.':
-            SAMPLE_dict[each_sidx] = None
+        if gt_value in ['.', './.', '.|.']:
+            SAMPLE_dict[each_sidx] = ['./.', 'NA', 'NA', 'NA', 'NA', 'NA', 'NA', 'NA']
             continue
             
+        # 1. Extract Genotype Indices
         sep = '/' if '/' in gt_value else '|'
         try:
-            GT = set([int(i) for i in gt_value.split(sep) if i != '.'])
+            gt_indices = [int(i) for i in gt_value.split(sep) if i != '.']
+            while len(gt_indices) < 2:
+                gt_indices.append(gt_indices[0] if gt_indices else 0)
+            v1, v2 = gt_indices[0], gt_indices[1]
         except ValueError:
-            GT = {0}
+            v1, v2 = 0, 0
+        
+        # 2. Extract Sequences
+        alt1 = REF if v1 == 0 else (ALT[v1 - 1] if (v1 - 1) < len(ALT) else REF)
+        alt2 = REF if v2 == 0 else (ALT[v2 - 1] if (v2 - 1) < len(ALT) else REF)
 
-        # Methylation Mean (MM)
-        if len(SAMPLE) > 8 and SAMPLE[8] != '.,.':
-            MM = [float(i) if i != '.' else 0.0 for i in SAMPLE[8].split(',')]
-        else:
-            MM = 'NA'
-            
-        # Methylation Tags (MV)
+        # 3. Pull Metadata Tags
+        MM = [float(i) if i != '.' else 0.0 for i in SAMPLE[8].split(',')] if len(SAMPLE) > 8 else 'NA'
         MV = SAMPLE[11].split(',') if len(SAMPLE) > 11 else []
-        
-        # Decomposition Info
         SD = [int(i) if i != '.' else 0 for i in SAMPLE[4].split(',')] if len(SAMPLE) > 4 else []
-        DS = SAMPLE[10].split(',') if len(SAMPLE) > 10 else ['.', '.']
-        CREATE_DECOMP = ('.' in DS) and MOTIF_DECOMP
+        DS_raw = SAMPLE[10].split(',') if len(SAMPLE) > 10 else ['.', '.']
+        CREATE_DECOMP = ('.' in DS_raw) and MOTIF_DECOMP
 
-        # Determine Allele Sequences & Decomp based on GT
-        # (Using the robust logic from your team's solution)
-        if len(GT) == 1: 
-            val = next(iter(GT))
-            alt1 = REF if val == 0 else ALT[val - 1]
-            alt2 = alt1
-            if CREATE_DECOMP and val != 0:
-                dseq, _ = motif_decomposition(alt1, MOTIF_SIZE)
-                DS = [dseq, dseq]
-            elif val == 0:
-                DS = [REF_DECOMP, REF_DECOMP]
+        # 4. Handle Decomposition (Handles 0/3, 1/1, etc.)
+        tmp_DS = []
+        # We use a counter to pull from the VCF tags only when we hit an ALT allele
+        alt_tag_index = 0 
+
+        for val, seq in [(v1, alt1), (v2, alt2)]:
+            if val == 0:
+                # It's the reference! Use the pre-calculated REF_DECOMP
+                tmp_DS.append(REF_DECOMP)
             else:
-                DS = [DS[0], DS[0]]
-        else:
-            iterator_gt = iter(GT)
-            v1 = next(iterator_gt)
-            v2 = next(iterator_gt)
-            alt1 = REF if v1 == 0 else ALT[v1 - 1]
-            alt2 = REF if v2 == 0 else ALT[v2 - 1]
-            if CREATE_DECOMP:
-                DS = []
-                for seq in [alt1, alt2]:
-                    if seq == REF: DS.append(REF_DECOMP)
-                    else:
-                        dseq, _ = motif_decomposition(seq, MOTIF_SIZE)
-                        DS.append(dseq)
-        
-        if '.' in DS or not DS:
-            DS = [None, None]
+                # It's an ALT! Pull from the VCF tags using our counter
+                if CREATE_DECOMP:
+                    dseq, _ = motif_decomposition(seq, MOTIF_SIZE)
+                    tmp_DS.append(dseq)
+                else:
+                    # Grab the next available tag from the VCF
+                    d_val = DS_raw[alt_tag_index] if alt_tag_index < len(DS_raw) else "NA"
+                    tmp_DS.append(d_val)
+                    alt_tag_index += 1
+        DS = tmp_DS
     
         complete_seqs = [REF, alt1, alt2]
         
-        # Decode Methylation
+        # 5. Decode Methylation (Uses global cg_pos and decode64_dict)
         if len(SAMPLE) > 11 and SAMPLE[11] != '.,.':
-            # Note: Ensure cg_pos and decode64_dict are available in your global scope
-            decoded_MV = [[cg_pos(complete_seqs[idx+1]), [decode64_dict[i] for i in tag]] for idx, tag in enumerate(MV)]
+            decoded_MV = []
+            alt_tag_index = 0
+            for idx, val in enumerate([v1, v2]):
+                if val == 0:
+                    # For Reference, we typically have no methylation data in the VCF tags
+                    # You can leave it empty or fetch a default
+                    decoded_MV.append([cg_pos(REF), []])
+                else:
+                    # Map the tag to the ALT allele
+                    if alt_tag_index < len(MV):
+                        tag = MV[alt_tag_index]
+                        decoded_MV.append([cg_pos(complete_seqs[idx+1]), [decode64_dict[i] for i in tag]])
+                        alt_tag_index += 1
+                    else:
+                        decoded_MV.append([None, None])
         else:
             decoded_MV = 'NA'
-            
+        
         complete_DS = [REF_DECOMP, DS[0], DS[1]]
         
         DS_info = []
         motif_set = set()
         for i in complete_DS:
-            if i is not None:
-                motif_order, unique_motif, length_order = motif_decomp_pos(i)
+            if i is not None and i != "NA":
+                motif_order, unique_motif, length_order = motif_decomp_pos(i, MOTIF)
                 DS_info.append([motif_order, length_order])
                 motif_set |= unique_motif
             else:
                 DS_info.append([None, None])
         
         motif_set = list(motif_set)
-        if None in complete_DS:
-            complete_DS, DS_info, motif_set = 'NA', 'NA', 'NA'
+        # Final safety check
+        if any(d is None or d == "NA" for d in complete_DS):
+             # This prevents the visualizer from crashing on empty data
+             pass 
 
         SAMPLE_dict[each_sidx] = [gt_value, complete_seqs, SD, complete_DS, DS_info, motif_set, MM, decoded_MV]
         

@@ -31,8 +31,6 @@ export default function Tooltip({ text, children }) {
             padding: "8px 12px",
             borderRadius: "6px",
             fontSize: "12px",
-            
-            // --- UPDATED FOR WRAPPING ---
             maxWidth: "250px",       // Limits the width of the tooltip
             whiteSpace: "normal",    // Allows text to wrap to new lines
             wordBreak: "break-all",  // Forces long DNA strings to break

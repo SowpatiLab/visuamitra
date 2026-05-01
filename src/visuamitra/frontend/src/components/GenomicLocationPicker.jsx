@@ -38,15 +38,32 @@ export default function GenomicLocationPicker({
     return () => document.removeEventListener("mousedown", handler);
   }, []);
 
-  const filtered = (rows || []).filter((r) => {
-    if (!query) return true;
-    const label = `${r.Chrom}:${r.Start}-${r.End}`.toLowerCase();
-    return label.includes(query.toLowerCase());
-  });
+  // Replace your existing 'filtered' logic with this defensive version:
+  const filtered = (rows || [])
+    .filter(Boolean) // Remove null/undefined entries from the array immediately
+    .filter((r) => {
+      // Extra safety: Ensure r has the Chrom property before trying to use it
+      if (!r || !r.Chrom) return false; 
+      if (!query) return true;
+      
+      const label = `${r.Chrom}:${r.Start}-${r.End}`.toLowerCase();
+      return label.includes(query.toLowerCase());
+    });
+
+  {/* Reason: By explicitly checking for valid string content and forcing the final output to a String primitive, we prevent React from seeing the raw Locus object during the render pass. */}
 
   const selectedRow = rows && selectedIdx != null ? rows[selectedIdx] : null;
-  const selectedLabel = selectedRow?.Chrom 
-    ? `${selectedRow.Chrom}:${selectedRow.Start}-${selectedRow.End}` 
+
+  // 1. Validate that this is a data row and not a header row or empty object
+  const isValidData = 
+    selectedRow && 
+    typeof selectedRow === 'object' && 
+    selectedRow.Chrom && 
+    selectedRow.Chrom !== "Chrom";
+
+  // 2. Build the label only if data is valid; otherwise fallback to placeholder string
+  const selectedLabel = isValidData
+    ? `${selectedRow.Chrom}:${selectedRow.Start}-${selectedRow.End}`
     : "Select Locus...";
 
   return (
@@ -104,23 +121,29 @@ export default function GenomicLocationPicker({
             </div>
           )}
 
-          {filtered.map((r) => {
-            const idx = rows.indexOf(r);
+          {filtered.map((r, fIdx) => {
+            if (r.Chrom === "Chrom" || r.Start === "Start") return null;
+            // 2. Defensive findIndex
+            const originalIdx = (rows || []).findIndex(original => 
+              original && 
+              original.Chrom === r.Chrom && 
+              original.Start === r.Start && 
+              original.End === r.End
+            );
             const label = `${r.Chrom}:${r.Start}-${r.End}`;
 
             return (
               <div
-                key={idx}
+                key={`${r.Chrom}-${r.Start}-${fIdx}`}
                 onClick={() => {
-                  onSelect(idx);
-                  setQuery("");
-                  setOpen(false);
-                }}
+                if (originalIdx !== -1) onSelect(originalIdx); 
+                setQuery("");
+                setOpen(false);
+              }}
                 style={{
                   padding: "5px 8px", 
                   cursor: "pointer",
-                  background:
-                    idx === selectedIdx ? "#eef" : "transparent",
+                  background: originalIdx === selectedIdx ? "#eef" : "transparent",
                 }}
               >
                 {highlightMatch(label, query)}

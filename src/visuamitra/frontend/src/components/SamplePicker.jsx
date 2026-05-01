@@ -1,4 +1,4 @@
-import React, { useState, useRef, useEffect } from "react";
+import React, { useState, useRef, useEffect, useMemo } from "react";
 
 export default function SamplePicker({ 
   availableSamples = [], 
@@ -6,9 +6,10 @@ export default function SamplePicker({
   onSelectionChange 
 }) {
   const [isOpen, setIsOpen] = useState(false);
+  const [searchTerm, setSearchTerm] = useState(""); 
   const dropdownRef = useRef(null);
 
-  // Close dropdown if user clicks outside of it
+  // Close dropdown on outside click
   useEffect(() => {
     const handleClickOutside = (event) => {
       if (dropdownRef.current && !dropdownRef.current.contains(event.target)) {
@@ -19,26 +20,32 @@ export default function SamplePicker({
     return () => document.removeEventListener("mousedown", handleClickOutside);
   }, []);
 
+  // Filter logic: We keep the original 'idx' so selection still works
+  const filteredSamples = useMemo(() => {
+    return availableSamples
+      .map((name, idx) => ({ name, idx }))
+      .filter(s => s.name.toLowerCase().includes(searchTerm.toLowerCase()));
+  }, [availableSamples, searchTerm]);
+
   const toggleSample = (idx) => {
     const isCurrentlySelected = selectedIndices.includes(idx);
-    let newSelection;
-    if (isCurrentlySelected) {
-      newSelection = selectedIndices.filter((i) => i !== idx);
-    } else {
-      newSelection = [...selectedIndices, idx];
-    }
-    // Pass the new array back to the parent state
+    const newSelection = isCurrentlySelected
+      ? selectedIndices.filter((i) => i !== idx)
+      : [...selectedIndices, idx];
     onSelectionChange(newSelection);
   };
 
-  const selectAll = () => {
-    // Maps every available sample to its index
-    const allIndices = availableSamples.map((_, idx) => idx);
-    onSelectionChange(allIndices);
+  // Smart Select All: Only selects what is visible in the search
+  const selectFiltered = () => {
+    const visibleIndices = filteredSamples.map(s => s.idx);
+    const combined = Array.from(new Set([...selectedIndices, ...visibleIndices]));
+    onSelectionChange(combined);
   };
 
-  const clearAll = () => {
-    onSelectionChange([]);
+  const clearFiltered = () => {
+    const visibleIndices = filteredSamples.map(s => s.idx);
+    const newSelection = selectedIndices.filter(idx => !visibleIndices.includes(idx));
+    onSelectionChange(newSelection);
   };
 
   return (
@@ -56,47 +63,75 @@ export default function SamplePicker({
         </div>
 
         {isOpen && (
-            <div style={dropdownStyle}>
-                <div style={actionBarStyle}>
-                <button type="button" onClick={selectAll} style={smallBtnStyle}>All</button>
-                <button type="button" onClick={clearAll} style={smallBtnStyle}>Clear</button>
-                <span style={{ fontSize: '11px', color: '#888', marginLeft: 'auto' }}>
-                    {availableSamples.length} total
-                </span>
-                </div>
-                
-
-                {availableSamples.map((name, idx) => (
-                <label key={idx} 
-                        style={optionStyle} 
-                        onMouseEnter={(e) => e.currentTarget.style.backgroundColor = '#f9f9f9'}
-                        onMouseLeave={(e) => e.currentTarget.style.backgroundColor = '#fff'}>
-                    <input
-                    type="checkbox"
-                    checked={selectedIndices.includes(idx)}
-                    onChange={() => toggleSample(idx)}
-                    style={checkboxStyle}
-                    />
-                    <span title={name} style={sampleNameStyle}>{name}</span>
-                </label>
-                ))}
-                
-                {availableSamples.length === 0 && (
-                <div style={{ padding: '10px', color: '#999', fontSize: '12px' }}>
-                    No samples found
-                </div>
-                )}
+          <div style={dropdownStyle}>
+            {/* Search Input */}
+            <div style={searchContainerStyle}>
+              <input 
+                autoFocus
+                placeholder="Filter list..."
+                value={searchTerm}
+                onChange={(e) => setSearchTerm(e.target.value)}
+                style={searchInputStyle}
+              />
             </div>
-            )}
+
+            {/* Contextual Action Bar */}
+            <div style={actionBarStyle}>
+              <button type="button" onClick={selectFiltered} style={smallBtnStyle}>
+                {searchTerm ? 'Add Filtered' : 'All'}
+              </button>
+              {searchTerm && (
+                <button type="button" onClick={clearFiltered} style={smallBtnStyle}>
+                  Clear Filtered
+                </button>
+              )}
+              <button type="button" onClick={() => onSelectionChange([])} style={{ ...smallBtnStyle, color: '#999' }}>
+                Clear All
+              </button>
+            </div>
+
+            {/* List items */}
+            {filteredSamples.map(({ name, idx }) => (
+              <label key={idx} style={optionStyle}>
+                <input
+                  type="checkbox"
+                  checked={selectedIndices.includes(idx)}
+                  onChange={() => toggleSample(idx)}
+                  style={checkboxStyle}
+                />
+                <span style={sampleNameStyle}>{name}</span>
+              </label>
+            ))}
+          </div>
+        )}
       </div>
     </div>
   );
 }
 
-// Styles 
+// Styles
+const searchContainerStyle = {
+  padding: '8px',
+  background: '#fcfcfc',
+  borderBottom: '1px solid #eee',
+  position: 'sticky',
+  top: 0,
+  zIndex: 2
+};
+
+const searchInputStyle = {
+  width: '100%',
+  padding: '6px 10px',
+  fontSize: '12px',
+  border: '1px solid #ddd',
+  borderRadius: '4px',
+  outline: 'none',
+  boxSizing: 'border-box'
+};
+
 const wrapperStyle = { display: 'flex', alignItems: 'center', gap: '12px', fontFamily: 'inherit' };
 const labelStyle = { fontWeight: '700', fontSize: '14px', color: '#333' };
-const containerStyle = { position: 'relative', width: '220px' };
+const containerStyle = { position: 'relative', width: '280px' };
 const triggerStyle = {
   padding: '6px 12px', border: '1px solid #ddd', borderRadius: '6px',
   background: '#fff', cursor: 'pointer', display: 'flex',
@@ -106,35 +141,14 @@ const textStyle = { fontSize: '13px', color: '#444', whiteSpace: 'nowrap', overf
 const dropdownStyle = {
   position: 'absolute', top: '100%', left: 0, right: 0, zIndex: 1000,
   background: '#fff', border: '1px solid #ddd', borderRadius: '6px',
-  marginTop: '5px', maxHeight: '250px', overflowY: 'auto',
+  marginTop: '5px', maxHeight: '300px', overflowY: 'auto',
   boxShadow: '0 10px 15px -3px rgba(0,0,0,0.1)'
 };
-const optionStyle = {
-  display: 'flex', alignItems: 'center', padding: '8px 12px', cursor: 'pointer',
-  borderBottom: '1px solid #f5f5f5', transition: 'background 0.2s'
-};
-const checkboxStyle = { marginRight: '10px', cursor: 'pointer', accentColor: '#328547' };
-const sampleNameStyle = { fontSize: '12px', whiteSpace: 'nowrap', overflow: 'hidden', textOverflow: 'ellipsis', color: '#555' };
 const actionBarStyle = {
-  display: 'flex',
-  alignItems: 'center',
-  gap: '8px',
-  padding: '8px 12px',
-  borderBottom: '2px solid #eee',
-  background: '#fcfcfc',
-  position: 'sticky',
-  top: 0,
-  zIndex: 1
+  display: 'flex', gap: '8px', padding: '8px 12px', borderBottom: '1px solid #eee',
+  background: '#fff', position: 'sticky', top: '40px', zIndex: 1
 };
-
-const smallBtnStyle = {
-  padding: '2px 8px',
-  fontSize: '11px',
-  borderRadius: '4px',
-  border: '1px solid #ddd',
-  background: '#fff',
-  cursor: 'pointer',
-  color: '#328547', // VisuaMiTRa green
-  fontWeight: '600',
-  transition: 'all 0.2s'
-};
+const optionStyle = { display: 'flex', alignItems: 'center', padding: '8px 12px', cursor: 'pointer', borderBottom: '1px solid #f9f9f9' };
+const checkboxStyle = { marginRight: '10px', cursor: 'pointer', accentColor: '#328547' };
+const sampleNameStyle = { fontSize: '12px', color: '#555' };
+const smallBtnStyle = { padding: '2px 8px', fontSize: '11px', borderRadius: '4px', border: '1px solid #ddd', background: '#fff', cursor: 'pointer', color: '#328547', fontWeight: '600' };

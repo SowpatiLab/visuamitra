@@ -3,6 +3,8 @@ import React, { useState } from "react";
 export default function MethylationPlot({
   meth1,
   meth2,
+  bgWidth1,
+  bgWidth2,
   alleleLen1 = 0,
   alleleLen2 = 0,
   scaleX,
@@ -17,21 +19,22 @@ export default function MethylationPlot({
   const [tooltip, setTooltip] = useState(null);
 
   /* CpG bars  */
-  const drawCpGs = (positions = [], levels = [], baseY, alleleKey) =>
-    positions.map((pos, i) => {
+  const drawCpGs = (positions = [], levels = [], baseY, alleleKey) => {
+    // 1. Create a "Zipped" and Filtered list to ensure coordinate integrity
+    // This removes -2 values before they ever hit the .map()
+    const validData = (positions || [])
+      .map((pos, i) => ({ pos, lvl: levels[i], originalIdx: i }))
+      .filter(item => item.lvl !== -2 && item.lvl !== null && !isNaN(item.lvl));
+
+    return validData.map(({ pos, lvl, originalIdx }) => {
       const x = scaleX(pos);
-      const lvl = levels[i];
-
-      if (lvl === -2) return null;
-
       const isAmbiguous = lvl === -1;
-      const id = `${alleleKey}-${i}`;
+      const id = `${alleleKey}-${originalIdx}`;
       const isHovered = tooltip?.id === id;
 
       return (
         <rect
           key={id}
-          // Magnification Logic
           x={isHovered ? x - 3 - MAGNIFY_SIZE / 2 : x - 3}
           y={isHovered ? baseY - MAGNIFY_SIZE / 2 : baseY}
           width={isHovered ? 6 + MAGNIFY_SIZE : 6}
@@ -41,33 +44,30 @@ export default function MethylationPlot({
           strokeWidth={isHovered ? 1.5 : 0.8}
           style={{ cursor: "pointer", transition: "all 0.1s ease-out" }}
           onMouseEnter={() => {
-            // 1. Local Tooltip State
+            const safeLvl = (typeof lvl === 'number' && !isNaN(lvl)) ? `${lvl}%` : "N/A";
             setTooltip({
               id,
               x,
               y: baseY,
-              text: isAmbiguous ? "Ambiguous" : `${lvl}%`,
+              text: isAmbiguous ? "Ambiguous" : safeLvl,
             });
-            // 2. Global Guide State (statelogic.js)
             if (onHoverX) onHoverX(x);
           }}
           onMouseLeave={() => {
-            // 1. Clear Local Tooltip
             setTooltip(null);
-            // 2. Clear Global Guide (statelogic.js)
             if (onHoverX) onHoverX(null);
           }}
         />
       );
     });
+  };
 
   const titleY = 18;
   const y1 = yStart + 20;
   const y2 = y1 + barHeight + rowGap;
   const startX = scaleX(0);
 
-  const bgWidth1 = Math.max(1, scaleX(alleleLen1) - startX);
-  const bgWidth2 = Math.max(1, scaleX(alleleLen2) - startX);
+  
 
   return (
     <>

@@ -1,4 +1,4 @@
-import React, { useState } from "react";
+import React, { useMemo, useState } from "react";
 import { useNavigate } from "react-router-dom";
 
 export default function VCFUploadPanel({ onLoad }) {
@@ -13,6 +13,25 @@ export default function VCFUploadPanel({ onLoad }) {
 
   const [availableSamples, setAvailableSamples] = useState([]);
   const [selectedSamples, setSelectedSamples] = useState([]);
+  const [searchTerm, setSearchTerm] = useState("");
+
+  // Filter Logic  
+  const filteredSamples = useMemo(() => {
+    return availableSamples.filter(name =>
+      name.toLowerCase().includes(searchTerm.toLowerCase())
+    );
+  }, [availableSamples, searchTerm])
+
+  const selectFiltered = () => {
+    const newSelection = Array.from(new Set([...selectedSamples, ...filteredSamples]));
+    setSelectedSamples(newSelection);
+  };
+
+  const clearFiltered = () => {
+    const newSelection = selectedSamples.filter(name => !filteredSamples.includes(name));
+    setSelectedSamples(newSelection);
+  };
+
 
   const handleFileChange = async (e) => {
     const selectedFiles = Array.from(e.target.files);
@@ -30,23 +49,27 @@ export default function VCFUploadPanel({ onLoad }) {
     setVcfFile(vcf);
     setTbiFile(tbi || null);
 
+    // Inside VCFUploadPanel.jsx -> handleFileChange
     if (vcf && tbi) {
       const formData = new FormData();
       formData.append("vcf", vcf);
-      formData.append("tbi", tbi);
-      formData.append("page_size", 1); // Only need the header/first row
+      // Note: Your backend get-vcf-metadata only takes 'vcf' 
+      // because it reads the header, which doesn't strictly need the .tbi
 
       try {
-        const res = await fetch("/api/vcf-to-tsv-cursor", { method: "POST", body: formData });
-        const text = await res.text();
-        const sampleLine = text.split("\n").find(l => l.startsWith("##SAMPLES"));
-        if (sampleLine) {
-          const names = sampleLine.split("\t")[1].split(",").map(n => n.trim());
-          setAvailableSamples(names);
-          setSelectedSamples([names[0]]); // Default to first sample
+        const res = await fetch("/api/get-vcf-metadata", { method: "POST", body: formData });
+        if (!res.ok) throw new Error("Could not fetch VCF metadata");
+        
+        const meta = await res.json();
+        
+        // meta.samples is the array of strings ['Sample1', 'Sample2', ...]
+        if (meta.samples) {
+          setAvailableSamples(meta.samples);
+          setSelectedSamples([meta.samples[0]]); // Default to first
         }
       } catch (err) {
-        console.error("Sample pre-scan failed:", err);
+        console.error("Metadata pre-scan failed:", err);
+        setError("Failed to read VCF samples. Check if file is valid.");
       }
     }
 
@@ -67,7 +90,6 @@ export default function VCFUploadPanel({ onLoad }) {
     setLoading(true);
     setError("");
 
-    // 1. Determine final selection (Default to ALL if empty)
     const finalSelectedNames = selectedSamples.length > 0 
       ? selectedSamples 
       : availableSamples;
@@ -183,35 +205,50 @@ export default function VCFUploadPanel({ onLoad }) {
         
         {availableSamples.length > 0 && (
           <div style={{ marginBottom: 16 }}>
-            <label style={{ fontSize: "14px", fontWeight: "600", color: "#333", display: "block", marginBottom: 6 }}>
-              Select Samples ({selectedSamples.length} selected):
-            </label>
-            <div style={{ 
-              maxHeight: "120px", 
-              overflowY: "auto", 
-              border: "1px solid #ccc", 
-              borderRadius: "6px",
-              padding: "8px",
-              background: "#fafafa" 
-            }}>
-              {availableSamples.map((name) => (
-                <label key={name} style={{ display: "flex", alignItems: "center", gap: "8px", padding: "4px 0", cursor: "pointer", fontSize: "13px" }}>
+            <div style={{ display: "flex", justifyContent: "space-between", alignItems: "center", marginBottom: 6 }}>
+              <label style={{ fontSize: "14px", fontWeight: "600", color: "#333" }}>
+                Samples ({selectedSamples.length} selected)
+              </label>
+              {/* 1. Global & Contextual Actions */}
+              <div style={{ display: "flex", gap: "12px" }}>
+                <button type="button" onClick={selectFiltered} style={styles.linkBtn}>
+                  {searchTerm ? 'Add Filtered' : 'Select All'}
+                </button>
+                {searchTerm && (
+                  <button type="button" onClick={clearFiltered} style={styles.linkBtn}>
+                    Clear Filtered
+                  </button>
+                )}
+                <button type="button" onClick={() => setSelectedSamples([])} style={{ ...styles.linkBtn, color: '#888' }}>
+                  Clear All
+                </button>
+              </div>
+            </div>
+
+            <input 
+              placeholder="Search samples..." 
+              style={styles.searchInput}
+              value={searchTerm}
+              onChange={(e) => setSearchTerm(e.target.value)}
+            />
+
+            <div style={styles.sampleBox}>
+              {filteredSamples.map((name) => (
+                <label key={name} style={styles.sampleLabel}>
                   <input
                     type="checkbox"
                     checked={selectedSamples.includes(name)}
                     onChange={(e) => {
-                      if (e.target.checked) {
-                        setSelectedSamples([...selectedSamples, name]);
-                      } else {
-                        setSelectedSamples(selectedSamples.filter(s => s !== name));
-                      }
+                      const newSelection = e.target.checked 
+                        ? [...selectedSamples, name]
+                        : selectedSamples.filter(s => s !== name);
+                      setSelectedSamples(newSelection);
                     }}
                   />
                   {name}
                 </label>
               ))}
             </div>
-            <small style={{ color: "#777", fontSize: "11px" }}>If left empty, all samples will be loaded.</small>
           </div>
         )}
         
@@ -236,11 +273,11 @@ const styles = {
     background: "linear-gradient(135deg, #f5f7fa, #e4e9f0)",
   },
   card: {
-    width: 550,
-    padding: 24,
+    width: 600,
+    padding: 30,
     borderRadius: 12,
     background: "#fff",
-    boxShadow: "0 10px 30px rgba(0,0,0,0.1)",
+    boxShadow: "0 30px 30px rgba(0,0,0,0.1)",
   },
   title: {
     margin: 0,
@@ -282,4 +319,40 @@ const styles = {
     cursor: "pointer",
     opacity: 1,
   },
+
+  searchInput: {
+    width: "100%",
+    padding: "8px",
+    marginBottom: "8px",
+    border: "1px solid #ddd",
+    borderRadius: "6px",
+    fontSize: "13px",
+    boxSizing: "border-box", // Important for padding
+    outline: "none"
+  },
+  sampleBox: {
+    maxHeight: "150px", 
+    overflowY: "auto", 
+    border: "1px solid #ccc", 
+    borderRadius: "6px",
+    padding: "8px",
+    background: "#fafafa" 
+  },
+  sampleLabel: {
+    display: "flex", 
+    alignItems: "center", 
+    gap: "8px", 
+    padding: "4px 0", 
+    cursor: "pointer", 
+    fontSize: "13px"
+  },
+  linkBtn: {
+    background: "none",
+    border: "none",
+    color: "#328547",
+    fontSize: "11px",
+    fontWeight: "bold",
+    cursor: "pointer",
+    padding: 0
+  }
 };

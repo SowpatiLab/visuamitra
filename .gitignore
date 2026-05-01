@@ -8,6 +8,8 @@ test_env/
 build/
 dist/
 *.egg-info/
+PKG-INFO
+SOURCES.txt
 
 # --- React / Frontend ---
 **/node_modules/

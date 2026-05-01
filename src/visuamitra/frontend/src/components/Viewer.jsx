@@ -4,7 +4,7 @@ import { useLocation } from "react-router-dom";
 // Logic & Utilities
 import { useVisuaMiTRaLogic } from "../hooks/StateLogic";
 import { parseDecompFromTSV } from "../utils/parseDecompInfo";
-import { generateMotifColors, getMethylationColorFactory } from "../utils/colorUtils";
+import { generateMotifColors, getCanonicalMotif, getMethylationColorFactory } from "../utils/colorUtils";
 
 // Extracted Sub-Components
 import HeaderSection from "./viewer/HeaderSection";
@@ -35,7 +35,7 @@ export default function Viewer() {
   const [viewMode, setViewMode] = useState("decomposition");
   const [zoomFactor, setZoomFactor] = useState(1);
   const [settings, setSettings] = useState({
-    palette: "Set3", font: "Arial", theme: "light", methPalette: "Viridis",
+    palette: "Observable10", font: "Arial", theme: "light", methPalette: "Viridis",
   });
 
   const [isDropDownOpen, setIsDropDownOpen] = useState(false);
@@ -48,23 +48,33 @@ export default function Viewer() {
     availableSamples = [],
     selectedSampleIndices = [],
      setSelectedSampleIndices,
-     paginatedIndices, currentPage, setCurrentPage, totalPages,
-     hoverX, setHoverX
+     paginatedIndices, currentPage, setCurrentPage, setCurrentPageIndex, totalPages,
+     hoverX, setHoverX,
+     isMetadataExpanded, toggleMetadataExpansion
   } = useVisuaMiTRaLogic(vcfFile, tbiFile, location.state);
 
-// --- 3. Derived Data for Current Row ---
+  const allLoadedRows = useMemo(() => {
+    if (!pages) return [];
+    return pages.flat().filter(Boolean);
+   }, [pages]);
+
+  const globalSelectedIdx = useMemo(() => {
+    let offset = 0;
+    for (let i = 0; i < currentPageIndex; i++) {
+      if (pages[i] && Array.isArray(pages[i])){
+        offset += (pages[i] || []).length;
+      }
+    }
+    return offset + selectedIdx;
+  }, [pages, currentPageIndex, selectedIdx]);
   
   // Define row and currentRows FIRST so the rest of the file can see them
   const currentRows = pages[currentPageIndex] || [];
   const row = currentRows[selectedIdx] || {};
 
-  console.log("5. VIEW MODE:", viewMode);
-  console.log("6. CURRENT SELECTED ROW:", row);
-  console.log("7. SELECTED SAMPLE INDICES:", selectedSampleIndices);
-
   if (row.samples && selectedSampleIndices.length > 0) {
       const firstId = selectedSampleIndices[0];
-      console.log("8. DATA FOR FIRST SELECTED SAMPLE:", row.samples[firstId]);
+      //console.log("8. DATA FOR FIRST SELECTED SAMPLE:", row.samples[firstId]);
   }
 
   // Reset scale to 100% whenever the data row changes
@@ -75,22 +85,35 @@ export default function Viewer() {
   }, [row.Chrom, row.Start, row.End, selectedIdx]);
 
   // Color Mapping: Scans all samples to ensure every motif has a color assigned
-  const colorMap = useMemo(() => {
+    const colorMap = useMemo(() => {
     const repeatingMotifSet = new Set();
-    if (row.samples) {
-      Object.values(row.samples).forEach((sample) => {
-        const { ref, a1, a2 } = parseDecompFromTSV(sample.Decomp_info, sample.Decomp_seq) || {};
-        [ref, a1, a2].forEach((d) => {
-          if (d?.motifs) {
-            d.motifs.forEach((motif, i) => { 
-              if (d.copies?.[i] >= 1) repeatingMotifSet.add(motif); 
+    
+    if (row && row.samples && selectedSampleIndices.length > 0) {
+      selectedSampleIndices.forEach((idx) => {
+        const sampleName = availableSamples[idx];
+        const sample = row.samples[sampleName];
+        
+        // 2. CRITICAL FIX: Skip if the sample hasn't loaded or is "NA"
+        if (!sample || typeof sample === 'string' || !sample.parsedDecomp) {
+          return;
+        }
+
+        // Check all tracks (Ref, A1, A2) in the pre-parsed array
+        sample.parsedDecomp.forEach((track) => {
+          if (track && Array.isArray(track.motifs)) {
+            track.motifs.forEach((motif, i) => {
+              if (motif && track.copies[i] > 1) {
+                const canon = getCanonicalMotif(motif.trim().toUpperCase(), row.Motif?.toUpperCase());
+                repeatingMotifSet.add(canon);
+              }
             });
           }
         });
       });
     }
-    return generateMotifColors([...repeatingMotifSet], settings.palette);
-  }, [row, settings.palette]);
+  const motifsArray = Array.from(repeatingMotifSet);
+  return generateMotifColors(motifsArray, settings.palette, row.Motif);
+}, [row, selectedSampleIndices, settings.palette]); // Add selectedSampleIndices as dependency
 
   const getMethylationColor = useMemo(() => 
     getMethylationColorFactory(settings.methPalette), 
@@ -106,36 +129,48 @@ export default function Viewer() {
 
   // --- 4. Enhanced Scaling Logic ---
   const alleleMax = useMemo(() => {
-    // Check the explicitly provided max
     let m = row.maxAlleleLen || 0;
     
-    // Safety check: Scan all samples in this row to find the true max
-    if (row.samples) {
-      Object.values(row.samples).forEach(s => {
-        // Parse the decomp info to get the actual sum of segments
-        const d = parseDecompFromTSV(s.Decomp_info, s.Decomp_seq);
-        if (d) {
-          const sums = [
-            (d.ref?.lengths || []).reduce((a, b) => a + b, 0),
-            (d.a1?.lengths || []).reduce((a, b) => a + b, 0),
-            (d.a2?.lengths || []).reduce((a, b) => a + b, 0)
-          ];
-          m = Math.max(m, ...sums);
+    if (row.samples && availableSamples.length > 0) {
+      selectedSampleIndices.forEach(idx => {
+        const sampleName = availableSamples[idx];
+        const s = row.samples[sampleName]; // Access by string ID
+        if (s?.parsedDecomp) {
+          s.parsedDecomp.forEach(track => {
+            if (track?.lengths) {
+              const sum = track.lengths.reduce((a, b) => a + b, 0);
+              m = Math.max(m, sum);
+            }
+          });
         }
       });
     }
-    return m || 100; // Fallback to 100 if data is missing
+    // Also check the global reference track
+    if (row.refTrack?.lengths) {
+      const refSum = row.refTrack.lengths.reduce((a, b) => a + b, 0);
+      m = Math.max(m, refSum);
+    }
+
+    return m || 100; 
   }, [row]);
 
   // Use a proper linear scale function
   const scaleX = (v) => LEFT_MARGIN + (v / alleleMax) * drawWidth;
 
   // 4. Render Logic
-  if (loading && pages.length === 0) return <div style={{ padding: 50 }}>Loading Genomic Data...</div>;
+  const isRowDataMissing = !row || !row.samples || Object.keys(row.samples).length === 0;
+
+
   if (!vcfFile) return <div style={{ padding: 50 }}>No VCF file provided. Please go back to home.</div>;
   //console.log("Current methThreshold state:", methThreshold);
   
   const FIXED_WIDTH = 1200;
+  console.log("CRITICAL DEBUG:", {
+    typeOfSelectedIdx: typeof selectedIdx,
+    typeOfGlobalIdx: typeof globalSelectedIdx,
+    isRowAnObject: typeof row === 'object' && row !== null,
+    rowKeys: row ? Object.keys(row) : []
+  });
 
   return (
     <div style={{
@@ -168,8 +203,26 @@ export default function Viewer() {
 
       <div style={{ zIndex: 10, width: "100%", display: "flex", justifyContent: "center", marginTop: "-10px" }}>
         <NavigationControls 
-          onPrev={goPrev} onNext={goNext} rows={currentRows} 
-          selectedIdx={selectedIdx} onSelect={setSelectedIdx} 
+          onPrev={goPrev} 
+          onNext={goNext} 
+          rows={allLoadedRows} 
+          selectedIdx={globalSelectedIdx} 
+          onSelect={(globalIdx) => {
+            let count = 0;
+            for (let i = 0; i < pages.length; i++) {
+
+              const currentPageArr = pages[i];
+              if (!currentPageArr) continue;
+              const pageLen = pages[i].length;
+              if (globalIdx < count + pageLen) {
+                // MUST update both to avoid "Initializing" state
+                setCurrentPageIndex(i);
+                setSelectedIdx(globalIdx - count); 
+                return;
+              }
+              count += pageLen;
+            }
+          }} 
           onOpenSettings={() => setShowSettings(true)}
         />
       </div>
@@ -198,6 +251,8 @@ export default function Viewer() {
               row={row}
               selectedIndices={selectedSampleIndices}
               availableSamples={availableSamples} 
+              isExpanded={isMetadataExpanded}
+              onToggle={toggleMetadataExpansion}
             />
         </div>
       </div>
@@ -217,6 +272,7 @@ export default function Viewer() {
         <div style={{ 
           width: `${BASE_WIDTH -90 }px`, // Ensures the green line is exactly canvas width
           marginBottom: "-20px",
+          paddingTop: "-20px",
           marginLeft: "-200px",
           display: "flex",
           flexDirection: "column" 
@@ -253,7 +309,7 @@ export default function Viewer() {
       <div style={{display: "flex", 
           width: "100%", 
           overflowX: "auto",
-          maxWidth: "1400px", // Limits expansion on ultra-wide screens
+          maxWidth: "1400px", // Limit expansion on wide screens
           margin: "0 auto",    // Centers the entire visualizer block
           justifyContent: "center", 
           gap: "24px", 
@@ -262,8 +318,9 @@ export default function Viewer() {
         <VisualizerCanvas 
           data={row}
           viewMode={viewMode}
-          selectedSamples={paginatedIndices}
+          selectedSamples={paginatedIndices.map(idx => availableSamples[idx])}
           availableSamples={availableSamples}
+          loading={loading}
           totalSvgWidth={totalSvgWidth}
           scaleX={scaleX}
           getMethylationColor={getMethylationColor}
@@ -276,6 +333,7 @@ export default function Viewer() {
 
         <Legend 
           colorMap={colorMap} 
+          refMotif={row?.Motif}
           methPalette={settings.methPalette} 
           hasDecomposition={viewMode === "decomposition"} 
           showMethylation={viewMode === "methylation"}
