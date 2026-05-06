@@ -30,8 +30,6 @@ export function parseTSV(text) {
     const safeParse = (str) => {
       if (!str || str === "NA") return [];
       try {
-        // 1. Replace single quotes with double quotes
-        // 2. Replace Python 'None' with JSON 'null'
         const jsonReady = str
           .replace(/'/g, '"')
           .replace(/\bNone\b/g, 'null'); 
@@ -46,7 +44,7 @@ export function parseTSV(text) {
     const meanMeth = safeParse(obj.Mean_meth);
     const rawDecomp = safeParse(obj.Decomp_info); // Parsed into [Ref, A1, A2]
 
-    // Add this right after you define "sequences" and "rawDecomp"
+    
     console.log(`Sample: ${obj.SampleID}, GT: ${obj.GT}`);
     console.log("Full Sequences Array:", sequences);
     console.log("Full Decomp Array:", rawDecomp);
@@ -72,7 +70,7 @@ export function parseTSV(text) {
         const mLen = canonical.length || 1;
         const copies = len / mLen;
 
-        // SQUASH LOGIC: Only merge if they are the EXACT same canonical motif
+        // Only merge if they are the EXACT same canonical motif
         if (finalMotifs.length > 0 && finalMotifs[finalMotifs.length - 1] === canonical) {
           finalLengths[finalLengths.length - 1] += len;
           finalCopies[finalCopies.length - 1] += copies;
@@ -91,12 +89,9 @@ export function parseTSV(text) {
       : [];
     
     const aLen1 = sequences[1]?.length || 0;
-    const aLen2 = sequences[2]?.length || 0;
+    const aLen2 = sequences[2]?.length || 0; 
 
-
-    
-
-    // 2. Build the sanitized sample object with PRE-PARSED data
+    // Build the sanitized sample object with PRE-PARSED data
     const sampleData = { 
       ...obj, 
       alleleLen1: aLen1, 
@@ -104,7 +99,6 @@ export function parseTSV(text) {
       sequences: sequences,
       meanMeth: meanMeth,
       SampleIdx: sIdx,
-      // Store the parsed array so Viewer doesn't have to call JSON.parse
       parsedDecomp: parsedDecomp 
     };
 
@@ -119,7 +113,7 @@ export function parseTSV(text) {
         ID: obj.ID || "NA",
         Motif: obj.Motif || "NA",
         samples: {},
-        refTrack: actualRefTrack, // This is the bar at the very top of your chart
+        refTrack: actualRefTrack, // This is the bar at the very top
         maxAlleleLen: Math.max(aLen1, aLen2)
       });
     }

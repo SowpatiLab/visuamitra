@@ -32,11 +32,9 @@ export default function VCFUploadPanel({ onLoad }) {
     setSelectedSamples(newSelection);
   };
 
-
   const handleFileChange = async (e) => {
     const selectedFiles = Array.from(e.target.files);
     setError("");
-
     const vcf = selectedFiles.find((f) => f.name.endsWith(".vcf.gz"));
     if (!vcf) {
       setError("Please select a .vcf.gz file");
@@ -45,15 +43,13 @@ export default function VCFUploadPanel({ onLoad }) {
 
     const expectedTbiName = `${vcf.name}.tbi`;
     const tbi = selectedFiles.find((f) => f.name === expectedTbiName);
-
     setVcfFile(vcf);
     setTbiFile(tbi || null);
 
-    // Inside VCFUploadPanel.jsx -> handleFileChange
     if (vcf && tbi) {
       const formData = new FormData();
       formData.append("vcf", vcf);
-      // Note: Your backend get-vcf-metadata only takes 'vcf' 
+      // Note: backend get-vcf-metadata only takes 'vcf' 
       // because it reads the header, which doesn't strictly need the .tbi
 
       try {
@@ -61,7 +57,6 @@ export default function VCFUploadPanel({ onLoad }) {
         if (!res.ok) throw new Error("Could not fetch VCF metadata");
         
         const meta = await res.json();
-        
         // meta.samples is the array of strings ['Sample1', 'Sample2', ...]
         if (meta.samples) {
           setAvailableSamples(meta.samples);
@@ -209,7 +204,7 @@ export default function VCFUploadPanel({ onLoad }) {
               <label style={{ fontSize: "14px", fontWeight: "600", color: "#333" }}>
                 Samples ({selectedSamples.length} selected)
               </label>
-              {/* 1. Global & Contextual Actions */}
+              {/* Global Actions */}
               <div style={{ display: "flex", gap: "12px" }}>
                 <button type="button" onClick={selectFiltered} style={styles.linkBtn}>
                   {searchTerm ? 'Add Filtered' : 'Select All'}

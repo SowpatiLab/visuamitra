@@ -20,7 +20,7 @@ export default function MethylationPlot({
 
   /* CpG bars  */
   const drawCpGs = (positions = [], levels = [], baseY, alleleKey) => {
-    // 1. Create a "Zipped" and Filtered list to ensure coordinate integrity
+    // Create a "Zipped" and Filtered list to ensure coordinate integrity
     // This removes -2 values before they ever hit the .map()
     const validData = (positions || [])
       .map((pos, i) => ({ pos, lvl: levels[i], originalIdx: i }))

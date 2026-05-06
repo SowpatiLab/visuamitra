@@ -1,4 +1,4 @@
-# --- Python ---
+# Python 
 __pycache__/
 *.py[cod]
 *$py.class
@@ -11,13 +11,15 @@ dist/
 PKG-INFO
 SOURCES.txt
 
-# --- React / Frontend ---
+# React 
 **/node_modules/
 **/build/
 .eslintcache
 npm-debug.log*
 
-# --- OS / IDE ---
+# OS/IDE 
 .DS_Store
 .vscode/
 .idea/
+
+/test_api.py

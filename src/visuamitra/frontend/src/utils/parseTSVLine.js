@@ -1,7 +1,7 @@
 export function parseTSVLine(line) {
   const fields = line.split("\t").map((v) => v.trim());
 
-  // List of TSV columns from your backend
+  // List of TSV columns from backend
   const [
     Chrom,
     Start,

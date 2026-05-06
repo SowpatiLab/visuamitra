@@ -4,35 +4,34 @@ import { parseTSV } from "../utils/parseTSV";
 const extractMetadataAndClean = (text, setMethThreshold, setAvailableSamples) => {
   if (!text) return "";
   
-  // split by any newline combo to be safe
+  // split by any newline type
   const lines = text.split(/\r?\n/);
   
   const filteredLines = lines.filter(line => {
     const trimmed = line.trim();
     if (!trimmed) return false;
     
-    // 1. Keep the main column header (starts with one #, not ##)
+    // Keep the main column header (starts with one #, not ##)
     if (trimmed.startsWith("#") && !trimmed.startsWith("##")) return true;
 
-    // 2. Extract specific metadata values
+    // Extract specific metadata values
     if (trimmed.startsWith("##METADATA")) {
       const parts = trimmed.split("\t");
       if (parts.length > 1) setMethThreshold(parts[1]);
       return false;   
     }
     
-    // 3. Drop other file-level headers (##)
+    // Drop other file-level headers (##)
     if (trimmed.startsWith("##")) return false;
-    
+  
     return true;
 });
-
   // Re-join with a standard Unix newline
   return filteredLines.join("\n");
 };
 
 export function useVisuaMiTRaLogic(vcfFile, tbiFile, initialState) {
-  // 1. STATE DEFINITIONS
+  // STATE DEFINITIONS
   const [loading, setLoading] = useState(false);
   const [error, setError] = useState("");
   const [pages, setPages] = useState([]);
@@ -42,8 +41,7 @@ export function useVisuaMiTRaLogic(vcfFile, tbiFile, initialState) {
   const [availableSamples, setAvailableSamples] = useState(initialState?.allSamples || []);
   const [isMetadataExpanded, setIsMetadataExpanded] = useState(false);
   const lastSamplesRef = useRef(JSON.stringify(initialState?.initialIndices || [0]));
-  
-  // CRITICAL: Initialize from initialState so the first fetch has the right indices
+  // Initialize from initialState so the first fetch has the right indices
   const [selectedSampleIndices, setSelectedSampleIndices] = useState(initialState?.initialIndices || [0]);
   
   const [chr, setChr] = useState(initialState?.chr || "");
@@ -74,7 +72,7 @@ export function useVisuaMiTRaLogic(vcfFile, tbiFile, initialState) {
     }
   }, [selectedSampleIndices.length, totalPages, currentPage]);
 
-   // We keep this stable so it doesn't trigger the effect unnecessarily
+   // doesn't trigger the effect unnecessarily
   const fetchPageTSV = useCallback(async (cursor) => {
     const formData = new FormData();
     formData.append("vcf", vcfFile);
@@ -87,7 +85,7 @@ export function useVisuaMiTRaLogic(vcfFile, tbiFile, initialState) {
     }
 
     if (cursor) {
-      // CRITICAL: When paging with a cursor, DO NOT send chr/start/end.
+      // When paging with a cursor, DO NOT send chr/start/end.
       // The cursor contains the global byte offset. Removing 'chr' 
       // allows the VCF reader to roll into the next chromosome.
       formData.append("last_cursor", cursor);
@@ -110,10 +108,8 @@ export function useVisuaMiTRaLogic(vcfFile, tbiFile, initialState) {
     return { text, nextCursor };
   }, [vcfFile, tbiFile, chr, start, endPos, pageSize, JSON.stringify(selectedSampleIndices)]);
 
-  // 3. THE DATA EFFECT (The "Engine")
-
+  // THE DATA EFFECT (The "Engine")
   useEffect(() => {
-
     console.log("ENGINE STATUS:", { 
     hasVcf: !!vcfFile, 
     pagesLength: pages.length, 
@@ -124,25 +120,25 @@ export function useVisuaMiTRaLogic(vcfFile, tbiFile, initialState) {
 
   const currentSamplesStr = JSON.stringify(selectedSampleIndices);
   const isSampleChange = currentSamplesStr !== lastSamplesRef.current;
-  
   const isInitialLoad = pages.length === 0;
   const isPageMissing = !pages[currentPageIndex];
   const isFilterReset = filterTrigger > 0;
-
   const shouldFetch = isInitialLoad || isFilterReset ||  filterTrigger > 0 || isSampleChange || isPageMissing;
-
-  
 
   lastSamplesRef.current = currentSamplesStr;
   if (!shouldFetch) return;
 
   let isMounted = true;
+  if (filterTrigger > 0 && currentPageIndex === 0) {
+    setPages([]);
+    setCursorHistory([null]);
+}
 
   (async () => {
     setLoading(true);
     try {
       // Use the cursor for the page we are currently looking at
-      const currentCursor = cursorHistory[currentPageIndex];      // it means the backend previously told us there is no more data.
+      const currentCursor = cursorHistory[currentPageIndex];      // it means the backend previously told- there is no more data.
       if (currentPageIndex > 0 && currentCursor === undefined) {
         console.log("No more data to fetch.");
         setLoading(false);
@@ -156,17 +152,21 @@ export function useVisuaMiTRaLogic(vcfFile, tbiFile, initialState) {
       const parsed = parseTSV(cleanText);
 
       if (parsed.length === 0) {
+        setPages(prev => {
+          const newPages = [...prev];
+          newPages[currentPageIndex] = []; // Mark this page as "checked/empty"
+          return newPages;
+        });
+        
+        setCursorHistory(prev => {
+          const next = [...prev];
+          next[currentPageIndex + 1] = nextCursor; // Set the next jump point
+          return next;
+        });
+
         setLoading(false);
-        // If we tried to go to a next page but found nothing, roll back
-        if (currentPageIndex > 0) {
-          setCurrentPageIndex(prev => prev - 1);
-          // Set this specific index to undefined so 'goNext' knows it's the end
-          setCursorHistory(prev => {
-            const next = [...prev];
-            next[currentPageIndex] = undefined; 
-            return next;
-          });
-        }
+        // If there's a next cursor, we can automatically advance 
+        // or let the user click "Next" again.
         return; 
       }
 
@@ -182,7 +182,7 @@ export function useVisuaMiTRaLogic(vcfFile, tbiFile, initialState) {
           });
           const combined = Array.from(new Set([...prev, ...newNames]));
           
-          // CRITICAL: If we only had a dummy index [0], and we just found real samples,
+          // If we only had a dummy index [0], and we just found real samples,
           // update selectedSampleIndices to show the first 10 real samples.
           if (selectedSampleIndices.length === 1 && selectedSampleIndices[0] === 0 && combined.length > 1) {
             setSelectedSampleIndices(combined.map((_, i) => i).slice(0, 10));
@@ -217,7 +217,7 @@ export function useVisuaMiTRaLogic(vcfFile, tbiFile, initialState) {
               }
             };
           } else {
-            // If it's a brand new locus, add it
+            // If it's a new locus, add it
             newPages[currentPageIndex].push(newRow);
             pageMap.set(locusKey, newPages[currentPageIndex].length - 1);
           }
@@ -252,24 +252,16 @@ const goNext = () => {
 
   const nextCursor = cursorHistory[currentPageIndex + 1];
   
-  if (nextCursor) {
+  // Only advance if a cursor exists (not null/undefined)
+  if (nextCursor !== undefined && nextCursor !== null) {
     setCurrentPageIndex(prev => prev + 1);
     setSelectedIdx(0);
+  } else if (nextCursor === null && !loading) {
+     // This handles the case where we need to fetch the next page for first time
+     setCurrentPageIndex(prev => prev + 1);
+     setSelectedIdx(0);
   } else {
-    console.log("Crossing chromosome boundaries...");
-
-    const lastValidCursor = cursorHistory[currentPageIndex] || null;
-    // We have reached the end of the specified region (e.g., end of chr1 results)
-    // Clear filters to allow the cursor to move to the next chromosome in the file
-    setChr(""); 
-    setStart("");
-    setEndPos("");
-    setPages([]);
-    setCurrentPageIndex(0);
-    setSelectedIdx(0);
-    setCursorHistory([lastValidCursor])
-    
-    setFilterTrigger(p => p + 1);
+    console.log("End of data reached.");
   }
 };
 
@@ -279,8 +271,6 @@ const goNext = () => {
   } else if (currentPageIndex > 0) {
     const prevPageIndex = currentPageIndex - 1;
     const prevPageData = pages[prevPageIndex] || [];
-    
-    // Update both states
     setCurrentPageIndex(prevPageIndex);
     setSelectedIdx(prevPageData.length > 0 ? prevPageData.length - 1 : 0);
   }
@@ -296,7 +286,7 @@ const goNext = () => {
     setCurrentPageIndex(0);
     setSelectedIdx(0);
     
-    // 2. Trigger the fetch engine
+    // Trigger the fetch engine
     setFilterTrigger(p => p + 1); },
     goNext, goPrev, methThreshold,
     availableSamples, selectedSampleIndices, setSelectedSampleIndices,

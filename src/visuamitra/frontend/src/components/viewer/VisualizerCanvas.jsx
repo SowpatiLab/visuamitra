@@ -25,15 +25,13 @@ export default function VisualizerCanvas({
   fullLen
 }) {
   const isDecomp = viewMode === "decomposition";
-  
   const SAMPLE_HEIGHT = isDecomp ? 100 : 130; 
   const REF_HEIGHT = isDecomp ? 60 : 0; 
   const HEADER_TOP = 40; 
-  const AXIS_HEIGHT = 60;
-  
+  const AXIS_HEIGHT = 60;  
   const TOTAL_HEIGHT = HEADER_TOP + REF_HEIGHT + (selectedSamples.length * SAMPLE_HEIGHT) + AXIS_HEIGHT;
 
-  // SAFE CHECK: If data doesn't exist yet, return a skeleton or null
+  // CHECK: If data doesn't exist yet, return a skeleton or null
   if (!data || !data.samples || Object.keys(data.samples).length === 0) {
     return (
       <div style={containerStyle}>
@@ -116,8 +114,6 @@ export default function VisualizerCanvas({
               </g>
             );
           }
-
-
           // Parse Decomposition
           const dA1 = sample.parsedDecomp?.[1]; 
           const dA2 = sample.parsedDecomp?.[2];
@@ -126,7 +122,6 @@ export default function VisualizerCanvas({
           const sumLengths = (arr) => (arr || []).reduce((a, b) => a + (Number(b) || 0), 0);
           const decompLen1 = sumLengths(dA1.lengths);
           const decompLen2 = sumLengths(dA2.lengths);
-
           const methTags = safeJson(sample.Meth_tag) || [];
 
           // Check the first position to decide if we need to subtract startOffset
@@ -135,7 +130,7 @@ export default function VisualizerCanvas({
 
           const m1 = { 
             pos: (methTags[0]?.[0] || []).flat().map(p => Number(p) - startOffset), 
-            // REMOVE the check that turns things into -1 here. Keep the raw value.
+            // REMOVE the check that turns things into -1, Keep the raw value.
             lvl: (methTags[0]?.[1] || []).flat().map(l => Number(l))    
           };
 
@@ -147,25 +142,23 @@ export default function VisualizerCanvas({
           const lastCpGPos1 = Math.max(...(m1.pos || [0]));
           const lastCpGPos2 = Math.max(...(m2.pos || [0]));
 
-          // We ensure Allele 2 ONLY looks at Allele 2 data (index [2] and alleleLen2)
+          // Ensuring Allele 2 ONLY looks at Allele 2 data (index [2] and alleleLen2)
           const visualLen1 = Math.max(Number(sample.alleleLen1 || 0), lastCpGPos1, decompLen1);
           const visualLen2 = Math.max(Number(sample.alleleLen2 || 0), lastCpGPos2, decompLen2);
 
-          // 1. Calculate pixel widths manually to verify independence
+          // Calculate pixel widths manually to verify independence
           const startX = scaleX(0);
           const width1 = Math.max(1, scaleX(visualLen1) - startX);
           const width2 = Math.max(1, scaleX(visualLen2) - startX);
 
-          console.log(`[Width Debug] ${sample.SampleID}: A1=${visualLen1} (${width1}px), A2=${visualLen2} (${width2}px)`);
+          console.log(`[Width Debug] ${sample.SampleID}: A1=${visualLen1} (${width1}px), A2=${visualLen2} (${width2}px)`);   
+          console.log(`--- Data Debug: ${sample.SampleID} ---`);
+          console.log("Positions (A1):", m1.pos);
+          console.log("Levels (A1):", m1.lvl);
+          console.log("Lengths match?", m1.pos.length === m1.lvl.length);
 
-          // Add this inside the selectedSamples.map loop
-console.log(`--- Data Debug: ${sample.SampleID} ---`);
-console.log("Positions (A1):", m1.pos);
-console.log("Levels (A1):", m1.lvl);
-console.log("Lengths match?", m1.pos.length === m1.lvl.length);
-
-// If lengths don't match, the 'N/A' is happening because 
-// there is no level at index 'i' for position 'pos'
+          // If lengths don't match, the 'N/A' is happening because 
+          // there is no level at index 'i' for position 'pos'
 
           return (
             <g key={sIdx} transform={`translate(0, ${yOffset})`}>

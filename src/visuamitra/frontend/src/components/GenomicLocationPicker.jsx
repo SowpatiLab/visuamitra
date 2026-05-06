@@ -38,11 +38,10 @@ export default function GenomicLocationPicker({
     return () => document.removeEventListener("mousedown", handler);
   }, []);
 
-  // Replace your existing 'filtered' logic with this defensive version:
   const filtered = (rows || [])
     .filter(Boolean) // Remove null/undefined entries from the array immediately
     .filter((r) => {
-      // Extra safety: Ensure r has the Chrom property before trying to use it
+      // Ensure r has the Chrom property before trying to use it
       if (!r || !r.Chrom) return false; 
       if (!query) return true;
       
@@ -50,18 +49,19 @@ export default function GenomicLocationPicker({
       return label.includes(query.toLowerCase());
     });
 
-  {/* Reason: By explicitly checking for valid string content and forcing the final output to a String primitive, we prevent React from seeing the raw Locus object during the render pass. */}
+  {/* Reason: By explicitly checking for valid string content and forcing the final output to a String primitive, 
+    we prevent React from seeing the raw Locus object during the render pass. */}
 
   const selectedRow = rows && selectedIdx != null ? rows[selectedIdx] : null;
 
-  // 1. Validate that this is a data row and not a header row or empty object
+  // Validate that this is a data row, not a header row/empty object
   const isValidData = 
     selectedRow && 
     typeof selectedRow === 'object' && 
     selectedRow.Chrom && 
     selectedRow.Chrom !== "Chrom";
 
-  // 2. Build the label only if data is valid; otherwise fallback to placeholder string
+  // Build the label only if data is valid; otherwise fallback to placeholder string
   const selectedLabel = isValidData
     ? `${selectedRow.Chrom}:${selectedRow.Start}-${selectedRow.End}`
     : "Select Locus...";
@@ -123,7 +123,7 @@ export default function GenomicLocationPicker({
 
           {filtered.map((r, fIdx) => {
             if (r.Chrom === "Chrom" || r.Start === "Start") return null;
-            // 2. Defensive findIndex
+            // Defensive findIndex
             const originalIdx = (rows || []).findIndex(original => 
               original && 
               original.Chrom === r.Chrom && 

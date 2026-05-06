@@ -2,7 +2,6 @@ import React, { useMemo } from "react";
 import { getMethylationColorFactory, getCanonicalMotif } from "../utils/colorUtils";
 
 export default function Legend({ colorMap, refMotif, hasDecomposition, hasAmbiguousMeth, methPalette, methThreshold, showMethylation }) {
-  // Collapse redundant motifs into a unique list
   const canonicalMotifs = useMemo(() => {
     if (!colorMap) return [];
     
@@ -42,7 +41,7 @@ export default function Legend({ colorMap, refMotif, hasDecomposition, hasAmbigu
         boxShadow: "0px 4px 6px rgba(0,0,0,0.1)"
       }}
     >
-      {/* 1. Motif Legend Section (Decomposition Tab) */}
+      {/* Motif Legend */}
       {hasDecomposition && (
         <div style={{ paddingBottom: "12px" }}>
           <div style={{ fontWeight: "600", marginBottom: "8px", fontSize: "13px", color: "#333" }}>
@@ -63,7 +62,7 @@ export default function Legend({ colorMap, refMotif, hasDecomposition, hasAmbigu
         </div>
       )}
 
-      {/* 2. Methylation Section (Methylation Tab) */}
+      {/* 2. Meth Legend */}
       {(showMethylation && methPalette) && (
         <div style={{ paddingTop: hasDecomposition ? "12px" : "0px" }}>
           <div style={{ fontWeight: "600", marginBottom: "8px", fontSize: "13px", color: "#333" }}>

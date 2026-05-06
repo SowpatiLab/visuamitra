@@ -23,8 +23,7 @@ def decode_cursor(cursor):
     except Exception:
         raise HTTPException(status_code=400, detail="Invalid cursor format")
 
-# New - Samples Endpoint
-
+# Samples Endpoint
 @router.post("/get-vcf-metadata")
 async def get_vcf_metadata(
     vcf: UploadFile = File(...),
@@ -57,14 +56,12 @@ async def vcf_to_tsv_cursor(
     end: Optional[int] = Form(None),
     samples: Optional[str] = Form(None),
 ):
-    
     sample_indices = [0]
     if samples:
         try:
             sample_indices = [int(i) for i in samples.split(",")]
         except ValueError:
             raise HTTPException(status_code=400, detail="Samples must be comma-separated integers")
-
 
     tmpdir = tempfile.mkdtemp(prefix="vcf_")
     vcf_path = f"{tmpdir}/{vcf.filename}"
@@ -99,7 +96,7 @@ async def vcf_to_tsv_cursor(
     fetch_start = 0 if start is None else start - 1
     fetch_end = end
 
-    # CRITICAL PREFLIGHT CHECK
+    # CHECK
     try:
         if chr:
             # MUST run before streaming
@@ -146,7 +143,7 @@ async def vcf_to_tsv_cursor(
     # Get a sorted list of chromosomes from the Tabix index
     all_contigs = list(tabix.contigs)
 
-    # NEW LOGIC: If we have a cursor, it is our absolute source of truth.
+    # If we have a cursor, it is our absolute source of truth.
     if last_cursor:
         start_chr, start_pos = cursor_chr, cursor_pos
     else:
@@ -162,21 +159,26 @@ async def vcf_to_tsv_cursor(
     next_cursor = None
     seen_header = False
     count = 0
+    header_line = "Chrom\tStart\tEnd\tID\tMotif\tMotif_size\tSampleID\tSampleIdx\tGT\tSequences\tRead_support\tDecomp_seq\tDecomp_info\tUnique_motifs\tMean_meth\tMeth_tag\n"
+    collected = [header_line]
 
     # MULTI-CHROMOSOME STREAMING LOOP 
-    # This loop allows the code to "jump" to the next chromosome if the current one ends
+    # This loop allows to jump to the next chr at the end of current chr
     for i in range(start_index, len(all_contigs)):
         current_iter_chr = all_contigs[i]
         
-        # Only use the specific 'start_pos' for the very first chromosome we check
-        # For subsequent chromosomes, we start at coordinate 0
-        iter_start = start_pos if current_iter_chr == start_chr else 0
+        if current_iter_chr == start_chr:
+            iter_start = start_pos
+        else:
+            iter_start = 0
         
         # If the user locked a specific 'chr', and we've finished it, stop looking at others
         if chr and current_iter_chr != chr:
             break
 
-        # Call your extraction script for the current chromosome
+        # DEBUG: verify the handoff in logs
+        print(f"[BACKEND] Handoff Check: {current_iter_chr} starting at {iter_start}")
+
         for raw_line in visuamitra_data_extract_stream(
             vcf_path, 
             chr=current_iter_chr, 
@@ -212,11 +214,11 @@ async def vcf_to_tsv_cursor(
                 if row_chr == cursor_chr:
                     if row_pos <= cursor_pos:
                         continue # Skip rows already seen
-                    else:
-                        cursor_chr = None # We moved past the position on this chr
+                    
                 else:
                     # We have moved to a NEW chromosome entirely
                     cursor_chr = None
+                    cursor_pos = None
 
             collected.append(raw_line)
             count += 1
@@ -224,9 +226,7 @@ async def vcf_to_tsv_cursor(
             # If we've reached the page limit, set the cursor and STOP EVERYTHING
             if count >= page_size:
                 next_cursor = encode_cursor(row_chr, row_pos)
-                break
-
-            
+                break           
 
         # Break the outer chromosome loop if we have enough data for a page
         if next_cursor:

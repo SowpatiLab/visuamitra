@@ -1,7 +1,7 @@
 import React from "react";
 
 export default function ZoomControls({ zoomFactor, setZoomFactor }) {
-  const ZOOM_STEP = 0.2;
+  const ZOOM_STEP = 0.1;
 
   const expandRange = () => {
     setZoomFactor((z) => Math.min(z + ZOOM_STEP, 10)); // cap at ×10

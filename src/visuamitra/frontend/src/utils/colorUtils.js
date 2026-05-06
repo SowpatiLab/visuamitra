@@ -11,7 +11,6 @@ function getCyclicVariants(motif) {
   for (let i = 0; i < n; i++) {
     variants.push(motif.slice(i) + motif.slice(0, i));
   }
-  
   return variants;
 }
 
@@ -20,11 +19,11 @@ export function getCanonicalMotif(motif, rMotif, allowFragments = false) {
   const upperM = motif.toUpperCase();
   const upperR = rMotif ? rMotif.toUpperCase() : null;
 
-  // NEW: Fragment logic for the parser
+  // Fragment logic for the parser
  // if (allowFragments && upperR && upperM.length < upperR.length) {
    // if ((upperR + upperR).includes(upperM)) return upperR;
   //}
-  
+
   if (upperR && upperR.length === upperM.length) {
     const variants = getCyclicVariants(upperM);
     if (variants.includes(upperR)) return upperR;
@@ -35,10 +34,10 @@ export function getCanonicalMotif(motif, rMotif, allowFragments = false) {
 }
 
 export function generateMotifColors(motifs, paletteName = "Observable10", refMotif = "") {
-  // 1. Safety Guard: If motifs isn't an array, return empty map immediately
+  // Guard: If motifs isn't an array, return empty map 
   if (!Array.isArray(motifs)) return {};
 
-  // 2. Canonicalize and filter out any nulls/undefined
+  // Canonicalize and filter out any nulls/undefined
   const uniqueCanonical = [...new Set(
     motifs
     .filter(m => !!m)
@@ -47,7 +46,7 @@ export function generateMotifColors(motifs, paletteName = "Observable10", refMot
   
   const paletteMap = {
     Tableau10: d3Chromatic.schemeTableau10,
-    Observable10: d3Chromatic.schemeObservable10, // Excellent color separation
+    Observable10: d3Chromatic.schemeObservable10, 
     Set1: d3Chromatic.schemeSet1,
     Set2: d3Chromatic.schemeSet2,
     Set3: d3Chromatic.schemeSet3,
@@ -60,19 +59,16 @@ export function generateMotifColors(motifs, paletteName = "Observable10", refMot
 
   // Fallback to Tableau10 if the passed paletteName doesn't exist
   const baseColors = paletteMap[paletteName] || d3Chromatic.schemeTableau10;
-
   const colorMap = {};
   const used = [];
 
-  // 3. IMPORTANT: Use uniqueCanonical for the loop, not 'motifs'
-  // 3. Loop through canonical motifs and apply saturation control
+  // uniqueCanonical for the loop, not 'motifs'
   uniqueCanonical.forEach((motif, i) => {
     let finalColor;
 
     if (i < baseColors.length) {
-      // Get the base color from the palette
+      // Get base color from the palette
       const col = baseColors[i];
-      
       const h = hsl(col);
       //h.s = 0.8; // Set saturation to 40% (0.0 to 1.0)
       //h.l = 0.6; // Optional: Adjust lightness too if needed

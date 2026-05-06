@@ -48,7 +48,7 @@ export function parseDecompFromTSV(decompInfoStr, decompSeq, refMotif) {
       return Number.isInteger(calc) ? calc : Number(calc.toFixed(1));
     });
 
-    // 2. We keep the original motifs for the UI, 
+    // We keep the original motifs for the UI, 
     // but the DecompositionPlot will use getCanonicalMotif(m) 
     // internally when it looks up the color in the colorMap.
     

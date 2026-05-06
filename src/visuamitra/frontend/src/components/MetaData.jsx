@@ -52,35 +52,34 @@ export default function MetadataDisplay({ row, selectedIndices = [], availableSa
           </thead>
           <tbody>
             {itemsToShow.map((idx) => {
-  const fullSampleName = availableSamples[idx];
-  
-  // Use this ONLY for the text in the <td>
-  const displayName = fullSampleName ? fullSampleName.split('-')[0] : "Unknown";
-
-  // Lookup using the full name which now matches the backend TSV exactly
-  const sample = 
-    row.samples[fullSampleName] ||                 
-    row.samples[idx] ||                        
-    row.samples[String(idx)] ||                
-    Object.values(row.samples).find(s => 
-      s && (
-        String(s.SampleID) === String(fullSampleName) || 
-        String(s.SampleIdx) === String(idx) ||
-        (fullSampleName && s.SampleID && fullSampleName.startsWith(s.SampleID.split('-')[0]))
-      )
-    );
-
-  if (!sample || typeof sample !== 'object') {
-    return (
-      <tr key={idx} style={trStyle}>
-        <td style={sampleNameTdStyle}>{displayName}</td>
-        <td colSpan="3" style={{ ...tdStyle, color: "#999", fontStyle: "italic" }}>
-          Metadata not linked (ID: {fullSampleName || idx})
-        </td>
-      </tr>
-    );
-  }
+              const fullSampleName = availableSamples[idx];
               
+              // Use this ONLY for the text in the <td>
+              const displayName = fullSampleName ? fullSampleName.split('-')[0] : "Unknown";
+
+              // Lookup using the full name which matches the backend TSV exactly
+              const sample = 
+                row.samples[fullSampleName] ||                 
+                row.samples[idx] ||                        
+                row.samples[String(idx)] ||                
+                Object.values(row.samples).find(s => 
+                  s && (
+                    String(s.SampleID) === String(fullSampleName) || 
+                    String(s.SampleIdx) === String(idx) ||
+                    (fullSampleName && s.SampleID && fullSampleName.startsWith(s.SampleID.split('-')[0]))
+                  )
+                );
+
+              if (!sample || typeof sample !== 'object') {
+                return (
+                  <tr key={idx} style={trStyle}>
+                    <td style={sampleNameTdStyle}>{displayName}</td>
+                    <td colSpan="3" style={{ ...tdStyle, color: "#999", fontStyle: "italic" }}>
+                      Metadata not linked (ID: {fullSampleName || idx})
+                    </td>
+                  </tr>
+                );
+              }              
 
               return (
                 <tr key={idx} style={trStyle}>

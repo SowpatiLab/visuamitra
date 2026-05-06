@@ -14,7 +14,7 @@ function getTickStep(min, max, pixelWidth, targetPx = 70) {
   const approxCount = Math.max(1, Math.floor(pixelWidth / targetPx));
   const raw = span / approxCount;
 
-  // choose a human-friendly multiple of 1,2,5,10…
+  // choose a multiple of 1,2,5,10…
   const pow10 = Math.pow(10, Math.floor(Math.log10(raw)));
   const candidates = [1,2,5,10,20,25,50,100].map((m) => m * pow10);
 

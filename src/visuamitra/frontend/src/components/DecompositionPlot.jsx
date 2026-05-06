@@ -139,7 +139,7 @@ export default function DecompositionPlot({
         </g>
       )}
 
-      {/* Tooltip implementation */}
+      {/* Tooltip */}
       {hover && (
         <g pointerEvents="none">
           <foreignObject x={hover.x - 75} y={hover.y - 30} width="150" height="60" style={{ overflow: "visible" }}>

@@ -1,4 +1,5 @@
 import React, { useEffect, useRef } from "react";
+// @ts-ignore
 import Ideogram from "ideogram";
 
 export default function ChromosomeIdeogram({
@@ -28,7 +29,7 @@ export default function ChromosomeIdeogram({
       chrWidth,
       showBandLabels: true,
       showChromosomeLabels: true,
-      // Use annotations instead of a brush/cursor
+      // annotations instead of a brush/cursor
       annotations: [
         {
           name: "TR Locus",

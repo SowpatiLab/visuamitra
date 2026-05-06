@@ -1,7 +1,7 @@
 import React from "react";
 import favicon from '../../assets/favicon.png';
 
-// --- Sub-Component 1: LogoPanel (Left-aligned) ---
+// Sub1- LogoPanel (Left-aligned) 
 const LogoPanel = () => (
   <div style={logoContainerStyle}>
     <img 
@@ -12,7 +12,7 @@ const LogoPanel = () => (
   </div>
 );
 
-// --- Sub-Component 2: FilterToolbar (Centered and Pushed Up) ---
+// Sub2: FilterToolbar (Centered and Pushed Up) 
 const FilterToolbar = ({ chr, setChr, start, setStart, endPos, setEndPos, onApply, loading }) => (
   <div style={filterToolbarStyle}>
     <span style={{ fontWeight: 600 }}>Genomic Region:</span>
@@ -25,7 +25,7 @@ const FilterToolbar = ({ chr, setChr, start, setStart, endPos, setEndPos, onAppl
   </div>
 );
 
-// --- Main Component: HeaderSection ---
+// Main- HeaderSection 
 export default function HeaderSection({ 
   chr, setChr, start, setStart, endPos, setEndPos, 
   onApply, loading, error 
@@ -33,12 +33,12 @@ export default function HeaderSection({
   return (
     <div style={parentContainer}>
       
-      {/* Top Row: Contains the Logo on the left */}
+      {/* Top Row: Contains the Logo to left */}
       <div style={topRowStyle}>
         <LogoPanel />
       </div>
 
-      {/* Toolbar Row: Centered and shifted up via negative margin */}
+      {/* Toolbar Row: Centered and shifted up- negative margin */}
       <div style={toolbarWrapperStyle}>
         <FilterToolbar 
           chr={chr} setChr={setChr} 
@@ -54,7 +54,7 @@ export default function HeaderSection({
   );
 }
 
-// --- Styles ---
+// Styles 
 
 const parentContainer = {
   width: "100%",
@@ -103,7 +103,7 @@ const filterToolbarStyle = {
   padding: "10px 20px", 
   border: "1px solid #ddd", 
   borderRadius: "12px", 
-  background: "#fff", // Pure white to pop against the background
+  background: "#fff", // Pure white to pop against bg
   boxShadow: "0px 6px 15px rgba(0,0,0,0.08)", 
   width: "fit-content"
 };

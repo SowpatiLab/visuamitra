@@ -829,7 +829,7 @@ def refine_decomposition(fseq, motif_size, seq_len):
     
     return final_merged, non_rep_percent
 
-# Newly added
+# --
 
 def extract_methcutoff(file):
     try:
@@ -844,7 +844,7 @@ def extract_methcutoff(file):
     except Exception as e:
         return f"Error: {str(e)}", []
 
-def visuamitra_data_extract_stream(file, chr=None, start_coord=None, end_coord=None, samples_index=None):
+def visuamitra_data_extract_stream(file, chr=None, start_coord=None, end_coord=None, samples_index=None, include_header=True):
     #print("!!! VERSION CHECK: [B-12] - April 27th !!!")
     # 1. Normalize Chromosome
     if chr and not str(chr).startswith('chr'):
@@ -853,20 +853,24 @@ def visuamitra_data_extract_stream(file, chr=None, start_coord=None, end_coord=N
     # DEBUG 1: Input Check
     print(f"\n[BACKEND DEBUG] Requesting: {chr}:{start_coord}-{end_coord}")
 
-    cutoff_info, total_samples = extract_methcutoff(file)
     if samples_index is None:
         samples_index = [0]
-    
-    yield f"##METADATA\t{cutoff_info}\n"
-    yield f"##SAMPLES\t{','.join(total_samples)}\n"
 
-    header = [
-        'Chrom', 'Start', 'End', 'ID', 'Motif', 'Motif_size',
-        'SampleID', 'SampleIdx', 'GT',
-        'Sequences', 'Read_support', 'Decomp_seq', 'Decomp_info',
-        'Unique_motifs', 'Mean_meth', 'Meth_tag'
-    ]
-    yield "\t".join(header) + "\n"
+    cutoff_info, total_samples = extract_methcutoff(file)
+
+    if include_header:        
+        yield f"##METADATA\t{cutoff_info}\n"
+        yield f"##SAMPLES\t{','.join(total_samples)}\n"
+
+        header = [
+            'Chrom', 'Start', 'End', 'ID', 'Motif', 'Motif_size',
+            'SampleID', 'SampleIdx', 'GT',
+            'Sequences', 'Read_support', 'Decomp_seq', 'Decomp_info',
+            'Unique_motifs', 'Mean_meth', 'Meth_tag'
+        ]
+        yield "\t".join(header) + "\n"
+    else:
+        _, total_samples = extract_methcutoff(file)
 
     vcf_obj = pysam.TabixFile(file)
     row_yielded_count = 0 # Initialized here to avoid NameError
@@ -918,7 +922,7 @@ def visuamitra_data_extract_stream(file, chr=None, start_coord=None, end_coord=N
 
                 if not valid_indices: continue
 
-                # This is where the crash usually happens
+                # crash?
                 SAMPLE_dict = sample_collector(sample_fields, valid_indices, ALT, MOTIF_DECOMP, REF_DECOMP, REF, MOTIF_SIZE, MOTIF)
 
                 for s_idx in valid_indices:
@@ -926,7 +930,6 @@ def visuamitra_data_extract_stream(file, chr=None, start_coord=None, end_coord=N
                     if data is None: continue
                     
                     s_name_full = total_samples[s_idx] if s_idx < len(total_samples) else f"S{s_idx}"
-                    # Clean name for frontend matching
                     s_name_clean = s_name_full
 
                     values = [
@@ -968,7 +971,7 @@ def sample_collector(sample_fields, sample_index, ALT, MOTIF_DECOMP, REF_DECOMP,
             SAMPLE_dict[each_sidx] = ['./.', 'NA', 'NA', 'NA', 'NA', 'NA', 'NA', 'NA']
             continue
             
-        # 1. Extract Genotype Indices
+        # Extract Genotype Indices
         sep = '/' if '/' in gt_value else '|'
         try:
             gt_indices = [int(i) for i in gt_value.split(sep) if i != '.']
@@ -978,18 +981,18 @@ def sample_collector(sample_fields, sample_index, ALT, MOTIF_DECOMP, REF_DECOMP,
         except ValueError:
             v1, v2 = 0, 0
         
-        # 2. Extract Sequences
+        # Extract Sequences
         alt1 = REF if v1 == 0 else (ALT[v1 - 1] if (v1 - 1) < len(ALT) else REF)
         alt2 = REF if v2 == 0 else (ALT[v2 - 1] if (v2 - 1) < len(ALT) else REF)
 
-        # 3. Pull Metadata Tags
+        # Pull Metadata Tags
         MM = [float(i) if i != '.' else 0.0 for i in SAMPLE[8].split(',')] if len(SAMPLE) > 8 else 'NA'
         MV = SAMPLE[11].split(',') if len(SAMPLE) > 11 else []
         SD = [int(i) if i != '.' else 0 for i in SAMPLE[4].split(',')] if len(SAMPLE) > 4 else []
         DS_raw = SAMPLE[10].split(',') if len(SAMPLE) > 10 else ['.', '.']
         CREATE_DECOMP = ('.' in DS_raw) and MOTIF_DECOMP
 
-        # 4. Handle Decomposition (Handles 0/3, 1/1, etc.)
+        # 4. Handle Decomposition
         tmp_DS = []
         # We use a counter to pull from the VCF tags only when we hit an ALT allele
         alt_tag_index = 0 
@@ -1010,16 +1013,15 @@ def sample_collector(sample_fields, sample_index, ALT, MOTIF_DECOMP, REF_DECOMP,
                     alt_tag_index += 1
         DS = tmp_DS
     
-        complete_seqs = [REF, alt1, alt2]
+        complete_seqs = [REF, alt1, alt2]   
         
-        # 5. Decode Methylation (Uses global cg_pos and decode64_dict)
+        # Decode Methylation (Uses global cg_pos and decode64_dict)
         if len(SAMPLE) > 11 and SAMPLE[11] != '.,.':
             decoded_MV = []
             alt_tag_index = 0
             for idx, val in enumerate([v1, v2]):
                 if val == 0:
-                    # For Reference, we typically have no methylation data in the VCF tags
-                    # You can leave it empty or fetch a default
+                    # Can leave it empty or fetch a default- For Ref, we generally have no meth data in VCF tags
                     decoded_MV.append([cg_pos(REF), []])
                 else:
                     # Map the tag to the ALT allele

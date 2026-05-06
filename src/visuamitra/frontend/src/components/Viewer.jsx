@@ -1,18 +1,15 @@
 import React, { useState, useMemo } from "react";
 import { useLocation } from "react-router-dom";
 
-// Logic & Utilities
 import { useVisuaMiTRaLogic } from "../hooks/StateLogic";
 import { parseDecompFromTSV } from "../utils/parseDecompInfo";
 import { generateMotifColors, getCanonicalMotif, getMethylationColorFactory } from "../utils/colorUtils";
 
-// Extracted Sub-Components
 import HeaderSection from "./viewer/HeaderSection";
 import NavigationControls from "./viewer/NavigationControls";
 import VisualizerCanvas from "./viewer/VisualizerCanvas";
 import ZoomControls from "./viewer/ZoomControls";
 
-// Existing Components
 import MetadataDisplay from "./MetaData";
 import ChromosomeIdeogram from "./ChromosomeIdeogram";
 import SettingsPanel from "./SettingsPanel";
@@ -30,17 +27,16 @@ export default function Viewer() {
   const { vcfFile, tbiFile } = location.state || {};
   const { allSamples, initialIndices } = location.state || {};
 
-  // 1. Settings & UI State
+  // Settings & UI State
   const [showSettings, setShowSettings] = useState(false);
   const [viewMode, setViewMode] = useState("decomposition");
   const [zoomFactor, setZoomFactor] = useState(1);
   const [settings, setSettings] = useState({
     palette: "Observable10", font: "Arial", theme: "light", methPalette: "Viridis",
   });
-
   const [isDropDownOpen, setIsDropDownOpen] = useState(false);
   
-  // 2. Custom Hook for Data & Pagination
+  // Custom Hook for Data & Pagination
   const {
     loading, error, pages, currentPageIndex, selectedIdx,
     chr, setChr, start, setStart, endPos, setEndPos,
@@ -68,7 +64,6 @@ export default function Viewer() {
     return offset + selectedIdx;
   }, [pages, currentPageIndex, selectedIdx]);
   
-  // Define row and currentRows FIRST so the rest of the file can see them
   const currentRows = pages[currentPageIndex] || [];
   const row = currentRows[selectedIdx] || {};
 
@@ -77,14 +72,14 @@ export default function Viewer() {
       //console.log("8. DATA FOR FIRST SELECTED SAMPLE:", row.samples[firstId]);
   }
 
-  // Reset scale to 100% whenever the data row changes
+  // Reset scale to 100% whenever data row changes
   React.useEffect(() => {
     if (row.Chrom && row.Chrom) {
       setZoomFactor(1); 
     }
   }, [row.Chrom, row.Start, row.End, selectedIdx]);
 
-  // Color Mapping: Scans all samples to ensure every motif has a color assigned
+  // Scans all samples to ensure every motif has a color assigned
     const colorMap = useMemo(() => {
     const repeatingMotifSet = new Set();
     
@@ -93,7 +88,7 @@ export default function Viewer() {
         const sampleName = availableSamples[idx];
         const sample = row.samples[sampleName];
         
-        // 2. CRITICAL FIX: Skip if the sample hasn't loaded or is "NA"
+        // Skip if the sample hasn't loaded or is "NA"
         if (!sample || typeof sample === 'string' || !sample.parsedDecomp) {
           return;
         }
@@ -120,14 +115,14 @@ export default function Viewer() {
     [settings.methPalette]
   );
 
-  // Layout Constants (Must be defined BEFORE scaleX)
+  // Layout Constants 
   const LEFT_MARGIN = 140;
   const RIGHT_MARGIN = 30;
   const BASE_WIDTH = 1200;
   const drawWidth = (BASE_WIDTH - LEFT_MARGIN - RIGHT_MARGIN) * zoomFactor;
   const totalSvgWidth = drawWidth + LEFT_MARGIN + RIGHT_MARGIN;
 
-  // --- 4. Enhanced Scaling Logic ---
+  // Scaling Logic 
   const alleleMax = useMemo(() => {
     let m = row.maxAlleleLen || 0;
     
@@ -154,12 +149,11 @@ export default function Viewer() {
     return m || 100; 
   }, [row]);
 
-  // Use a proper linear scale function
+  // proper linear scale function
   const scaleX = (v) => LEFT_MARGIN + (v / alleleMax) * drawWidth;
 
-  // 4. Render Logic
+  // Render Logic
   const isRowDataMissing = !row || !row.samples || Object.keys(row.samples).length === 0;
-
 
   if (!vcfFile) return <div style={{ padding: 50 }}>No VCF file provided. Please go back to home.</div>;
   //console.log("Current methThreshold state:", methThreshold);
@@ -188,7 +182,6 @@ export default function Viewer() {
         />
       )}
 
-      {/* Header now receives the onOpenSettings prop */}
       <HeaderSection 
         chr={chr} 
         setChr={setChr} 
@@ -342,7 +335,7 @@ export default function Viewer() {
             selectedSampleIndices.some(idx => {
               const sampleName = availableSamples[idx];
               const sampleData = row.samples?.[sampleName];
-              // This checks if the string contains "-1" (the ambiguous marker)
+              // checks if the string contains "-1" (the ambiguous marker)
               return sampleData?.Meth_tag?.includes("-1");
             })
           }

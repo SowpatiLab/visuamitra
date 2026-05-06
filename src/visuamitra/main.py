@@ -20,7 +20,6 @@ app = FastAPI(
     title="Visuamitra Backend",
     version="0.1.0"
 )
-
 # Timing Middleware
 @app.middleware("http")
 async def timing_middleware(request: Request, call_next):
@@ -41,15 +40,14 @@ app.add_middleware(
     expose_headers=["X-Next-Cursor"], 
 )
 
-# Include your API routes
+# API routes
 app.include_router(router, prefix="/api")
 
-# --- FIXED: STATIC FILE SERVING LOGIC ---
-
-# 1. Determine where the React build files are located
+# STATIC FILE SERVING LOGIC
+# Determine where the React build files are located
 package_dir = Path(__file__).parent.resolve()
 
-# Match the folder name you actually used in src/visuamitra/
+# folder name used in src/visuamitra/
 frontend_build_dir = package_dir / "frontend" / "build"
 
 if frontend_build_dir.exists():
@@ -61,7 +59,6 @@ if frontend_build_dir.exists():
     
     @app.get("/{rest_of_path:path}")
     async def serve_frontend(rest_of_path: str):
-        # Let the API routes handle themselves
         if rest_of_path.startswith("api/"):
              return {"error": "API route not found"}
         
@@ -81,7 +78,6 @@ else:
         }
 
 # ENTRY POINT FOR PIP 
-
 def run_server():
     """Launcher for the visuamitra CLI command."""
     import uvicorn
