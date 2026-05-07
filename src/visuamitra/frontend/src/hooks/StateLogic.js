@@ -41,6 +41,7 @@ export function useVisuaMiTRaLogic(vcfFile, tbiFile, initialState) {
   const [availableSamples, setAvailableSamples] = useState(initialState?.allSamples || []);
   const [isMetadataExpanded, setIsMetadataExpanded] = useState(false);
   const lastSamplesRef = useRef(JSON.stringify(initialState?.initialIndices || [0]));
+  const lastPageRef = useRef(1);
   // Initialize from initialState so the first fetch has the right indices
   const [selectedSampleIndices, setSelectedSampleIndices] = useState(initialState?.initialIndices || [0]);
   
@@ -80,8 +81,8 @@ export function useVisuaMiTRaLogic(vcfFile, tbiFile, initialState) {
     formData.append("page_size", pageSize);
 
     // Send selected sample indices
-    if (selectedSampleIndices && selectedSampleIndices.length > 0) {
-      formData.append("samples", selectedSampleIndices.join(","));
+    if (paginatedIndices && paginatedIndices.length > 0) {
+      formData.append("samples", paginatedIndices.join(","));
     }
 
     if (cursor) {
@@ -106,7 +107,7 @@ export function useVisuaMiTRaLogic(vcfFile, tbiFile, initialState) {
     const text = await res.text();
     const nextCursor = res.headers.get("X-Next-Cursor");
     return { text, nextCursor };
-  }, [vcfFile, tbiFile, chr, start, endPos, pageSize, JSON.stringify(selectedSampleIndices)]);
+  }, [vcfFile, tbiFile, chr, start, endPos, pageSize, JSON.stringify(paginatedIndices)]);
 
   // THE DATA EFFECT (The "Engine")
   useEffect(() => {
@@ -119,13 +120,24 @@ export function useVisuaMiTRaLogic(vcfFile, tbiFile, initialState) {
   if (!vcfFile || !tbiFile) return;
 
   const currentSamplesStr = JSON.stringify(selectedSampleIndices);
+  const currentPaginatedStr = JSON.stringify(paginatedIndices); 
   const isSampleChange = currentSamplesStr !== lastSamplesRef.current;
+  const isPageChange = lastPageRef.current !== currentPage;
   const isInitialLoad = pages.length === 0;
   const isPageMissing = !pages[currentPageIndex];
   const isFilterReset = filterTrigger > 0;
-  const shouldFetch = isInitialLoad || isFilterReset ||  filterTrigger > 0 || isSampleChange || isPageMissing;
+  // Check if the current row actually contains data for the samples we want to see
+  const currentRow = pages[currentPageIndex]?.[selectedIdx];
+  const isDataMissingForCurrentSamples = paginatedIndices.some(idx => {
+    const name = availableSamples[idx];
+    return !currentRow?.samples?.[name];
+  });
+
+  const shouldFetch = isInitialLoad || isFilterReset ||  filterTrigger > 0 || isSampleChange || isPageMissing || isDataMissingForCurrentSamples;
 
   lastSamplesRef.current = currentSamplesStr;
+  lastPageRef.current = currentPage;
+  
   if (!shouldFetch) return;
 
   let isMounted = true;
@@ -133,12 +145,12 @@ export function useVisuaMiTRaLogic(vcfFile, tbiFile, initialState) {
     setPages([]);
     setCursorHistory([null]);
 }
-
+  
   (async () => {
     setLoading(true);
     try {
       // Use the cursor for the page we are currently looking at
-      const currentCursor = cursorHistory[currentPageIndex];      // it means the backend previously told- there is no more data.
+      const currentCursor = cursorHistory[currentPageIndex];      // it means backend previously told- there is no more data.
       if (currentPageIndex > 0 && currentCursor === undefined) {
         console.log("No more data to fetch.");
         setLoading(false);
@@ -239,7 +251,7 @@ export function useVisuaMiTRaLogic(vcfFile, tbiFile, initialState) {
   })();
 
   return () => { isMounted = false; };
-}, [filterTrigger, selectedSampleIndices, vcfFile, tbiFile, currentPageIndex, chr, start, endPos]);
+}, [filterTrigger, selectedSampleIndices, vcfFile, tbiFile, currentPageIndex, chr, start, endPos, currentPage]);
 
 
 const goNext = () => {

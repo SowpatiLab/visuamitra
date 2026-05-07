@@ -18,7 +18,14 @@ const formatValue = (val) => {
   return typeof parsed === 'number' ? parsed.toFixed(2) : parsed;
 };
 
-export default function MetadataDisplay({ row, selectedIndices = [], availableSamples = [], isExpanded, onToggle }) {
+export default function MetadataDisplay({
+   row, 
+   selectedIndices = [], 
+   availableSamples = [], 
+   isExpanded, 
+   onToggle, 
+   titleRef
+}) {
 
   // Safeguard: if data hasn't loaded yet
   if (!row || !row.samples) return null;
@@ -125,7 +132,7 @@ export default function MetadataDisplay({ row, selectedIndices = [], availableSa
           </div>
         )}
       </div>
-      <div style={headerStyle}>
+      <div style={headerStyle} ref={titleRef}>
         <div style={pillStyle}><strong>Locus ID:</strong> {locusID}</div>
         <div style={pillStyle}>
           <strong>Motif:</strong>{" "}
@@ -144,9 +151,7 @@ export default function MetadataDisplay({ row, selectedIndices = [], availableSa
     </div>
     
   );
-}
-
-// Styles 
+} 
 
 const buttonContainerStyle = {
   display: "flex",

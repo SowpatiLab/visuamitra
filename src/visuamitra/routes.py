@@ -6,6 +6,7 @@ from fastapi.responses import StreamingResponse
 import pysam
 from typing import Optional
 import base64
+import re
 
 from .visuamitra_script import visuamitra_data_extract_stream, extract_methcutoff
 
@@ -22,6 +23,11 @@ def decode_cursor(cursor):
         return c, int(p)
     except Exception:
         raise HTTPException(status_code=400, detail="Invalid cursor format")
+    
+def numerical_sort_key(s):
+    """Key function for numerical sorting (chr1, chr2, ... chr10)"""
+    return [int(text) if text.isdigit() else text.lower() 
+            for text in re.split('([0-9]+)', s)]
 
 # Samples Endpoint
 @router.post("/get-vcf-metadata")
@@ -140,10 +146,10 @@ async def vcf_to_tsv_cursor(
     if last_cursor:
         cursor_chr, cursor_pos = decode_cursor(last_cursor)
 
-    # Get a sorted list of chromosomes from the Tabix index
-    all_contigs = list(tabix.contigs)
+    # Get a sorted list of chrs from Tabix index
+    all_contigs = sorted(list(tabix.contigs), key=numerical_sort_key)
 
-    # If we have a cursor, it is our absolute source of truth.
+    # If we have a cursor, it is our absolute source of truth
     if last_cursor:
         start_chr, start_pos = cursor_chr, cursor_pos
     else:

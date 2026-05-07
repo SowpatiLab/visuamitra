@@ -1,4 +1,4 @@
-import React, { useState, useMemo } from "react";
+import React, { useState, useMemo, useRef } from "react";
 import { useLocation } from "react-router-dom";
 
 import { useVisuaMiTRaLogic } from "../hooks/StateLogic";
@@ -15,6 +15,7 @@ import ChromosomeIdeogram from "./ChromosomeIdeogram";
 import SettingsPanel from "./SettingsPanel";
 import Legend from "./Legend";
 import SamplePicker from "./SamplePicker";
+import DownloadManager from "./DownloadManager";
 
 // Helper for JSON parsing
 const safeJson = (s) => {
@@ -35,7 +36,12 @@ export default function Viewer() {
     palette: "Observable10", font: "Arial", theme: "light", methPalette: "Viridis",
   });
   const [isDropDownOpen, setIsDropDownOpen] = useState(false);
-  
+
+  const visualizerRef = useRef(null);
+  const legendRef = useRef(null);
+  const metadataRef = useRef(null);
+  const titleRef = useRef(null);
+
   // Custom Hook for Data & Pagination
   const {
     loading, error, pages, currentPageIndex, selectedIdx,
@@ -232,23 +238,28 @@ export default function Viewer() {
       </div>
 
       {/* WRAPPER TO PREVENT DRIFT */}
-      <div style={{ width: "100%", display: "flex", justifyContent: "center" }}>
-        <div style={{ 
-          width: `${BASE_WIDTH}px`, // 1200px
-          display: "flex", 
-          justifyContent: "flex-start", // Center the table within the 1200px block
-          marginBottom: "20px", 
-          boxSizing: "border-box" 
-        }}>
-          <MetadataDisplay 
+        <div style={{ width: "100%", display: "flex", justifyContent: "center" }}>
+          <div 
+            ref={metadataRef} 
+            style={{ 
+              width: `${BASE_WIDTH}px`, // 1200px
+              display: "flex", 
+              flexDirection: "column",   // Stacks pills and table vertically
+              alignItems: "center",       // Centers table horizontally
+              marginBottom: "20px", 
+              boxSizing: "border-box" 
+            }}
+          >
+            <MetadataDisplay 
+              titleRef={titleRef}
               row={row}
               selectedIndices={selectedSampleIndices}
               availableSamples={availableSamples} 
               isExpanded={isMetadataExpanded}
               onToggle={toggleMetadataExpansion}
             />
+          </div>
         </div>
-      </div>
 
       {/* PAGINATION CONTROLS: Only show if > 10 samples */}
         {totalPages > 1 && (
@@ -263,7 +274,7 @@ export default function Viewer() {
       {/* CONTROLS SECTION: Centered to screen, 1200px wide */}
       <div style={{ width: "100%", display: "flex", justifyContent: "center" }}>
         <div style={{ 
-          width: `${BASE_WIDTH -90 }px`, // Ensures the green line is exactly canvas width
+          width: `${BASE_WIDTH -90 }px`, // Ensures green line is exactly canvas width
           marginBottom: "-20px",
           paddingTop: "-20px",
           marginLeft: "-200px",
@@ -306,47 +317,93 @@ export default function Viewer() {
           margin: "0 auto",    // Centers the entire visualizer block
           justifyContent: "center", 
           gap: "24px", 
-          marginTop: 20
+          marginTop: 20,
+          overflow: "visible"
         }}>
-        <VisualizerCanvas 
-          data={row}
-          viewMode={viewMode}
-          selectedSamples={paginatedIndices.map(idx => availableSamples[idx])}
-          availableSamples={availableSamples}
-          loading={loading}
-          totalSvgWidth={totalSvgWidth}
-          scaleX={scaleX}
-          getMethylationColor={getMethylationColor}
-          colorMap={colorMap}
-          fullLen={alleleMax}
-          margins={{ left: LEFT_MARGIN, right: RIGHT_MARGIN }}
-          hoverX={hoverX}
-          onHoverX={setHoverX}
-        />
+        <div ref={visualizerRef}
+          style={{ 
+          width: `${BASE_WIDTH}px`, // Always keep the container 1200px
+          //overflowX: "auto",        // Only this area will scroll when zoomed
+          border: "1px solid #eee",
+          borderRadius: "10px",
+          background: "#fff",
+          flexShrink: 0
+        }}
+        >
+          <VisualizerCanvas 
+            data={row}
+            viewMode={viewMode}
+            selectedSamples={paginatedIndices.map(idx => availableSamples[idx])}
+            availableSamples={availableSamples}
+            loading={loading}
+            totalSvgWidth={totalSvgWidth}
+            scaleX={scaleX}
+            getMethylationColor={getMethylationColor}
+            colorMap={colorMap}
+            fullLen={alleleMax}
+            margins={{ left: LEFT_MARGIN, right: RIGHT_MARGIN }}
+            hoverX={hoverX}
+            onHoverX={setHoverX}
+          />
+        </div>
 
-        <Legend 
-          colorMap={colorMap} 
-          refMotif={row?.Motif}
-          methPalette={settings.methPalette} 
-          hasDecomposition={viewMode === "decomposition"} 
-          showMethylation={viewMode === "methylation"}
-          hasAmbiguousMeth={
-            viewMode === "methylation" && 
-            selectedSampleIndices.some(idx => {
-              const sampleName = availableSamples[idx];
-              const sampleData = row.samples?.[sampleName];
-              // checks if the string contains "-1" (the ambiguous marker)
-              return sampleData?.Meth_tag?.includes("-1");
-            })
-          }
-          methThreshold={methThreshold}
-        />
+        <div ref={legendRef} style={{ flexShrink: 0 }}>
+          <Legend 
+            colorMap={colorMap} 
+            refMotif={row?.Motif}
+            methPalette={settings.methPalette} 
+            hasDecomposition={viewMode === "decomposition"} 
+            showMethylation={viewMode === "methylation"}
+            hasAmbiguousMeth={
+              viewMode === "methylation" && 
+              selectedSampleIndices.some(idx => {
+                const sampleName = availableSamples[idx];
+                const sampleData = row.samples?.[sampleName];
+                // checks if the string contains "-1" (the ambiguous marker)
+                return sampleData?.Meth_tag?.includes("-1");
+              })
+            }
+            methThreshold={methThreshold}
+          />
+        </div>
       </div>
 
-      <ZoomControls zoomFactor={zoomFactor} setZoomFactor={setZoomFactor} />
+      
+      {/* FOOTER CONTROLS: Aligned to the Plot boundaries */}
+      <div style={{ 
+        width: "100%", 
+        display: "flex", 
+        justifyContent: "center", 
+        marginTop: "10px", 
+        paddingBottom: "40px"
+      }}>
+        <div style={{ 
+          width: `${BASE_WIDTH}px`, // Strictly 1200px to match the canvas
+          display: "flex", 
+          justifyContent: "space-between", // Pushes Zoom to left, Download to right
+          alignItems: "center",
+          boxSizing: "border-box"
+        }}>
+          
+          {/* Zoom stays on left */}
+          <ZoomControls zoomFactor={zoomFactor} setZoomFactor={setZoomFactor} />
+          
+          {/* Download on right */}
+          <DownloadManager 
+            visualizerRef={visualizerRef}
+            legendRef={legendRef}
+            metadataRef={metadataRef}
+            titleRef={titleRef}
+            viewMode={viewMode}
+            chrom={row.Chrom}
+            start={row.Start}
+          />
+        </div>
+      </div>
     </div>
   );
 }
+   
 
 const settingsButtonStyle = {
   position: "fixed", top: 20, right: 20, padding: "8px 16px",
