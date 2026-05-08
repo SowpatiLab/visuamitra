@@ -45,9 +45,9 @@ export function parseTSV(text) {
     const rawDecomp = safeParse(obj.Decomp_info); // Parsed into [Ref, A1, A2]
 
     
-    console.log(`Sample: ${obj.SampleID}, GT: ${obj.GT}`);
+    /*console.log(`Sample: ${obj.SampleID}, GT: ${obj.GT}`);
     console.log("Full Sequences Array:", sequences);
-    console.log("Full Decomp Array:", rawDecomp);
+    console.log("Full Decomp Array:", rawDecomp);*/
 
     const transformTrack = (arr, rMotif) => {
       // Check if arr exists and has the expected structure [motifs[], lengths[]]

@@ -165,12 +165,12 @@ export default function Viewer() {
   //console.log("Current methThreshold state:", methThreshold);
   
   const FIXED_WIDTH = 1200;
-  console.log("CRITICAL DEBUG:", {
+  /*console.log("CRITICAL DEBUG:", {
     typeOfSelectedIdx: typeof selectedIdx,
     typeOfGlobalIdx: typeof globalSelectedIdx,
     isRowAnObject: typeof row === 'object' && row !== null,
     rowKeys: row ? Object.keys(row) : []
-  });
+  });*/
 
   return (
     <div style={{
@@ -253,7 +253,7 @@ export default function Viewer() {
             <MetadataDisplay 
               titleRef={titleRef}
               row={row}
-              selectedIndices={selectedSampleIndices}
+              selectedIndices={paginatedIndices}
               availableSamples={availableSamples} 
               isExpanded={isMetadataExpanded}
               onToggle={toggleMetadataExpansion}
@@ -270,7 +270,6 @@ export default function Viewer() {
           </div>
         )}
       
-
       {/* CONTROLS SECTION: Centered to screen, 1200px wide */}
       <div style={{ width: "100%", display: "flex", justifyContent: "center" }}>
         <div style={{ 
@@ -299,7 +298,7 @@ export default function Viewer() {
             </div>
 
             {/* RIGHT SIDE: Sample Picker */}
-            <div style={{ paddingBottom: "5px" }}> {/* Slight offset to clear the line */}
+            <div style={{ paddingBottom: "4px" }}> 
               <SamplePicker 
                 availableSamples={availableSamples}
                 selectedIndices={selectedSampleIndices}
@@ -367,7 +366,6 @@ export default function Viewer() {
           />
         </div>
       </div>
-
       
       {/* FOOTER CONTROLS: Aligned to the Plot boundaries */}
       <div style={{ 
@@ -403,7 +401,6 @@ export default function Viewer() {
     </div>
   );
 }
-   
 
 const settingsButtonStyle = {
   position: "fixed", top: 20, right: 20, padding: "8px 16px",

@@ -151,12 +151,11 @@ export default function VisualizerCanvas({
           const width1 = Math.max(1, scaleX(visualLen1) - startX);
           const width2 = Math.max(1, scaleX(visualLen2) - startX);
 
-          console.log(`[Width Debug] ${sample.SampleID}: A1=${visualLen1} (${width1}px), A2=${visualLen2} (${width2}px)`);   
+          /*console.log(`[Width Debug] ${sample.SampleID}: A1=${visualLen1} (${width1}px), A2=${visualLen2} (${width2}px)`);   
           console.log(`--- Data Debug: ${sample.SampleID} ---`);
           console.log("Positions (A1):", m1.pos);
           console.log("Levels (A1):", m1.lvl);
-          console.log("Lengths match?", m1.pos.length === m1.lvl.length);
-
+          console.log("Lengths match?", m1.pos.length === m1.lvl.length);*/
           // If lengths don't match, the 'N/A' is happening because 
           // there is no level at index 'i' for position 'pos'
 

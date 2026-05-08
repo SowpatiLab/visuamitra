@@ -234,7 +234,7 @@ async def vcf_to_tsv_cursor(
                 next_cursor = encode_cursor(row_chr, row_pos)
                 break           
 
-        # Break the outer chromosome loop if we have enough data for a page
+        # Break outer chromosome loop if we have enough data for a page
         if next_cursor:
             break
 

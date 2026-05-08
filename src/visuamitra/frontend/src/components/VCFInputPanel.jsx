@@ -1,5 +1,6 @@
 import React, { useMemo, useState } from "react";
 import { useNavigate } from "react-router-dom";
+import favicon from '../assets/favicon.png'
 
 export default function VCFUploadPanel({ onLoad }) {
   const navigate = useNavigate();
@@ -130,7 +131,7 @@ export default function VCFUploadPanel({ onLoad }) {
         chr,
         start,
         endPos: end,
-        pageSize: 10,
+        pageSize: 100,
         lastCursor: res.headers.get("X-Next-Cursor") || null,
         tsvText: text,
         allSamples: availableSamples,
@@ -148,10 +149,13 @@ export default function VCFUploadPanel({ onLoad }) {
   return (
     <div style={styles.page}>
       <form onSubmit={handleSubmit} style={styles.card}>
-        <h2 style={styles.title}>VisuaMiTRa</h2>
+        <h2 style={styles.title}><img 
+              src={favicon} 
+              alt="Logo" 
+              style={styles.logoImageStyle} 
+            /></h2>
         <p style={styles.subtitle}>
-          Upload a compressed VCF file. The index (.tbi) must be in the same
-          folder.
+          Upload a compressed VCF file & TBI file
         </p>
 
         <input
@@ -261,93 +265,47 @@ export default function VCFUploadPanel({ onLoad }) {
 
 const styles = {
   page: {
-    minHeight: "100vh",
-    display: "flex",
-    alignItems: "center",
-    justifyContent: "center",
-    background: "linear-gradient(135deg, #f5f7fa, #e4e9f0)",
+    minHeight: "100vh", display: "flex", alignItems: "center", justifyContent: "center", background: "linear-gradient(135deg, #f5f7fa, #e4e9f0)",
   },
   card: {
-    width: 600,
-    padding: 30,
-    borderRadius: 12,
-    background: "#fff",
-    boxShadow: "0 30px 30px rgba(0,0,0,0.1)",
+    width: 600, padding: 30, borderRadius: 12, background: "#fff", boxShadow: "0 30px 30px rgba(0,0,0,0.1)",
   },
   title: {
-    margin: 0,
-    marginBottom: 6,
-    textAlign: "center",
+    margin: 0, marginBottom: 6, textAlign: "center",
   },
   subtitle: {
-    fontSize: 13,
-    color: "#555",
-    textAlign: "center",
-    marginBottom: 16,
+    fontSize: 13, color: "#555", textAlign: "center", marginBottom: 16,
   },
   fileInput: {
-    width: "100%",
-    marginBottom: 12,
+    width: "100%", marginBottom: 12,
   },
   status: {
-    fontSize: 13,
-    marginBottom: 10,
+    fontSize: 13, marginBottom: 10,
   },
   error: {
-    color: "#b00020",
-    fontSize: 13,
-    marginBottom: 10,
+    color: "#b00020", fontSize: 13, marginBottom: 10,
   },
   row: {
-    display: "flex",
-    gap: 8,
-    marginBottom: 14,
+    display: "flex", gap: 8, marginBottom: 14,
   },
   button: {
-    width: "100%",
-    padding: 10,
-    fontWeight: 600,
-    borderRadius: 8,
-    border: "none",
-    background: "#328547ff",
-    color: "#fff",
-    cursor: "pointer",
-    opacity: 1,
+    width: "100%", padding: 10, fontWeight: 600, borderRadius: 8, border: "none", background: "#328547ff", color: "#fff", cursor: "pointer", opacity: 1,
   },
-
   searchInput: {
-    width: "100%",
-    padding: "8px",
-    marginBottom: "8px",
-    border: "1px solid #ddd",
-    borderRadius: "6px",
-    fontSize: "13px",
-    boxSizing: "border-box", // Important for padding
-    outline: "none"
+    width: "100%", padding: "8px", marginBottom: "8px", border: "1px solid #ddd", borderRadius: "6px", fontSize: "13px", boxSizing: "border-box", outline: "none"
   },
   sampleBox: {
-    maxHeight: "150px", 
-    overflowY: "auto", 
-    border: "1px solid #ccc", 
-    borderRadius: "6px",
-    padding: "8px",
-    background: "#fafafa" 
+    maxHeight: "150px", overflowY: "auto", border: "1px solid #ccc", borderRadius: "6px", padding: "8px", background: "#fafafa" 
   },
   sampleLabel: {
-    display: "flex", 
-    alignItems: "center", 
-    gap: "8px", 
-    padding: "4px 0", 
-    cursor: "pointer", 
-    fontSize: "13px"
+    display: "flex", alignItems: "center", gap: "8px", padding: "4px 0", cursor: "pointer", fontSize: "13px"
   },
   linkBtn: {
-    background: "none",
-    border: "none",
-    color: "#328547",
-    fontSize: "11px",
-    fontWeight: "bold",
-    cursor: "pointer",
-    padding: 0
+    background: "none", border: "none", color: "#328547", fontSize: "11px", fontWeight: "bold", cursor: "pointer", padding: 0
+  },
+  logoImageStyle: {
+  width: "100px", height: "100px", borderRadius: 8,
+  objectFit: "contain"
   }
 };
+

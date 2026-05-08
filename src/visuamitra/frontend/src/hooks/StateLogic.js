@@ -111,12 +111,12 @@ export function useVisuaMiTRaLogic(vcfFile, tbiFile, initialState) {
 
   // THE DATA EFFECT (The "Engine")
   useEffect(() => {
-    console.log("ENGINE STATUS:", { 
+    /*console.log("ENGINE STATUS:", { 
     hasVcf: !!vcfFile, 
     pagesLength: pages.length, 
     trigger: filterTrigger, 
     isSampleChange: JSON.stringify(selectedSampleIndices) !== lastSamplesRef.current 
-  });
+  });*/
   if (!vcfFile || !tbiFile) return;
 
   const currentSamplesStr = JSON.stringify(selectedSampleIndices);
@@ -137,7 +137,7 @@ export function useVisuaMiTRaLogic(vcfFile, tbiFile, initialState) {
 
   lastSamplesRef.current = currentSamplesStr;
   lastPageRef.current = currentPage;
-  
+
   if (!shouldFetch) return;
 
   let isMounted = true;

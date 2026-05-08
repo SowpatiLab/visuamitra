@@ -39,6 +39,36 @@ export default function DownloadManager({
     setIsExporting(true);
 
     try {
+        // SVG SPECIFIC LOGIC 
+        if (options.format === "svg") {
+            // Clone SVG to not mess UI version
+            const svgClone = svgElement.cloneNode(true);
+            
+            // Add XML namespace so it opens correctly in Illustrator/Browsers
+            svgClone.setAttribute("xmlns", "http://www.w3.org/2000/svg");
+            svgClone.setAttribute("xmlns:xlink", "http://www.w3.org/1999/xlink");
+
+            // Serialize SVG to a string
+            const serializer = new XMLSerializer();
+            let source = serializer.serializeToString(svgClone);
+
+            // Add XML declaration
+            if (!source.startsWith('<?xml')) {
+                source = '<?xml version="1.0" standalone="no"?>\r\n' + source;
+            }
+
+            const url = "data:image/svg+xml;charset=utf-8," + encodeURIComponent(source);
+            
+            const link = document.createElement("a");
+            link.href = url;
+            link.download = `visuamitra_${chrom}_${start}_${viewMode}.svg`;
+            link.click();
+            
+            setIsExporting(false);
+            setIsOpen(false);
+            return; // Exit early
+        }
+
       const scale = 2;
       const padding = 40;
       
@@ -124,13 +154,13 @@ export default function DownloadManager({
     <div style={{ position: "relative" }} ref={menuRef}>
       <button onClick={() => setIsOpen(!isOpen)} style={mainButtonStyle}>
         <Download size={16} />
-        Download Export
+        Download
         <ChevronDown size={14} style={{ marginLeft: "4px", transform: isOpen ? "rotate(180deg)" : "none" }} />
       </button>
 
       {isOpen && (
         <div style={cardStyle}>
-          <h4 style={{ margin: "0 0 12px 0", fontSize: "14px", color: "#333" }}>Export Settings</h4>
+          <h4 style={{ margin: "0 0 12px 0", fontSize: "14px", color: "#333" }}>Download Options</h4>
           
           <div style={sectionLabelStyle}>INCLUDE CONTENT</div>
           <div style={optionGroupStyle}>
@@ -150,6 +180,12 @@ export default function DownloadManager({
 
           <div style={sectionLabelStyle}>FILE FORMAT</div>
           <div style={optionGroupStyle}>
+            <button 
+                style={options.format === "svg" ? activeSubStyle : inactiveSubStyle}
+                onClick={() => setOptions({...options, format: "svg"})}
+            >
+                SVG
+            </button>
             <button 
               style={options.format === "png" ? activeSubStyle : inactiveSubStyle}
               onClick={() => setOptions({...options, format: "png"})}

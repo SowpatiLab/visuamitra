@@ -92,7 +92,7 @@ export function generateMotifColors(motifs, paletteName = "Observable10", refMot
       used.push(candidate);
     }
   });
-  console.log("Final colormap keys:", Object.keys(colorMap));
+  //console.log("Final colormap keys:", Object.keys(colorMap));
   return colorMap;
 }
 
