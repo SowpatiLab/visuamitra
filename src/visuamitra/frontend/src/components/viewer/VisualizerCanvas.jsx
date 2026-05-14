@@ -115,13 +115,13 @@ export default function VisualizerCanvas({
             );
           }
           // Parse Decomposition
-          const dA1 = sample.parsedDecomp?.[1]; 
-          const dA2 = sample.parsedDecomp?.[2];
+          const dA1 = sample.parsedDecomp?.[1] || null; 
+          const dA2 = sample.parsedDecomp?.[2] || null;
 
           // Sum lengths using a helper to prevent NaN and leakage
-          const sumLengths = (arr) => (arr || []).reduce((a, b) => a + (Number(b) || 0), 0);
-          const decompLen1 = sumLengths(dA1.lengths);
-          const decompLen2 = sumLengths(dA2.lengths);
+          const sumLengths = (obj) => (obj && obj.lengths ? obj.lengths.reduce((a, b) => a + (Number(b) || 0), 0) : 0);
+          const decompLen1 = sumLengths(dA1);
+          const decompLen2 = sumLengths(dA2);
           const methTags = safeJson(sample.Meth_tag) || [];
 
           // Check the first position to decide if we need to subtract startOffset
@@ -171,8 +171,8 @@ export default function VisualizerCanvas({
                   decompA1={dA1} 
                   decompA2={dA2}
                   alleleLenRef={0}
-                  alleleLen1={sample.alleleLen1 || dA1?.totalLen || 0}
-                  alleleLen2={sample.alleleLen2 || dA2?.totalLen || 0}                
+                  alleleLen1={sample.alleleLen1 || dA1?.totalLen || decompLen1 || 0}
+                  alleleLen2={sample.alleleLen2 || dA2?.totalLen || decompLen2 || 0}                
                   scaleX={scaleX}
                   leftMargin={margins.left}
                   colorMap={colorMap}
