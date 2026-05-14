@@ -39,84 +39,82 @@ export default function DownloadManager({
     setIsExporting(true);
 
     try {
-        // SVG SPECIFIC LOGIC 
-        if (options.format === "svg") {
-            // Clone SVG to not mess UI version
-            const svgClone = svgElement.cloneNode(true);
-            
-            // Add XML namespace so it opens correctly in Illustrator/Browsers
-            svgClone.setAttribute("xmlns", "http://www.w3.org/2000/svg");
-            svgClone.setAttribute("xmlns:xlink", "http://www.w3.org/1999/xlink");
+      // Clone SVG, Inject Styles
+      const svgClone = svgElement.cloneNode(true);
+      const currentFont = window.getComputedStyle(visualizerRef.current).fontFamily;
+      
+      svgClone.style.fontFamily = currentFont;
+      svgClone.querySelectorAll("text").forEach(text => {
+          text.setAttribute("font-family", currentFont);
+          const computedStyle = window.getComputedStyle(text);
+          text.setAttribute("fill", computedStyle.fill);
+      });
 
-            // Serialize SVG to a string
-            const serializer = new XMLSerializer();
-            let source = serializer.serializeToString(svgClone);
+      // SVG specific logic 
+      if (options.format === "svg") {
+          svgClone.setAttribute("xmlns", "http://www.w3.org/2000/svg");
+          svgClone.setAttribute("xmlns:xlink", "http://www.w3.org/1999/xlink");
 
-            // Add XML declaration
-            if (!source.startsWith('<?xml')) {
-                source = '<?xml version="1.0" standalone="no"?>\r\n' + source;
-            }
+          const serializer = new XMLSerializer();
+          let source = serializer.serializeToString(svgClone); // Use the CLONE here
 
-            const url = "data:image/svg+xml;charset=utf-8," + encodeURIComponent(source);
-            
-            const link = document.createElement("a");
-            link.href = url;
-            link.download = `visuamitra_${chrom}_${start}_${viewMode}.svg`;
-            link.click();
-            
-            setIsExporting(false);
-            setIsOpen(false);
-            return; // Exit early
-        }
+          if (!source.startsWith('<?xml')) {
+              source = '<?xml version="1.0" standalone="no"?>\r\n' + source;
+          }
 
+          const url = "data:image/svg+xml;charset=utf-8," + encodeURIComponent(source);
+          const link = document.createElement("a");
+          link.href = url;
+          link.download = `visuamitra_${chrom}_${start}_${viewMode}.svg`;
+          link.click();
+          
+          setIsExporting(false);
+          setIsOpen(false);
+          return; 
+      }
+
+      // PNG/JPG logic
       const scale = 2;
       const padding = 40;
-      
-      // Get Rects
       const titleRect = titleRef.current?.getBoundingClientRect() || { width: 0, height: 0 };
       const svgRect = svgElement.getBoundingClientRect();
       const legendRect = options.includeLegend ? legendRef.current?.getBoundingClientRect() : { width: 0, height: 0 };
-      
-      // Logic for metadata: We only want the TABLE part if title is already included
       const metadataElement = metadataRef.current?.querySelector('table')?.parentElement || metadataRef.current;
       const metaRect = options.includeMetadata ? metadataElement?.getBoundingClientRect() : { width: 0, height: 0 };
 
       const canvas = document.createElement("canvas");
       const ctx = canvas.getContext("2d");
 
-      // Calculate total width
       let totalWidth = svgRect.width + padding * 2;
       if (options.includeLegend) totalWidth += legendRect.width + padding;
-      
       let totalHeight = titleRect.height + Math.max(svgRect.height, legendRect.height) + (padding * 2);
       if (options.includeMetadata) totalHeight += metaRect.height + padding;
       totalHeight += padding; 
 
       canvas.width = totalWidth * scale;
       canvas.height = totalHeight * scale;
-      
       ctx.scale(scale, scale);
       ctx.fillStyle = "#ffffff";
       ctx.fillRect(0, 0, totalWidth, totalHeight);
 
       let currentY = padding;      
 
-      // Draw Metadata Table (Optional)
+      // Metadata Table
       if (options.includeMetadata && metadataElement) {
         const metaCanvas = await html2canvas(metadataElement, { scale: scale, backgroundColor: "#ffffff" });
         ctx.drawImage(metaCanvas, padding, currentY, metaRect.width, metaRect.height);
         currentY += metaRect.height + padding;
       }
 
-      // DRAW TITLE (Pills)
+      // Title
       if (titleRef.current) {
         const titleCanvas = await html2canvas(titleRef.current, { scale: scale, backgroundColor: "#ffffff" });
         ctx.drawImage(titleCanvas, padding, currentY, titleRect.width, titleRect.height);
         currentY += titleRect.height + padding;
       }
 
-      // Draw SVG Plot
-      const svgData = new XMLSerializer().serializeToString(svgElement);
+      // Drwa styled SVG clone onto Canvas
+      const svgData = new XMLSerializer().serializeToString(svgClone); // Use the CLONE here
       const svgBlob = new Blob([svgData], { type: "image/svg+xml;charset=utf-8" });
       const url = URL.createObjectURL(svgBlob);
       const img = new Image();
@@ -130,10 +128,9 @@ export default function DownloadManager({
         };
       });
 
-      // Draw Legend (Optional)
+      // Legend
       if (options.includeLegend && legendRef.current) {
         const legCanvas = await html2canvas(legendRef.current, { scale: scale, backgroundColor: "#ffffff" });
-        // Align legend with the plot Y
         ctx.drawImage(legCanvas, svgRect.width + padding * 2, currentY, legendRect.width, legendRect.height);
       }
 
@@ -148,7 +145,7 @@ export default function DownloadManager({
     } finally {
       setIsExporting(false);
     }
-  };
+};
 
   return (
     <div style={{ position: "relative" }} ref={menuRef}>

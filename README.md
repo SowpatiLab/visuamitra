@@ -132,10 +132,13 @@ VisuaMiTRa provides a comprehensive and intuitive overview of tandem repeat comp
 
 ## Contacts
 
-Authors: Abhishek Kumar, Divya Tej Sowpati, Siddharth K
+Authors: Siddharth K, Abishek Kumar, Divya Tej Sowpati
 
-Email: 
+Email: Siddharth K - siddharthk at csirccmb dot org
 
-GitHub: [Link to Repository]
+Abishek Kumar S - abishekks at csirccmb dot org
+
+Divya Tej Sowpati - tej at csirccmb dot org
+
 
 

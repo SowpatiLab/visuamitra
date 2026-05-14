@@ -1018,19 +1018,31 @@ def sample_collector(sample_fields, sample_index, ALT, MOTIF_DECOMP, REF_DECOMP,
         # Decode Methylation (Uses global cg_pos and decode64_dict)
         if len(SAMPLE) > 11 and SAMPLE[11] != '.,.':
             decoded_MV = []
-            alt_tag_index = 0
+            # MV contains two comma separated strings (ex-'DADDADA,ADDDDGA')
+            # Split them into list of two tags
+            mv_tags = SAMPLE[11].split(',') 
+            
             for idx, val in enumerate([v1, v2]):
-                if val == 0:
-                    # Can leave it empty or fetch a default- For Ref, we generally have no meth data in VCF tags
-                    decoded_MV.append([cg_pos(REF), []])
+                # Get the sequence for this allele (Ref or Alt)
+                current_seq = complete_seqs[idx + 1]
+                cpg_positions = cg_pos(current_seq)
+                
+                # Assign the corresponding MV tag (index 0 for v1, index 1 for v2)
+                if idx < len(mv_tags):
+                    tag = mv_tags[idx]
+                    numerical_levels = [decode64_dict.get(i, 0.0) for i in tag]
+                    
+                    # Padding check: match position count to level count
+                    if len(numerical_levels) < len(cpg_positions):
+                        numerical_levels += [0.0] * (len(cpg_positions) - len(numerical_levels))
+                    # Trimming check: match position count if tag is too long
+                    elif len(numerical_levels) > len(cpg_positions):
+                        numerical_levels = numerical_levels[:len(cpg_positions)]
+                        
+                    decoded_MV.append([cpg_positions, numerical_levels])
                 else:
-                    # Map the tag to the ALT allele
-                    if alt_tag_index < len(MV):
-                        tag = MV[alt_tag_index]
-                        decoded_MV.append([cg_pos(complete_seqs[idx+1]), [decode64_dict[i] for i in tag]])
-                        alt_tag_index += 1
-                    else:
-                        decoded_MV.append([None, None])
+                    # Fallback if tag is missing but allele is ALT
+                    decoded_MV.append([cpg_positions, [0.0] * len(cpg_positions)])
         else:
             decoded_MV = 'NA'
         
