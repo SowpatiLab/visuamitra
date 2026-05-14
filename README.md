@@ -78,6 +78,16 @@ Reactive Visualization:  React parses the TSV stream into an interactive SVG can
 
 VisuaMiTRa provides a comprehensive and intuitive overview of tandem repeat complexity.
 
+
+#### 👥 Multi-Sample Comparative Analysis (New in v1.0.0)
+
+VisuaMiTRa now supports the simultaneous visualization of multiple samples from a merged VCF.
+
+  * Dynamic Selection: Choose which samples to display using a searchable dropdown menu.
+
+  * Synchronized Scaling: All selected samples are rendered on a shared genomic scale, allowing for direct visual comparison of allele lengths, motifs and methylation patterns across individuals or cohorts.
+
+
 #### 🧬 Integrated Motif & Methylation Mapping
 
 * Observe the direct relationship between structural variation and epigenetic signals. Methylation tracks are layered precisely over motif decomposition blocks to show allele-specific patterns.
@@ -104,6 +114,7 @@ VisuaMiTRa provides a comprehensive and intuitive overview of tandem repeat comp
 
 * Customize view with professional color palettes & scales(Viridis, Magma, Set3), and fonts.
 
+
 <div align="center">
   <img src="./assets/vis_hover_motif.png" alt="Workflow" width="600">
   <p><i>Fig 5: Repeat counts & Allele length </i></p>
@@ -125,6 +136,12 @@ VisuaMiTRa provides a comprehensive and intuitive overview of tandem repeat comp
     </tr>
   </table>
 </div>
+
+#### 💾 Download plots (New in v1.0.0)
+
+  * Publication-Ready SVGs: Download high-resolution vector graphics of the viewed genomic locations.
+
+  * Genomic plots could also be downloaded as PNG/JPGs.
 
 
  [↑ Back to Top](#visuamitra---a-tandem-repeat-visualizer)
