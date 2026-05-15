@@ -293,6 +293,7 @@ const goNext = () => {
     chr, setChr, start, setStart, endPos, setEndPos,
     setSelectedIdx, 
     applyRegionFilter: () => {
+    setError(null);
     setPages([]); 
     setCursorHistory([null]);
     setCurrentPageIndex(0);

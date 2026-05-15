@@ -1,60 +1,165 @@
-import React from "react";
+import React, { useState, useRef, useEffect } from "react";
 import favicon from '../../assets/favicon.png';
 
-// Sub1- LogoPanel (Left-aligned) 
+// Helper: Highlight text matching query 
+function highlightMatch(text, query) {
+  if (!query) return text;
+  const t = text.toLowerCase();
+  const q = query.toLowerCase();
+  const idx = t.indexOf(q);
+  if (idx === -1) return text;
+  return (
+    <>
+      {text.slice(0, idx)}
+      <strong style={{ color: "#328547" }}>{text.slice(idx, idx + query.length)}</strong>
+      {text.slice(idx + query.length)}
+    </>
+  );
+}
+
+// Sub1- LogoPanel
 const LogoPanel = () => (
   <div style={logoContainerStyle}>
-    <img 
-      src={favicon} 
-      alt="Logo" 
-      style={logoImageStyle} 
-    />
+    <img src={favicon} alt="Logo" style={logoImageStyle} />
   </div>
 );
 
-// Sub2: FilterToolbar (Centered and Pushed Up) 
-const FilterToolbar = ({ chr, setChr, start, setStart, endPos, setEndPos, onApply, loading }) => (
-  <div style={filterToolbarStyle}>
-    <span style={{ fontWeight: 600 }}>Genomic Region:</span>
-    <input placeholder="chr" value={chr} onChange={(e) => setChr(e.target.value)} style={inputStyle(80)} />
-    <input type="number" placeholder="start" value={start} onChange={(e) => setStart(e.target.value)} style={inputStyle(100)} />
-    <input type="number" placeholder="end" value={endPos} onChange={(e) => setEndPos(e.target.value)} style={inputStyle(100)} />
-    <button onClick={onApply} disabled={loading} style={applyButtonStyle}>
-      {loading ? "Applying..." : "Apply"}
-    </button>
-  </div>
-);
+// Sub2: FilterToolbar 
+const FilterToolbar = ({ 
+  chr, setChr, start, setStart, endPos, setEndPos, onApply, loading, rows, setError
+}) => {
+  const [open, setOpen] = useState(false);
+  const dropdownRef = useRef(null);
 
-// Main- HeaderSection 
+  // Close dropdown on outside click
+  useEffect(() => {
+    const handler = (e) => {
+      if (dropdownRef.current && !dropdownRef.current.contains(e.target)) setOpen(false);
+    };
+    document.addEventListener("mousedown", handler);
+    return () => document.removeEventListener("mousedown", handler);
+  }, []);
+
+  // Filter unique Chromosome names based on input
+  const suggestions = React.useMemo(() => {
+    const uniqueChroms = new Set();
+    (rows || []).forEach(r => {
+      if (r?.Chrom && r.Chrom !== "Chrom") {
+        uniqueChroms.add(r.Chrom);
+      }
+    });
+
+    return Array.from(uniqueChroms)
+      .filter(c => c.toLowerCase().includes(chr.toLowerCase()))
+      .sort((a, b) => a.localeCompare(b, undefined, { numeric: true })) 
+      .slice(0, 10);
+  }, [rows, chr]);
+
+  const handleSelect = (chromName) => {
+    setChr(chromName);
+    setStart(""); 
+    setEndPos("");
+    setOpen(false);
+    if (setError) setError(null);
+  };
+  return (
+    <div style={filterToolbarStyle}>
+      <span style={{ fontWeight: 600 }}>Genomic Region:</span>
+      
+      {/* Searchable Chromosome Container */}
+      <div ref={dropdownRef} style={{ position: "relative" }}>
+        <input 
+          placeholder="chr" 
+          value={chr} 
+          onChange={(e) => { setChr(e.target.value); 
+                            setOpen(true); 
+                            if (setError) setError(null); }} 
+          onFocus={() => setOpen(true)}
+          style={inputStyle(100)} 
+        />
+        
+        {open && suggestions.length > 0 && (
+          <div style={dropdownStyle}>
+            {suggestions.map((chromName, i) => (
+              <div 
+                key={i} 
+                onClick={() => handleSelect(chromName)}
+                style={itemStyle}
+                onMouseEnter={(e) => e.target.style.background = "#f0fbfd"}
+                onMouseLeave={(e) => e.target.style.background = "transparent"}
+              >
+                {highlightMatch(chromName, chr)} 
+              </div>
+            ))}
+          </div>
+        )}
+      </div>
+
+      <input 
+        type="number" placeholder="start" value={start} 
+        onChange={(e) => { setStart(e.target.value); if (setError) setError(null); }} 
+        style={inputStyle(100)} 
+      />
+      <input 
+        type="number" placeholder="end" value={endPos} 
+        onChange={(e) => { setEndPos(e.target.value); if (setError) setError(null); }} 
+        style={inputStyle(100)} 
+      />
+      
+      <button onClick={onApply} disabled={loading} style={applyButtonStyle}>
+        {loading ? "Applying..." : "Apply"}
+      </button>
+    </div>
+  );
+};
+
+// Main Export
 export default function HeaderSection({ 
   chr, setChr, start, setStart, endPos, setEndPos, 
-  onApply, loading, error 
+  onApply, loading, error, rows, setError
 }) {
   return (
     <div style={parentContainer}>
-      
-      {/* Top Row: Contains the Logo to left */}
-      <div style={topRowStyle}>
-        <LogoPanel />
-      </div>
-
-      {/* Toolbar Row: Centered and shifted up- negative margin */}
+      <div style={topRowStyle}><LogoPanel /></div>
       <div style={toolbarWrapperStyle}>
         <FilterToolbar 
           chr={chr} setChr={setChr} 
           start={start} setStart={setStart} 
           endPos={endPos} setEndPos={setEndPos} 
           onApply={onApply} 
-          loading={loading} 
+          loading={loading}
+          rows={rows} 
+          setError={setError}
         />
       </div>
-      
       {error && <div style={errorTextStyle}>{error}</div>}
     </div>
   );
 }
 
 // Styles 
+const dropdownStyle = {
+  position: "absolute",
+  top: "110%",
+  left: 0,
+  width: "120px",
+  maxHeight: "200px",
+  overflowY: "auto",
+  background: "#fff",
+  border: "1px solid #ccc",
+  borderRadius: "8px",
+  boxShadow: "0 4px 12px rgba(0,0,0,0.15)",
+  zIndex: 100,
+  padding: "4px 0"
+};
+
+const itemStyle = {
+  padding: "8px 12px",
+  cursor: "pointer",
+  fontSize: "13px",
+  borderBottom: "1px solid #f5f5f5",
+  transition: "background 0.2s"
+};
 
 const parentContainer = {
   width: "100%",
@@ -92,7 +197,7 @@ const toolbarWrapperStyle = {
   display: "flex",
   justifyContent: "center",
   position: "relative", // Ensures it stays above the layout flow
-  zIndex: 2
+  zIndex: 999
 };
 
 const filterToolbarStyle = {

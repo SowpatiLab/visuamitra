@@ -1,7 +1,7 @@
 # VisuaMiTRA - a Tandem Repeat Visualizer
 
 <div align="center">
-  <img src="./assets/vis_logo.png" alt="Workflow" width="100">
+  <img src="./assets/vis_logo1.png" alt="Workflow" width="100">
   <p><i>VisuaMiTRa</i></p>
 </div>
 

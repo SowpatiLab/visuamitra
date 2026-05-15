@@ -44,7 +44,7 @@ export default function Viewer() {
 
   // Custom Hook for Data & Pagination
   const {
-    loading, error, pages, currentPageIndex, selectedIdx,
+    loading, error, setError, pages, currentPageIndex, selectedIdx,
     chr, setChr, start, setStart, endPos, setEndPos,
     setSelectedIdx, applyRegionFilter, goNext, goPrev, methThreshold,
     availableSamples = [],
@@ -198,6 +198,8 @@ export default function Viewer() {
         onApply={applyRegionFilter} 
         loading={loading} 
         error={error}
+        setError={setError}
+        rows={allLoadedRows}
       />
 
       <div style={{ zIndex: 10, width: "100%", display: "flex", justifyContent: "center", marginTop: "-10px" }}>
