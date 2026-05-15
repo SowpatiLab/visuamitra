@@ -70,7 +70,7 @@ Optimized Streaming: Data is streamed in small chunks and delivered in real-time
 Reactive Visualization:  React parses the TSV stream into an interactive SVG canvas, mapping structural motifs and methylation probabilities in real-time.
 
 <div align="center">
-  <img src="./assets/vis_overview.png" alt="Workflow" width="600">
+  <img src="./assets/vis_overview1.png" alt="Workflow" width="600">
   <p><i>Fig 2: Overview of visuamitra</i></p>
 </div>
 
@@ -88,10 +88,9 @@ VisuaMiTRa now supports the simultaneous visualization of multiple samples from 
   * Synchronized Scaling: All selected samples are rendered on a shared genomic scale, allowing for direct visual comparison of allele lengths, motifs and methylation patterns across individuals or cohorts.
 
 
-#### 🧬 Integrated Motif & Methylation Mapping
+#### 🧬 Dual View for Motifs & Methylation
 
-* Observe the direct relationship between structural variation and epigenetic signals. Methylation tracks are layered precisely over motif decomposition blocks to show allele-specific patterns.
-
+* VisuaMiTRa features independent tabs for motif decomposition & methylation that maintain strict allele-length consistency, enabling precise structural and epigenetic comparison across multiple samples.
 
 #### 📍 Effortless Navigation
 * Target specific loci using coordinate inputs (Chr, Start, End) or manually browse thousands of records smoothly and an interactive with a track of physical context in Chromosome.
@@ -110,38 +109,31 @@ VisuaMiTRa now supports the simultaneous visualization of multiple samples from 
 
 * Magnify in or out of intricate regions to ease data interpretation.
 
-* Hover over motif segments or bars to instantly view repeat counts and allele base-pair lengths. Methylation levels as well.
+* Hover over motif segments to instantly view repeat counts. Methylation levels markers for clearer visualisation.
 
-* Customize view with professional color palettes & scales(Viridis, Magma, Set3), and fonts.
+* Customize view with professional color palettes, scales & fonts.
 
-
-<div align="center">
-  <img src="./assets/vis_hover_motif.png" alt="Workflow" width="600">
-  <p><i>Fig 5: Repeat counts & Allele length </i></p>
-</div>
 
 <div align="center">
-  <table>
-    <tr>
-      <td align="center">
-        <img src="./assets/vis_hover_meth.png" alt="Methylation bars" width="160">
-        <br />
-        <i>Fig 6: Methylation bars</i>
-      </td>
-      <td align="center">
-        <img src="./assets/vis_settings.png" alt="View settings" width="150">
-        <br />
-        <i>Fig 7: View settings</i>
-      </td>
-    </tr>
-  </table>
+  <img src="./assets/vis_decomp.png" alt="Workflow" width="600">
+  <p><i>Fig 5: Repeat counts </i></p>
 </div>
+<div align="center">
+  <img src="./assets/vis_meth.png" alt="Workflow" width="600">
+  <p><i>Fig 6: Methylation markers </i></p>
+</div>
+
 
 #### 💾 Download plots (New in v1.0.0)
 
   * Publication-Ready SVGs: Download high-resolution vector graphics of the viewed genomic locations.
 
   * Genomic plots could also be downloaded as PNG/JPGs.
+
+  <div align="center">
+  <img src="./assets/vis_download.png" alt="Workflow" width="180" >
+  <p><i>Fig 6: Download options </i></p>
+</div>
 
 
  [↑ Back to Top](#visuamitra---a-tandem-repeat-visualizer)
