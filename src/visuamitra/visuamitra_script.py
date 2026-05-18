@@ -851,7 +851,7 @@ def visuamitra_data_extract_stream(file, chr=None, start_coord=None, end_coord=N
         chr = f"chr{chr}"
 
     # DEBUG 1: Input Check
-    print(f"\n[BACKEND DEBUG] Requesting: {chr}:{start_coord}-{end_coord}")
+    # print(f"\n[BACKEND DEBUG] Requesting: {chr}:{start_coord}-{end_coord}")
 
     if samples_index is None:
         samples_index = [0]
@@ -890,7 +890,7 @@ def visuamitra_data_extract_stream(file, chr=None, start_coord=None, end_coord=N
             search_end = int(end_coord)
         else:
             search_end = 2147483647 # Max 32-bit int; pysam will just read until the last record
-            print(f"[BACKEND DEBUG] end_coord is None. Falling back to end of chromosome.")
+            # print(f"[BACKEND DEBUG] end_coord is None. Falling back to end of chromosome.")
 
         for i, locus_raw in enumerate(vcf_obj.fetch(chr, search_start, search_end)):
             try: 
@@ -946,10 +946,10 @@ def visuamitra_data_extract_stream(file, chr=None, start_coord=None, end_coord=N
                 print(f"[DEBUG] Skipping malformed row {i} at {locus[1] if len(locus)>1 else 'unknown'}: {row_err}")
                 continue 
 
-        print(f"[BACKEND DEBUG] Successfully yielded {row_yielded_count} data rows.")
+        # print(f"[BACKEND DEBUG] Successfully yielded {row_yielded_count} data rows.")
 
     except Exception as e:
-        print(f"[BACKEND DEBUG] CRASH: {str(e)}")
+        # print(f"[BACKEND DEBUG] CRASH: {str(e)}")
         import traceback
         traceback.print_exc()
     finally:

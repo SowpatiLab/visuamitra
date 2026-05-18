@@ -43,12 +43,22 @@ pip install visuamitra
 
 # Usage
 
-Once installed, you can launch the visualization suite with a single command:
+#### Browser mode
+Once installed, to launch the tool and manually select or upload your VCF files via the web interface:
 ```Bash
 visuamitra
 ```
 
-Access: The application will automatically initialize and host the interface on port 8088. Open your web browser and navigate to http://localhost:8088.
+#### CLI Mode
+
+Rather than browser upload, passing the vcf file path as argument will launch visuamitra.
+
+```Bash
+visuamitra /path/to/your/file.vcf.gz
+```
+Note: The corresponding .tbi index file must reside in the same directory as the target .vcf.gz file, with same name (e.g., file.vcf.gz.tbi).
+
+Access: The application will initialize and host the interface on port 8088. Open your web browser and navigate to http://localhost:8088.
 
 ## Workflow
 

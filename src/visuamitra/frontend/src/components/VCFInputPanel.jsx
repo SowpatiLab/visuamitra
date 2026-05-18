@@ -1,8 +1,11 @@
-import React, { useMemo, useState } from "react";
-import { useNavigate } from "react-router-dom";
+import React, { useMemo, useState, useEffect } from "react";
+import { useNavigate, useSearchParams } from "react-router-dom";
 import favicon from '../assets/favicon.png'
 
+
 export default function VCFUploadPanel({ onLoad }) {
+  const [searchParams] = useSearchParams();
+  const isCLI = searchParams.get("mode") === "cli";
   const navigate = useNavigate();
   const [vcfFile, setVcfFile] = useState(null);
   const [tbiFile, setTbiFile] = useState(null);
@@ -15,6 +18,50 @@ export default function VCFUploadPanel({ onLoad }) {
   const [availableSamples, setAvailableSamples] = useState([]);
   const [selectedSamples, setSelectedSamples] = useState([]);
   const [searchTerm, setSearchTerm] = useState("");
+
+  useEffect(() => {
+    if (isCLI) {
+      handleCLILoad();
+    }
+  }, [isCLI]);
+
+  const handleCLILoad = async () => {
+    setLoading(true);
+    try {
+      // Get local file paths from backend 
+      const ctxRes = await fetch("/api/local-context");
+      if (!ctxRes.ok) throw new Error("CLI context not available");
+      const paths = await ctxRes.json();
+
+      if (paths.vcf && paths.tbi) {
+        // Set mock file objects so UI shows filenames
+        setVcfFile({ name: paths.vcf, isLocal: true });
+        setTbiFile({ name: paths.tbi, isLocal: true });
+
+        // Fetch metadata using PATH instead of File object
+        // We pass 'vcf_path' so the backend knows to read from disk
+        const formData = new FormData();
+        formData.append("vcf_path", paths.vcf);
+
+        const metaRes = await fetch("/api/get-vcf-metadata", { 
+          method: "POST", 
+          body: formData 
+        });
+        
+        if (!metaRes.ok) throw new Error("Could not read local VCF metadata");
+        
+        const meta = await metaRes.json();
+        if (meta.samples) {
+          setAvailableSamples(meta.samples);
+          setSelectedSamples([meta.samples[0]]);
+        }
+      }
+    } catch (err) {
+      setError("CLI Load Error: " + err.message);
+    } finally {
+      setLoading(false);
+    }
+  };
 
   // Filter Logic  
   const filteredSamples = useMemo(() => {
@@ -95,8 +142,16 @@ export default function VCFUploadPanel({ onLoad }) {
     .filter(idx => idx !== -1);
 
     const formData = new FormData();
-    formData.append("vcf", vcfFile);
-    formData.append("tbi", tbiFile);
+    
+    if (vcfFile.isLocal) {
+      // Send absolute paths instead of file blobs
+      formData.append("vcf_path", vcfFile.name);
+      formData.append("tbi_path", tbiFile.name);
+    } else {
+      // browser upload 
+      formData.append("vcf", vcfFile);
+      formData.append("tbi", tbiFile);
+    }
     if (chr) formData.append("chr", chr);
     if (start) formData.append("start", start);
     if (end) formData.append("end", end);
@@ -149,22 +204,34 @@ export default function VCFUploadPanel({ onLoad }) {
   return (
     <div style={styles.page}>
       <form onSubmit={handleSubmit} style={styles.card}>
+
+        <button 
+          type="button" 
+          onClick={() => navigate("/")} 
+          style={{ ...styles.linkBtn, marginBottom: 10 }}
+        >
+          ← Back to Launch Options
+        </button>
+
         <h2 style={styles.title}><img 
               src={favicon} 
               alt="Logo" 
               style={styles.logoImageStyle} 
             /></h2>
         <p style={styles.subtitle}>
-          Upload a compressed VCF file & TBI file
+          {isCLI ? "CLI Mode: Using local system files" : "Upload a compressed VCF file & TBI file"}
         </p>
 
-        <input
-          type="file"
-          accept=".vcf.gz,.tbi"
-          multiple
-          onChange={handleFileChange}
-          style={styles.fileInput}
-        />
+        {/* Hide input if in CLI mode */}
+        {!isCLI && (
+          <input
+            type="file"
+            accept=".vcf.gz,.tbi"
+            multiple
+            onChange={handleFileChange}
+            style={styles.fileInput}
+          />
+        )}
 
         {vcfFile && (
           <div style={styles.status}>
