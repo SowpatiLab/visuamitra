@@ -44,6 +44,11 @@ async def get_vcf_metadata(
     
     # CASE 1: CLI Mode (vcf_path is provided)
     if vcf_path:
+        if not os.path.exists(vcf_path):
+            raise HTTPException(
+                status_code=400, 
+                detail=f"Local VCF file path not found on disk: {vcf_path}"
+            )
         # Convert relative path to absolute
         absolute_vcf_path = os.path.abspath(vcf_path)
         if os.path.exists(absolute_vcf_path):
@@ -102,6 +107,17 @@ async def vcf_to_tsv_cursor(
 
     # CLI Mode / Cached Fallback
     if resolved_path:
+        if not os.path.exists(resolved_path):
+            raise HTTPException(
+                status_code=400, 
+                detail=f"Local VCF path not found on disk: {resolved_path}"
+            )
+            
+        if tbi_path and not os.path.exists(tbi_path):
+            raise HTTPException(
+                status_code=400, 
+                detail=f"Local TBI index path not found on disk: {tbi_path}"
+            )
         absolute_vcf_path = os.path.abspath(resolved_path)
         if os.path.exists(absolute_vcf_path):
             working_vcf_path = absolute_vcf_path
@@ -134,9 +150,16 @@ async def vcf_to_tsv_cursor(
             detail="No valid VCF source found. Check if file path is correct."
         )
 
-    
-    # IMPORTANT: Use 'working_vcf_path' instead of 'vcf_path'
-    tabix = pysam.TabixFile(working_vcf_path)
+    try:
+        tabix = pysam.TabixFile(working_vcf_path)
+    except OSError:
+        raise HTTPException(
+            status_code=400,
+            detail=(
+                f"Failed to open index structure for '{os.path.basename(working_vcf_path)}'. "
+                f"The file or its matching '.tbi' tracker may be empty, uncompressed, or corrupted."
+            )
+        )
     contigs = set(tabix.contigs)
 
     # BASIC VALIDATION

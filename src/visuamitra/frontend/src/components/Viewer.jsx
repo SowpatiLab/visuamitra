@@ -3,7 +3,7 @@ import { useLocation } from "react-router-dom";
 
 import { useVisuaMiTRaLogic } from "../hooks/StateLogic";
 import { parseDecompFromTSV } from "../utils/parseDecompInfo";
-import { generateMotifColors, getCanonicalMotif, getMethylationColorFactory } from "../utils/colorUtils";
+import { generateMotifColors, getCanonicalMotif, getMethylationColorFactory, getVisibleColorMap } from "../utils/colorUtils";
 
 import HeaderSection from "./viewer/HeaderSection";
 import NavigationControls from "./viewer/NavigationControls";
@@ -89,9 +89,9 @@ export default function Viewer() {
     const colorMap = useMemo(() => {
     const repeatingMotifSet = new Set();
     
-    if (row && row.samples && selectedSampleIndices.length > 0) {
-      selectedSampleIndices.forEach((idx) => {
-        const sampleName = availableSamples[idx];
+    if (row && row.samples && availableSamples.length > 0) {
+      availableSamples.forEach((sampleName) => {
+        
         const sample = row.samples[sampleName];
         
         // Skip if the sample hasn't loaded or is "NA"
@@ -112,9 +112,9 @@ export default function Viewer() {
         });
       });
     }
-  const motifsArray = Array.from(repeatingMotifSet);
+  const motifsArray = Array.from(repeatingMotifSet).sort((a,b) => a.localeCompare(b));
   return generateMotifColors(motifsArray, settings.palette, row.Motif);
-}, [row, selectedSampleIndices, settings.palette]); // Add selectedSampleIndices as dependency
+}, [row, availableSamples, settings.palette]); 
 
   const getMethylationColor = useMemo(() => 
     getMethylationColorFactory(settings.methPalette), 
@@ -350,7 +350,7 @@ export default function Viewer() {
 
         <div ref={legendRef} style={{ flexShrink: 0 }}>
           <Legend 
-            colorMap={colorMap} 
+            colorMap={getVisibleColorMap(row, paginatedIndices, availableSamples, colorMap)} 
             refMotif={row?.Motif}
             methPalette={settings.methPalette} 
             hasDecomposition={viewMode === "decomposition"} 

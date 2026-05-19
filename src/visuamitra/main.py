@@ -128,7 +128,7 @@ def run_server():
     print(f"Starting VisuaMiTRa on {url}")
     
     # Optional: Automatically open the browser after 1.5 seconds
-    Timer(1.5, open_browser).start()
+    Timer(2.5, open_browser).start()
 
     # We use string import to avoid issues with signal handlers in some OS
     uvicorn.run("visuamitra.main:app", host="127.0.0.1", port=port, reload=False)

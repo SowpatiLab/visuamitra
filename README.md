@@ -103,7 +103,7 @@ VisuaMiTRa now supports the simultaneous visualization of multiple samples from 
 * VisuaMiTRa features independent tabs for motif decomposition & methylation that maintain strict allele-length consistency, enabling precise structural and epigenetic comparison across multiple samples.
 
 #### 📍 Effortless Navigation
-* Target specific loci using coordinate inputs (Chr, Start, End) or manually browse thousands of records smoothly and an interactive with a track of physical context in Chromosome.
+* Target specific loci using coordinate inputs (Chr, Start, End) or manually browse thousands of records smoothly and an indicator with a track of physical context in Chromosome.
 
 <div align="center">
   <img src="./assets/vis_LocPicker1.png" alt="Workflow" width="600">
