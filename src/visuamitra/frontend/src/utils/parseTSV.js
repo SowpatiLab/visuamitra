@@ -83,11 +83,26 @@ export function parseTSV(text) {
 
       return { motifs: finalMotifs, lengths: finalLengths, copies: finalCopies };
     };
-    // Map the raw array to the structured object
-    const parsedDecomp = Array.isArray(rawDecomp) 
+
+  // Map the raw tracks through transformer first
+    let parsedDecomp = Array.isArray(rawDecomp) 
       ? rawDecomp.map(track => transformTrack(track, obj.Motif)) 
       : [];
-    
+
+    // Check homozygous missing tracks
+    const hasA1Data = parsedDecomp[1] && parsedDecomp[1].motifs && parsedDecomp[1].motifs.length > 0;
+    const hasA2Data = parsedDecomp[2] && parsedDecomp[2].motifs && parsedDecomp[2].motifs.length > 0;
+
+    if (hasA1Data && !hasA2Data) {
+      // clone Allele 1 over to Allele 2 slot
+      parsedDecomp[2] = JSON.parse(JSON.stringify(parsedDecomp[1]));
+    } else if (!hasA1Data && !hasA2Data) {
+      // fallback stabilizer block
+      const emptyTrack = { motifs: [], lengths: [], copies: [] };
+      if (!parsedDecomp[1]) parsedDecomp[1] = emptyTrack;
+      if (!parsedDecomp[2]) parsedDecomp[2] = emptyTrack;
+    }
+      
     const aLen1 = sequences[1]?.length || 0;
     const aLen2 = sequences[2]?.length || 0; 
 
@@ -103,7 +118,7 @@ export function parseTSV(text) {
     };
 
     if (!groupedData.has(locusKey)) {
-      // Use the local transformTrack to ensure the global reference is also squashed
+      // Use local transformTrack to ensure global reference is also squashed
       const actualRefTrack = (Array.isArray(rawDecomp) && rawDecomp.length > 0)
           ? transformTrack(rawDecomp[0], obj.Motif)
           : { motifs: [], lengths: [], copies: [] };
@@ -113,7 +128,7 @@ export function parseTSV(text) {
         ID: obj.ID || "NA",
         Motif: obj.Motif || "NA",
         samples: {},
-        refTrack: actualRefTrack, // This is the bar at the very top
+        refTrack: actualRefTrack,
         maxAlleleLen: Math.max(aLen1, aLen2)
       });
     }

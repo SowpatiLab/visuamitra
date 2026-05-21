@@ -36,6 +36,7 @@ export default function Viewer() {
     palette: "Observable10", font: "Arial", theme: "light", methPalette: "Viridis",
   });
   const [isDropDownOpen, setIsDropDownOpen] = useState(false);
+  const [isExporting, setIsExporting] = useState(false);
 
   const visualizerRef = useRef(null);
   const legendRef = useRef(null);
@@ -259,6 +260,7 @@ export default function Viewer() {
               availableSamples={availableSamples} 
               isExpanded={isMetadataExpanded}
               onToggle={toggleMetadataExpansion}
+              forceExpand={isExporting}
             />
           </div>
         </div>
@@ -397,6 +399,8 @@ export default function Viewer() {
             viewMode={viewMode}
             chrom={row.Chrom}
             start={row.Start}
+            isExporting={isExporting}
+            setIsExporting={setIsExporting}
           />
         </div>
       </div>
