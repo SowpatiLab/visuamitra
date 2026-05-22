@@ -295,6 +295,12 @@ export default function Viewer() {
               >
                 Methylation
               </button>
+              <button 
+                onClick={() => setViewMode("overview")}
+                style={viewMode === "overview" ? activeTabStyle : inactiveTabStyle}
+              >
+                Overview 
+              </button>
             </div>
 
             {/* RIGHT SIDE: Sample Picker */}
