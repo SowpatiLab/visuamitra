@@ -366,3 +366,126 @@ def vcf_to_tsv_cursor(
         media_type="text/tab-separated-values",
         headers=headers,
     )
+
+---------------------------------------------------------------------------------------------------------------------------------------
+
+//visuamitra script old function
+
+def visuamitra_data_extract(file, chr=None, start_coord=None, end_coord=None, outfile='tmp_vismtr.tsv'):
+    # out = open('visua_intermediate.tsv', 'w')
+    out = open(outfile, 'w')
+    header = ['Chrom', 'Start', 'End', 'Motif', 'Motif_size', 'GT', 'Sequences', 'Read_support', 'Decomp_seq', 'Decomp_info', 'Unique_motifs', 'Mean_meth', 'Meth_tag']
+    print(*header, file=out, sep='\t')
+    
+    # file = '1KGP_ICR/sorted_hg002_icr_cpg.vcf.gz'
+    # chr = 'chr1'
+    # start_coord = 9234669
+    # end_coord = 24503200
+    vcf_obj = pysam.TabixFile(file)
+    # for locus in vcf_obj.fetch(chr, start_coord, end_coord):
+    for locus in vcf_obj.fetch(chr, start_coord, end_coord):
+        # print('Locus = ', locus)
+        locus = locus.strip().split('\t')
+        if locus[6]!='PASS': continue
+        CHROM = locus[0]
+        START = locus[1]
+        REF = locus[3]
+        INFO = locus[7].split(';')
+        ID = INFO[5].split('=')[1]
+        if ID == '.':
+            ID = 'NA'
+        END = INFO[4].split('=')[1]
+        MOTIF = INFO[2].split('=')[1]
+        MOTIF_SIZE = len(MOTIF)
+        MOTIF_DECOMP = True
+        if MOTIF_SIZE > 10:
+            MOTIF_DECOMP = False
+        REF_DECOMP, _ = motif_decomposition(REF, MOTIF_SIZE) if MOTIF_SIZE < 11 else [None,None]
+        SAMPLE = locus[9].split(':')
+        try:
+            GT = set([SAMPLE[0][0], SAMPLE[0][2]])
+        except:
+            print(locus)
+            sys.exit(1)
+        
+        if SAMPLE[7] != '.,.':
+            MM = [float(i) for i in SAMPLE[7].split(',')]
+        else:
+            MM = 'NA'
+            
+        MV = SAMPLE[10].split(',')
+        
+        SD = [int(i) for i in SAMPLE[3].split(',')]
+        DS = SAMPLE[9].split(',')
+        CREATE_DECOMP = ('.' in DS) and MOTIF_DECOMP
+        
+        alt = locus[4]
+        if alt == '.':
+            alt1 = REF
+            alt2 = REF
+            DS = [REF_DECOMP, REF_DECOMP]
+        else:
+            alt = alt.split(',')
+            if len(alt)==2:
+                alt1 = alt[0]
+                alt2 = alt[1]
+                if CREATE_DECOMP:
+                    DS = []
+                    for seq in alt:
+                        dseq, _ = motif_decomposition(seq, MOTIF_SIZE)
+                        DS.append(dseq)                
+            elif len(GT)==2:
+                alt1 = REF
+                alt2 = alt[0]
+                if CREATE_DECOMP:
+                    DS = [REF_DECOMP]
+                    dseq, _ = motif_decomposition(alt2, MOTIF_SIZE)
+                    DS.append(dseq)
+                else:
+                    DS = [REF_DECOMP, DS[0]]
+            else:
+                alt1 = alt[0]
+                alt2 = alt[0]
+                if GT=={'0'}: DS = [REF_DECOMP, REF_DECOMP]
+                elif CREATE_DECOMP:
+                    dseq, _ = motif_decomposition(alt1, MOTIF_SIZE)
+                    DS = [dseq] * 2
+                else:
+                    DS = DS * 2
+        if '.' in DS:
+            DS = [None, None]
+    
+        complete_seqs = [REF, alt1, alt2]
+        if '.' not in MV:
+            decoded_MV = [[cg_pos(complete_seqs[idx+1]), [decode64_dict[i] for i in tag]] for idx,tag in enumerate(MV)]
+        else:
+            decoded_MV = 'NA'
+            
+        try:
+            complete_DS = [REF_DECOMP, DS[0], DS[1]]
+        except:
+            print(DS)
+            print(locus)
+            sys.exit(1)
+        DS_info = []
+        motif_set = set()
+        for i in complete_DS:
+            if i is not None:
+                motif_order, unique_motif, length_order = motif_decomp_pos(i)
+                DS_info.append([motif_order, length_order])
+                motif_set |= unique_motif
+            else:
+                DS_info.append([None, None])
+        motif_set = list(motif_set)
+    
+        if None in complete_DS:
+            complete_DS = 'NA'
+            DS_info = 'NA'
+            motif_set = 'NA'
+        
+            
+        values = [CHROM, START, END, ID, MOTIF, MOTIF_SIZE, SAMPLE[0], complete_seqs, SD, complete_DS, DS_info, motif_set, MM, decoded_MV]
+        print(*values, file=out, sep='\t')
+    
+    vcf_obj.close()
+    out.close()
