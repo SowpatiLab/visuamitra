@@ -95,15 +95,15 @@ VisuaMiTRa now supports the simultaneous visualization of multiple samples from 
 
   * Dynamic Selection: Choose which samples to display using a searchable dropdown menu.
 
-  * Synchronized Scaling: All selected samples are rendered on a shared genomic scale, allowing for direct visual comparison of allele lengths, motifs and methylation patterns across individuals or cohorts.
+  * Synchronized Scaling: All selected samples are rendered on a shared genomic scale, allowing for direct visual comparison of allele lengths, motifs and methylation patterns across  cohorts.
 
 
 #### 🧬 Dual View for Motifs & Methylation
 
-* VisuaMiTRa features independent tabs for motif decomposition & methylation that maintain strict allele-length consistency, enabling precise structural and epigenetic comparison across multiple samples.
+* VisuaMiTRa features independent tabs for motif decomposition & methylation that maintain strict allele-length consistency, enabling precise  comparison across multiple samples.
 
 #### 📍 Effortless Navigation
-* Target specific loci using coordinate inputs (Chr, Start, End) or manually browse thousands of records smoothly and an indicator with a track of physical context in Chromosome.
+* Target specific loci using coordinate inputs (Chr, Start, End) or manually browse thousands of records smoothly, alongside an indicator with a track of genomic context in Chromosome. (Note: visuamitra v1.0.1 currently supports Hg38 reference only.)
 
 <div align="center">
   <img src="./assets/vis_LocPicker1.png" alt="Workflow" width="600">
