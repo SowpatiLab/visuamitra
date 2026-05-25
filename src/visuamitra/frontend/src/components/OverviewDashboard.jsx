@@ -194,7 +194,7 @@ export default function OverviewDashboard({ data, selectedSamples, availableSamp
               </g>
             );
           })}
-          <text x={padding.left - 45} y={padding.top + plotHeight / 2} transform={`rotate(-90, ${padding.left - 45}, ${padding.top + plotHeight / 2})`} textAnchor="middle" style={{ fontSize: "11px", fill: "#444", fontWeight: "bold" }}>Methylation Fraction</text>
+          <text x={padding.left - 45} y={padding.top + plotHeight / 2} transform={`rotate(-90, ${padding.left - 45}, ${padding.top + plotHeight / 2})`} textAnchor="middle" style={{ fontSize: "11px", fill: "#444", fontWeight: "bold" }}>Mean Methylation</text>
         </svg>
       </div>
 
