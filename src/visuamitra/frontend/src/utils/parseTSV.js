@@ -66,16 +66,19 @@ export function parseTSV(text) {
       for (let i = 0; i < rawMotifs.length; i++) {
         const m = rawMotifs[i];
         const len = rawLengths[i];
-        const canonical = getCanonicalMotif(m, safeRefMotif);
-        const mLen = canonical.length || 1;
-        const copies = len / mLen;
-
-        // Only merge if they are the EXACT same canonical motif
-        if (finalMotifs.length > 0 && finalMotifs[finalMotifs.length - 1] === canonical) {
+        const rawUpper = String(m || "").toUpperCase().trim();
+        const mLen = rawUpper.length || 1;
+        const calculatedCopies = len / mLen;
+        // Identify non-repetitive context
+        const isNonRepetitive = calculatedCopies <= 1 || rawUpper.includes("N_REPETITIVE") || rawUpper.includes("FLANK");
+        const activeMotifKey = isNonRepetitive ? rawUpper : getCanonicalMotif(m, safeRefMotif);
+        const copies = isNonRepetitive ? calculatedCopies : len / (activeMotifKey.length || 1);
+        // Group adjacent matching motifs
+        if (finalMotifs.length > 0 && finalMotifs[finalMotifs.length - 1] === activeMotifKey) {
           finalLengths[finalLengths.length - 1] += len;
           finalCopies[finalCopies.length - 1] += copies;
         } else {
-          finalMotifs.push(canonical);
+          finalMotifs.push(activeMotifKey); 
           finalLengths.push(len);
           finalCopies.push(copies);
         }
@@ -103,7 +106,7 @@ export function parseTSV(text) {
     };
 
     if (!groupedData.has(locusKey)) {
-      // Use the local transformTrack to ensure the global reference is also squashed
+      // Use the local transformTrack to ensure global reference is also squashed
       const actualRefTrack = (Array.isArray(rawDecomp) && rawDecomp.length > 0)
           ? transformTrack(rawDecomp[0], obj.Motif)
           : { motifs: [], lengths: [], copies: [] };
