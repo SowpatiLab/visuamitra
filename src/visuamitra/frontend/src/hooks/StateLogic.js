@@ -30,7 +30,7 @@ const extractMetadataAndClean = (text, setMethThreshold, setAvailableSamples) =>
   return filteredLines.join("\n");
 };
 
-export function useVisuaMiTRaLogic(vcfFile, tbiFile, initialState) {
+export function useVisuaMiTRaLogic(vcfFile, tbiFile, initialState, viewMode = "decomposition") {
   // STATE DEFINITIONS
   const [loading, setLoading] = useState(false);
   const [error, setError] = useState("");
@@ -73,25 +73,23 @@ export function useVisuaMiTRaLogic(vcfFile, tbiFile, initialState) {
     }
   }, [selectedSampleIndices.length, totalPages, currentPage]);
 
-   // doesn't trigger the effect unnecessarily
   const fetchPageTSV = useCallback(async (cursor) => {
     const formData = new FormData();
     formData.append("vcf", vcfFile);
     formData.append("tbi", tbiFile);
-    formData.append("page_size", pageSize);
+    const dynamicPageSize = viewMode === "overview" ? 5000 : pageSize;
+    formData.append("page_size", dynamicPageSize);
 
-    // Send selected sample indices
-    if (paginatedIndices && paginatedIndices.length > 0) {
-      formData.append("samples", paginatedIndices.join(","));
+    // DYNAMIC TARGET DETERMINATION
+    const targetIndices = viewMode === "overview" ? selectedSampleIndices : paginatedIndices;
+
+    if (targetIndices && targetIndices.length > 0) {
+      formData.append("samples", targetIndices.join(","));
     }
 
     if (cursor) {
-      // When paging with a cursor, DO NOT send chr/start/end.
-      // The cursor contains the global byte offset. Removing 'chr' 
-      // allows the VCF reader to roll into the next chromosome.
       formData.append("last_cursor", cursor);
     } else {
-      // Only send genomic filters for the initial search or "Apply"
       if (chr) formData.append("chr", chr);
       if (start) formData.append("start", start);
       if (endPos) formData.append("end", endPos);
@@ -107,7 +105,7 @@ export function useVisuaMiTRaLogic(vcfFile, tbiFile, initialState) {
     const text = await res.text();
     const nextCursor = res.headers.get("X-Next-Cursor");
     return { text, nextCursor };
-  }, [vcfFile, tbiFile, chr, start, endPos, pageSize, JSON.stringify(paginatedIndices)]);
+  }, [vcfFile, tbiFile, chr, start, endPos, pageSize, viewMode, JSON.stringify(paginatedIndices), JSON.stringify(selectedSampleIndices)]);
 
   // THE DATA EFFECT (The "Engine")
   useEffect(() => {
@@ -127,8 +125,9 @@ export function useVisuaMiTRaLogic(vcfFile, tbiFile, initialState) {
   const isPageMissing = !pages[currentPageIndex];
   const isFilterReset = filterTrigger > 0;
   // Check if the current row actually contains data for the samples we want to see
+  const targetIndices = viewMode === "overview" ? selectedSampleIndices : paginatedIndices;
   const currentRow = pages[currentPageIndex]?.[selectedIdx];
-  const isDataMissingForCurrentSamples = paginatedIndices.some(idx => {
+  const isDataMissingForCurrentSamples = targetIndices.some(idx => {
     const name = availableSamples[idx];
     return !currentRow?.samples?.[name];
   });
@@ -251,7 +250,7 @@ export function useVisuaMiTRaLogic(vcfFile, tbiFile, initialState) {
   })();
 
   return () => { isMounted = false; };
-}, [filterTrigger, selectedSampleIndices, vcfFile, tbiFile, currentPageIndex, chr, start, endPos, currentPage]);
+}, [filterTrigger, selectedSampleIndices, vcfFile, tbiFile, currentPageIndex, chr, start, endPos, currentPage, viewMode, fetchPageTSV]);
 
 
 const goNext = () => {
