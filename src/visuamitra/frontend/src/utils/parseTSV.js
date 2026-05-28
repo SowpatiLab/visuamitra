@@ -109,11 +109,15 @@ export function parseTSV(text) {
     const aLen1 = sequences[1]?.length || 0;
     const aLen2 = sequences[2]?.length || 0; 
 
+    const rawLpmStr = obj.LPM || "NA:NA";
+    const lpmArray = rawLpmStr.split(":");
+
     // Build the sanitized sample object with PRE-PARSED data
     const sampleData = { 
       ...obj, 
       alleleLen1: aLen1, 
       alleleLen2: aLen2, 
+      lpm: lpmArray,
       sequences: sequences,
       meanMeth: meanMeth,
       SampleIdx: sIdx,

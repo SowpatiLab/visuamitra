@@ -26,6 +26,17 @@ const parseMethylationValues = (val) => {
   return [num, num];
 };
 
+const extractCopyNumber = (str) => {
+  if (!str || str === "NA" || str === ".") return null;
+  const match = str.match(/(\d+)$/);
+  return match ? parseFloat(match[1]) : null;
+};
+
+const extractMotifName = (str) => {
+  if (!str || str === "NA" || str === "." || !str.includes("-")) return null;
+  return str.split("-")[0].trim();
+};
+
 export default function OverviewDashboard({ data, selectedSamples = [], availableSamples = [] }) {
   const row = data; 
   
@@ -37,13 +48,16 @@ export default function OverviewDashboard({ data, selectedSamples = [], availabl
     );
   }
 
-  // DATA EXTRACTION 
   const scatterPoints = [];
+  const lpmScatterPoints = [];
+  let discoveredMotif = row.Motif || "NA";
+
+  // Unified color variables used across both plots
+  const allele1Color = "#2478d1"; 
+  const allele2Color = "#eb1c3f"; 
 
   selectedSamples.forEach((sampleIdent, idx) => {
     const fullSampleName = typeof sampleIdent === "number" ? availableSamples[sampleIdent] : sampleIdent;
-    
-    // Fallback key resolving layer supporting prefixes safely
     const samplePrefix = fullSampleName ? fullSampleName.split('-')[0].trim() : "";
     const displayName = samplePrefix || `Sample ${idx}`;
     
@@ -62,16 +76,41 @@ export default function OverviewDashboard({ data, selectedSamples = [], availabl
 
     if (!sample) return;
 
-    // Extract allele lengths
     const len1 = Number(sample.alleleLen1 || sample.parsedDecomp?.[1]?.totalLen || 0);
     const len2 = Number(sample.alleleLen2 || sample.parsedDecomp?.[2]?.totalLen || 0);
     
-    // Extract methylation values
     const [rawM1, rawM2] = parseMethylationValues(sample.Mean_meth || sample.meanMeth);
     const m1 = rawM1 > 1.0 ? rawM1 / 100 : rawM1;
     const m2 = rawM2 > 1.0 ? rawM2 / 100 : rawM2;
 
-    // Push separate points for Allele 1 and Allele 2 into same space
+    let a1LpmCount = null;
+    let a2LpmCount = null;
+
+    const rawLpmSource = sample.lpm || (sample.LPM ? sample.LPM.split(":") : null);
+
+    if (Array.isArray(rawLpmSource)) {
+      const a1Str = String(rawLpmSource[0] || "").trim();
+      const a2Str = String(rawLpmSource[1] || "").trim();
+
+      a1LpmCount = extractCopyNumber(a1Str);
+      a2LpmCount = extractCopyNumber(a2Str);
+
+      if (discoveredMotif === "NA" || !discoveredMotif) {
+        discoveredMotif = extractMotifName(a1Str) || extractMotifName(a2Str) || row.Motif || "NA";
+      }
+    }
+
+    if (a1LpmCount === null && (sample.LPM || sample.LPM_counts)) {
+      const fallbackStr = String(sample.LPM || sample.LPM_counts);
+      if (fallbackStr.includes(":")) {
+        const parts = fallbackStr.split(":");
+        const p1 = parseFloat(parts[0]?.split("-")?.[1]);
+        const p2 = parseFloat(parts[1]?.split("-")?.[1]);
+        if (!isNaN(p1)) a1LpmCount = p1;
+        if (!isNaN(p2)) a2LpmCount = p2;
+      }
+    }
+
     scatterPoints.push({
       sampleId: displayName,
       fullName: fullSampleName || displayName,
@@ -79,7 +118,7 @@ export default function OverviewDashboard({ data, selectedSamples = [], availabl
       methylation: m1,
       alleleType: "Allele 1",
       shape: "circle",
-      color: "#2b5c8f" // Blue
+      color: allele1Color
     });
 
     scatterPoints.push({
@@ -88,9 +127,33 @@ export default function OverviewDashboard({ data, selectedSamples = [], availabl
       alleleLength: len2,
       methylation: m2,
       alleleType: "Allele 2",
-      shape: "square",
-      color: "#a6305d" // Magenta/Pink
+      shape: "diamond",
+      color: allele2Color
     });
+
+    if (a1LpmCount !== null) {
+      lpmScatterPoints.push({
+        sampleId: displayName,
+        fullName: fullSampleName || displayName,
+        alleleLength: len1,
+        lpmCount: a1LpmCount,
+        alleleType: "Allele 1",
+        shape: "circle",
+        color: allele1Color
+      });
+    }
+
+    if (a2LpmCount !== null) {
+      lpmScatterPoints.push({
+        sampleId: displayName,
+        fullName: fullSampleName || displayName,
+        alleleLength: len2,
+        lpmCount: a2LpmCount,
+        alleleType: "Allele 2",
+        shape: "diamond",
+        color: allele2Color
+      });
+    }
   });
 
   if (scatterPoints.length === 0) {
@@ -101,124 +164,171 @@ export default function OverviewDashboard({ data, selectedSamples = [], availabl
     );
   }
 
-  // PLOT AXES CONFIGURATIONS
   const allLengths = scatterPoints.map(p => p.alleleLength);
-  const maxAxisLen = allLengths.length > 0 ? Math.max(...allLengths, 50) * 1.15 : 500;
-  const chartWidth = 960;
-  const chartHeight = 520;
-  const padding = { top: 50, right: 160, bottom: 65, left: 75 };
+  const maxAxisLen = allLengths.length > 0 ? Math.max(...allLengths, 50) * 1.12 : 500;
+  
+  const allLpmCounts = lpmScatterPoints.map(p => p.lpmCount);
+  const maxLpmAxisVal = allLpmCounts.length > 0 ? Math.max(...allLpmCounts, 5) * 1.15 : 25;
+
+  const chartWidth = 540;
+  const chartHeight = 420;
+  const padding = { top: 30, right: 35, bottom: 55, left: 65 };
   const plotWidth = chartWidth - padding.left - padding.right;
   const plotHeight = chartHeight - padding.top - padding.bottom;
 
-  // Linear Scale Transformation Functions
   const getX = (len) => padding.left + (len / maxAxisLen) * plotWidth;
-  const getY = (meth) => padding.top + plotHeight - (meth * plotHeight);
+  const getYMeth = (meth) => padding.top + plotHeight - (meth * plotHeight);
+  const getYLpm = (count) => padding.top + plotHeight - ((count / maxLpmAxisVal) * plotHeight);
 
-  // Dynamic sizing tuning based on dataset crowd size
-  const pointRadius = scatterPoints.length > 50 ? 4 : 5.5;
-  const pointOpacity = scatterPoints.length > 100 ? 0.60 : 0.80;
-  //console.log("Dashboard Received Selected Count:", selectedSamples.length);
-  //console.log("Actual Generated Scatter points:", scatterPoints.length);
+  const pointRadius = scatterPoints.length > 50 ? 3.5 : 5.0;
+  const pointOpacity = scatterPoints.length > 100 ? 0.65 : 0.85;
 
   return (
-    <div style={{ width: "100%", background: "#fff", padding: "24px", borderRadius: "10px", boxSizing: "border-box", border: "1px solid #eee" }}>
+    <div style={{ width: "100%", background: "#fff", padding: "20px", borderRadius: "10px", border: "1px solid #eee", boxSizing: "border-box" }}>
       
-      {/* TITLE & PROFILE HEADER */}
-      <div style={{ display: "flex", justifyContent: "space-between", alignItems: "baseline", marginBottom: "15px", borderBottom: "1px solid #f0f0f0", paddingBottom: "10px" }}>
+      {/* TEXT LEGEND SUBHEADER */}
+      <div style={{ borderBottom: "1px solid #f0f0f0", paddingBottom: "14px", marginBottom: "24px", display: "flex", justifyContent: "space-between", alignItems: "center" }}>
         <div>
-          <h3 style={{ margin: 0, fontSize: "15px", fontWeight: "bold", color: "#222" }}>
-            Allele Length & Mean Methylation Comparison
-          </h3>
-          <span style={{ fontSize: "12px", color: "#666" }}>
-            Plotting <strong>{scatterPoints.length} alleles</strong> from the selected genomic window.
-          </span>
+          <div style={{ display: "flex", alignItems: "center", gap: "16px", marginTop: "4px", fontSize: "12px", color: "#555" }}>
+            <span>Target Motif: <strong style={{ color: "#111" }}>{discoveredMotif}</strong></span>
+            <div style={{ display: "flex", alignItems: "center", gap: "6px" }}>
+              <span style={{ width: 9, height: 9, borderRadius: "50%", backgroundColor: allele1Color, display: "inline-block" }}></span>
+              <span>Allele 1 </span>
+            </div>
+            <div style={{ display: "flex", alignItems: "center", gap: "6px" }}>
+              {/* Diamond SVG Mimic Legend Icon */}
+              <svg width="10" height="10" viewBox="0 0 10 10" style={{ display: "inline-block" }}>
+                <polygon points="5,0 10,5 5,10 0,5" fill={allele2Color} />
+              </svg>
+              <span>Allele 2 </span>
+            </div>
+          </div>
         </div>
       </div>
 
-      {/* SINGLE PLOT CORE SVG */}
-      <svg width={chartWidth} height={chartHeight} style={{ display: "block", margin: "0 auto", overflow: "visible" }}>
+      {/* GRID CONTAINER */}
+      <div style={{ display: "flex", flexDirection: "row", gap: "20px", width: "100%", boxSizing: "border-box" }}>
         
-        {/* BACKGROUND GRID LINES - Y AXIS (Methylation Level Ticks) */}
-        {[0.0, 0.25, 0.50, 0.75, 1.0].map((pct, i) => {
-          const yPos = getY(pct);
-          return (
-            <g key={`y-grid-${i}`}>
-              <line x1={padding.left} y1={yPos} x2={chartWidth - padding.right} y2={yPos} stroke="#f3f3f3" strokeWidth={pct === 0 ? 1.5 : 1} />
-              <text x={padding.left - 12} y={yPos + 4} textAnchor="end" style={{ fontSize: "11px", fill: "#555", fontWeight: "500" }}>
-                {(pct * 100).toFixed(0)}%
-              </text>
-            </g>
-          );
-        })}
+        {/* LEFT CHART AREA: METHYLATION */}
+        <div style={{ flex: 1, minWidth: "0", border: "1px solid #f0f0f0", padding: "12px", borderRadius: "6px" }}>
+          <div style={{ marginBottom: "10px" }}>
+            <h4 style={{ margin: 0, fontSize: "13px", fontWeight: "bold", color: "#333" }}>Allele Length vs. Mean Methylation</h4>
+          </div>
+          <svg width="100%" height={chartHeight} viewBox={`0 0 ${chartWidth} ${chartHeight}`} style={{ display: "block", overflow: "visible" }}>
+            {[0.0, 0.25, 0.50, 0.75, 1.0].map((pct, i) => {
+              const yPos = getYMeth(pct);
+              return (
+                <g key={`y-grid-m-${i}`}>
+                  <line x1={padding.left} y1={yPos} x2={chartWidth - padding.right} y2={yPos} stroke="#f5f5f5" strokeWidth={pct === 0 ? 1.5 : 1} />
+                  <text x={padding.left - 10} y={yPos + 4} textAnchor="end" style={{ fontSize: "10px", fill: "#666" }}>
+                    {(pct * 100).toFixed(0)}%
+                  </text>
+                </g>
+              );
+            })}
 
-        {/* BACKGROUND GRID LINES - X AXIS (Allele Length Ticks) */}
-        {[0, 0.25, 0.5, 0.75, 1.0].map((ratio, i) => {
-          const val = Math.round(ratio * maxAxisLen);
-          const xPos = getX(val);
-          return (
-            <g key={`x-grid-${i}`}>
-              <line x1={xPos} y1={padding.top} x2={xPos} y2={padding.top + plotHeight} stroke="#f3f3f3" strokeWidth={i === 0 ? 1.5 : 1} />
-              <text x={xPos} y={padding.top + plotHeight + 20} textAnchor="middle" style={{ fontSize: "11px", fill: "#555", fontWeight: "500" }}>
-                {val} bp
-              </text>
-            </g>
-          );
-        })}
+            {[0, 0.25, 0.5, 0.75, 1.0].map((ratio, i) => {
+              const val = Math.round(ratio * maxAxisLen);
+              const xPos = getX(val);
+              return (
+                <g key={`x-grid-m-${i}`}>
+                  <line x1={xPos} y1={padding.top} x2={xPos} y2={padding.top + plotHeight} stroke="#f5f5f5" strokeWidth={i === 0 ? 1.5 : 1} />
+                  <text x={xPos} y={padding.top + plotHeight + 16} textAnchor="middle" style={{ fontSize: "10px", fill: "#666" }}>
+                    {val}
+                  </text>
+                </g>
+              );
+            })}
 
-        {/* HARD AXIS BORDERS */}
-        <line x1={padding.left} y1={padding.top + plotHeight} x2={chartWidth - padding.right} y2={padding.top + plotHeight} stroke="#777" strokeWidth="1.5" />
-        <line x1={padding.left} y1={padding.top} x2={padding.left} y2={padding.top + plotHeight} stroke="#777" strokeWidth="1.5" />
+            <line x1={padding.left} y1={padding.top + plotHeight} x2={chartWidth - padding.right} y2={padding.top + plotHeight} stroke="#666" strokeWidth="1.2" />
+            <line x1={padding.left} y1={padding.top} x2={padding.left} y2={padding.top + plotHeight} stroke="#666" strokeWidth="1.2" />
 
-        {/* AXIS LABELS */}
-        <text x={padding.left + plotWidth / 2} y={chartHeight - 15} textAnchor="middle" style={{ fontSize: "13px", fill: "#333", fontWeight: "bold" }}>
-          Allele Length (bp)
-        </text>
-        <text x={20} y={padding.top + plotHeight / 2} transform={`rotate(-90, 20, ${padding.top + plotHeight / 2})`} textAnchor="middle" style={{ fontSize: "13px", fill: "#333", fontWeight: "bold" }}>
-          Mean Methylation Percentage
-        </text>
+            <text x={padding.left + plotWidth / 2} y={chartHeight - 15} textAnchor="middle" style={{ fontSize: "11px", fill: "#333", fontWeight: "600" }}>
+              Allele Length (bp)
+            </text>
+            <text x={15} y={padding.top + plotHeight / 2} transform={`rotate(-90, 15, ${padding.top + plotHeight / 2})`} textAnchor="middle" style={{ fontSize: "11px", fill: "#333", fontWeight: "600" }}>
+              Methylation Percentage
+            </text>
 
-        {/* SCATTER POINTS LAYER */}
-        {scatterPoints.map((pt, i) => {
-          const cx = getX(pt.alleleLength);
-          const cy = getY(pt.methylation);
-          const r = pointRadius;
+            {scatterPoints.map((pt, i) => {
+              const cx = getX(pt.alleleLength);
+              const cy = getYMeth(pt.methylation);
+              const r = pointRadius;
+              return (
+                <g key={`m-dots-${i}`}>
+                  {pt.shape === "circle" ? (
+                    <circle cx={cx} cy={cy} r={r} fill={pt.color} fillOpacity={pointOpacity} stroke="#fff" strokeWidth={0.5} />
+                  ) : (
+                    <polygon points={`${cx},${cy - r * 1.3} ${cx + r * 1.3},${cy} ${cx},${cy + r * 1.3} ${cx - r * 1.3},${cy}`} fill={pt.color} fillOpacity={pointOpacity} stroke="#fff" strokeWidth={0.5} />
+                  )}
+                  <title>{`${pt.fullName}\n${pt.alleleType}\nLength: ${pt.alleleLength} bp\nMethylation: ${(pt.methylation * 100).toFixed(1)}%`}</title>
+                </g>
+              );
+            })}
+          </svg>
+        </div>
 
-          return (
-            <g key={`point-${i}`} style={{ cursor: "pointer" }}>
-              {pt.shape === "circle" ? (
-                /* Allele 1: Circle */
-                <circle 
-                  cx={cx} 
-                  cy={cy} 
-                  r={r} 
-                  fill={pt.color} 
-                  fillOpacity={pointOpacity}
-                  stroke="#fff" 
-                  strokeWidth={0.5} 
-                />
-              ) : (
-                /* Allele 2: Diamond */
-                <polygon 
-                  points={`${cx},${cy - r * 1.3} ${cx + r * 1.3},${cy} ${cx},${cy + r * 1.3} ${cx - r * 1.3},${cy}`}
-                  fill={pt.color} 
-                  fillOpacity={pointOpacity}
-                  stroke="#fff" 
-                  strokeWidth={0.5} 
-                />
-              )}
-              <title>{`${pt.fullName}\n${pt.alleleType}\nLength: ${pt.alleleLength} bp\nMean-Methylation: ${(pt.methylation * 100).toFixed(1)}%`}</title>
-            </g>
-          );
-        })}
+        {/* RIGHT CHART AREA: LPM COPY NUMBER */}
+        <div style={{ flex: 1, minWidth: "0", border: "1px solid #f0f0f0", padding: "12px", borderRadius: "6px" }}>
+          <div style={{ marginBottom: "10px" }}>
+            <h4 style={{ margin: 0, fontSize: "13px", fontWeight: "bold", color: "#333" }}>Allele Length vs. LPM Copy Number</h4>
+          </div>
+          <svg width="100%" height={chartHeight} viewBox={`0 0 ${chartWidth} ${chartHeight}`} style={{ display: "block", overflow: "visible" }}>
+            {[0, 0.25, 0.5, 0.75, 1.0].map((ratio, i) => {
+              const countVal = Math.round(ratio * maxLpmAxisVal);
+              const yPos = getYLpm(countVal);
+              return (
+                <g key={`y-grid-l-${i}`}>
+                  <line x1={padding.left} y1={yPos} x2={chartWidth - padding.right} y2={yPos} stroke="#f5f5f5" strokeWidth={i === 0 ? 1.5 : 1} />
+                  <text x={padding.left - 10} y={yPos + 4} textAnchor="end" style={{ fontSize: "10px", fill: "#666" }}>
+                    {countVal}
+                  </text>
+                </g>
+              );
+            })}
 
-        <g transform={`translate(${chartWidth - padding.right + 25}, ${padding.top + 20})`}>
-          <rect x="-10" y="5" width="135" height="65" fill="#fcfcfc" stroke="#e8e8e8" rx="4" />    
-          <circle cx="10" cy="25" r="5.5" fill="#2b5c8f" />
-          <text x="24" y="29" style={{ fontSize: "11px", fill: "#555" }}>Allele 1 (Circle)</text>
-          <polygon points="10,41.5 16,47.5 10,53.5 4,47.5" fill="#a6305d" />
-          <text x="24" y="52" style={{ fontSize: "11px", fill: "#555" }}>Allele 2 (Diamond)</text>
-        </g>
-      </svg>
+            {[0, 0.25, 0.5, 0.75, 1.0].map((ratio, i) => {
+              const val = Math.round(ratio * maxAxisLen);
+              const xPos = getX(val);
+              return (
+                <g key={`x-grid-l-${i}`}>
+                  <line x1={xPos} y1={padding.top} x2={xPos} y2={padding.top + plotHeight} stroke="#f5f5f5" strokeWidth={i === 0 ? 1.5 : 1} />
+                  <text x={xPos} y={padding.top + plotHeight + 16} textAnchor="middle" style={{ fontSize: "10px", fill: "#666" }}>
+                    {val}
+                  </text>
+                </g>
+              );
+            })}
+
+            <line x1={padding.left} y1={padding.top + plotHeight} x2={chartWidth - padding.right} y2={padding.top + plotHeight} stroke="#666" strokeWidth="1.2" />
+            <line x1={padding.left} y1={padding.top} x2={padding.left} y2={padding.top + plotHeight} stroke="#666" strokeWidth="1.2" />
+
+            <text x={padding.left + plotWidth / 2} y={chartHeight - 15} textAnchor="middle" style={{ fontSize: "11px", fill: "#333", fontWeight: "600" }}>
+              Allele Length (bp)
+            </text>
+            <text x={15} y={padding.top + plotHeight / 2} transform={`rotate(-90, 15, ${padding.top + plotHeight / 2})`} textAnchor="middle" style={{ fontSize: "11px", fill: "#333", fontWeight: "600" }}>
+              LPM Copy-Number ({discoveredMotif})
+            </text>
+
+            {lpmScatterPoints.map((pt, i) => {
+              const cx = getX(pt.alleleLength);
+              const cy = getYLpm(pt.lpmCount);
+              const r = pointRadius;
+              return (
+                <g key={`lpm-dots-${i}`}>
+                  {pt.shape === "circle" ? (
+                    <circle cx={cx} cy={cy} r={r} fill={pt.color} fillOpacity={pointOpacity} stroke="#fff" strokeWidth={0.5} />
+                  ) : (
+                    <polygon points={`${cx},${cy - r * 1.3} ${cx + r * 1.3},${cy} ${cx},${cy + r * 1.3} ${cx - r * 1.3},${cy}`} fill={pt.color} fillOpacity={pointOpacity} stroke="#fff" strokeWidth={0.5} />
+                  )}
+                  <title>{`${pt.fullName}\n${pt.alleleType}\nLength: ${pt.alleleLength} bp\nLPM Value: ${discoveredMotif}-${pt.lpmCount}`}</title>
+                </g>
+              );
+            })}
+          </svg>
+        </div>
+
+      </div>
     </div>
   );
 }

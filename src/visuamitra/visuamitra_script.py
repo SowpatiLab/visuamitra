@@ -747,7 +747,7 @@ def visuamitra_data_extract_stream(file, chr=None, start_coord=None, end_coord=N
             'Chrom', 'Start', 'End', 'ID', 'Motif', 'Motif_size',
             'SampleID', 'SampleIdx', 'GT',
             'Sequences', 'Read_support', 'Decomp_seq', 'Decomp_info',
-            'Unique_motifs', 'Mean_meth', 'Meth_tag'
+            'Unique_motifs', 'Mean_meth', 'Meth_tag', 'LPM'
         ]
         yield "\t".join(header) + "\n"
     else:
@@ -817,7 +817,7 @@ def visuamitra_data_extract_stream(file, chr=None, start_coord=None, end_coord=N
                         CHROM, START, END, ID, MOTIF, MOTIF_SIZE,
                         s_name_clean, s_idx, data[0], 
                         data[1], data[2], data[3], data[4], 
-                        data[5], data[6], data[7]
+                        data[5], data[6], data[7], data[8]
                     ]
                     yield "\t".join(map(str, values)) + "\n"
                     row_yielded_count += 1
@@ -842,14 +842,14 @@ def sample_collector(sample_fields, sample_index, ALT, MOTIF_DECOMP, REF_DECOMP,
     
     for each_sidx in sample_index:
         if each_sidx >= len(sample_fields): 
-            SAMPLE_dict[each_sidx] = ['./.', 'NA', 'NA', 'NA', 'NA', 'NA', 'NA', 'NA']
+            SAMPLE_dict[each_sidx] = ['./.', 'NA', 'NA', 'NA', 'NA', 'NA', 'NA', 'NA', 'NA']
             continue
         
         SAMPLE = sample_fields[each_sidx].split(':')
         gt_value = SAMPLE[0]
         
         if gt_value in ['.', './.', '.|.']:
-            SAMPLE_dict[each_sidx] = ['./.', 'NA', 'NA', 'NA', 'NA', 'NA', 'NA', 'NA']
+            SAMPLE_dict[each_sidx] = ['./.', 'NA', 'NA', 'NA', 'NA', 'NA', 'NA', 'NA', 'NA']
             continue
             
         # Extract Genotype Indices
@@ -944,7 +944,23 @@ def sample_collector(sample_fields, sample_index, ALT, MOTIF_DECOMP, REF_DECOMP,
         if any(d is None or d == "NA" for d in complete_DS):
              # This prevents crashing on empty data
              pass 
+        a1_lpm_str = "NA"
+        a2_lpm_str = "NA"
+        try:
+            if len(SAMPLE) > 3:
+                lpm_fields = SAMPLE[3].split(',') # Extract index 3 (LPM)
 
-        SAMPLE_dict[each_sidx] = [gt_value, complete_seqs, SD, complete_DS, DS_info, motif_set, MM, decoded_MV]
+                # Pull the raw LPM strings exactly as they are
+                if len(lpm_fields) > 0 and lpm_fields[0] != '.':
+                    a1_lpm_str = lpm_fields[0]
+                if len(lpm_fields) > 1 and lpm_fields[1] != '.':
+                    a2_lpm_str = lpm_fields[1]
+        except (ValueError, IndexError):
+            pass
+
+        # Package them together as a flat string track (e.g. "TAACCC-18:TAACCC-18")
+        lpm_counts_str = f"{a1_lpm_str}:{a2_lpm_str}"
+
+        SAMPLE_dict[each_sidx] = [gt_value, complete_seqs, SD, complete_DS, DS_info, motif_set, MM, decoded_MV, lpm_counts_str]
         
     return SAMPLE_dict
