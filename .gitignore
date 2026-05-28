@@ -4,7 +4,7 @@ __pycache__/
 *$py.class
 venv/
 test_env/
-test_visuamitra
+test_visuamitra/
 .env
 build/
 dist/

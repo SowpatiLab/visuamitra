@@ -54,7 +54,7 @@ export default function Viewer() {
      paginatedIndices, currentPage, setCurrentPage, setCurrentPageIndex, totalPages,
      hoverX, setHoverX,
      isMetadataExpanded, toggleMetadataExpansion
-  } = useVisuaMiTRaLogic(vcfFile, tbiFile, location.state);
+  } = useVisuaMiTRaLogic(vcfFile, tbiFile, location.state, viewMode);
 
   const allLoadedRows = useMemo(() => {
     if (!pages) return [];
@@ -266,7 +266,7 @@ export default function Viewer() {
         </div>
 
       {/* PAGINATION CONTROLS: Only show if > 10 samples */}
-        {totalPages > 1 && (
+        {viewMode !== "overview" && totalPages > 1 && (
           <div style={paginationStyle}>
             <button disabled={currentPage === 1} onClick={() => setCurrentPage(p => p - 1)}>Prev 10</button>
             <span>Page {currentPage} of {totalPages} ({selectedSampleIndices.length} samples)</span>
@@ -298,6 +298,12 @@ export default function Viewer() {
                 style={viewMode === "methylation" ? activeTabStyle : inactiveTabStyle}
               >
                 Methylation
+              </button>
+              <button 
+                onClick={() => setViewMode("overview")}
+                style={viewMode === "overview" ? activeTabStyle : inactiveTabStyle}
+              >
+                Overview 
               </button>
             </div>
 
@@ -336,7 +342,11 @@ export default function Viewer() {
           <VisualizerCanvas 
             data={row}
             viewMode={viewMode}
-            selectedSamples={paginatedIndices.map(idx => availableSamples[idx])}
+            selectedSamples={
+              viewMode === "overview" 
+                ? selectedSampleIndices.map(idx => availableSamples[idx]) 
+                : paginatedIndices.map(idx => availableSamples[idx])
+            }
             availableSamples={availableSamples}
             loading={loading}
             totalSvgWidth={totalSvgWidth}
@@ -349,7 +359,7 @@ export default function Viewer() {
             onHoverX={setHoverX}
           />
         </div>
-
+        {viewMode !== "overview" &&(
         <div ref={legendRef} style={{ flexShrink: 0 }}>
           <Legend 
             colorMap={getVisibleColorMap(row, paginatedIndices, availableSamples, colorMap)} 
@@ -369,9 +379,11 @@ export default function Viewer() {
             methThreshold={methThreshold}
           />
         </div>
+        )}
       </div>
       
       {/* FOOTER CONTROLS: Aligned to the Plot boundaries */}
+      {viewMode !== "overview" && (
       <div style={{ 
         width: "100%", 
         display: "flex", 
@@ -404,6 +416,7 @@ export default function Viewer() {
           />
         </div>
       </div>
+      )}
     </div>
   );
 }

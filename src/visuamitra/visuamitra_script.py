@@ -762,11 +762,11 @@ def visuamitra_data_extract_stream(file, chr=None, start_coord=None, end_coord=N
             print(f"[BACKEND DEBUG] ERROR: Chromosome '{chr}' not in VCF index.")
             return
 
-        # 1. Handle Start: fallback to 0 if None
+        # Handle Start: fallback to 0 if None
         start_val = int(start_coord) if start_coord is not None else 0
         search_start = max(0, start_val - 1)
 
-        # 2. Handle End: fallback to max integer if None (pysam handles this as EOF)
+        # Handle End: fallback to max integer if None (pysam handles this as EOF)
         if end_coord is not None:
             search_end = int(end_coord)
         else:
@@ -867,23 +867,23 @@ def sample_collector(sample_fields, sample_index, ALT, MOTIF_DECOMP, REF_DECOMP,
         alt2 = REF if v2 == 0 else (ALT[v2 - 1] if (v2 - 1) < len(ALT) else REF)
 
         # Pull Metadata Tags
-        MM = [float(i) if i != '.' else 0.0 for i in SAMPLE[8].split(',')] if len(SAMPLE) > 8 else 'NA'
-        MV = SAMPLE[11].split(',') if len(SAMPLE) > 11 else []
-        SD = [int(i) if i != '.' else 0 for i in SAMPLE[4].split(',')] if len(SAMPLE) > 4 else []
-        DS_raw = SAMPLE[10].split(',') if len(SAMPLE) > 10 else ['.', '.']
+        MM = [float(i) if i != '.' else 0.0 for i in SAMPLE[9].split(',')] if len(SAMPLE) > 9 else 'NA'
+        MV = SAMPLE[12].split(',') if len(SAMPLE) > 12 else []
+        SD = [int(i) if i != '.' else 0 for i in SAMPLE[5].split(',')] if len(SAMPLE) > 5 else []
+        DS_raw = SAMPLE[11].split(',') if len(SAMPLE) > 11 else ['.', '.']
         CREATE_DECOMP = ('.' in DS_raw) and MOTIF_DECOMP
 
-        # 4. Handle Decomposition
+        # Handle Decomposition
         tmp_DS = []
         # We use a counter to pull from the VCF tags only when we hit an ALT allele
         alt_tag_index = 0 
 
         for val, seq in [(v1, alt1), (v2, alt2)]:
             if val == 0:
-                # It's the reference! Use the pre-calculated REF_DECOMP
+                # It's reference! Use the pre-calculated REF_DECOMP
                 tmp_DS.append(REF_DECOMP)
             else:
-                # It's an ALT! Pull from the VCF tags using our counter
+                # It's ALT! Pull from the VCF tags using counter
                 if CREATE_DECOMP:
                     dseq, _ = motif_decomposition(seq, MOTIF_SIZE)
                     tmp_DS.append(dseq)
@@ -897,11 +897,11 @@ def sample_collector(sample_fields, sample_index, ALT, MOTIF_DECOMP, REF_DECOMP,
         complete_seqs = [REF, alt1, alt2]   
         
         # Decode Methylation (Uses global cg_pos and decode64_dict)
-        if len(SAMPLE) > 11 and SAMPLE[11] != '.,.':
+        if len(SAMPLE) > 12 and SAMPLE[12] != '.,.':
             decoded_MV = []
             # MV contains two comma separated strings (ex-'DADDADA,ADDDDGA')
             # Split them into list of two tags
-            mv_tags = SAMPLE[11].split(',') 
+            mv_tags = SAMPLE[12].split(',') 
             
             for idx, val in enumerate([v1, v2]):
                 # Get the sequence for this allele (Ref or Alt)

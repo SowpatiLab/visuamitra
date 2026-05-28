@@ -1,6 +1,7 @@
 import React from "react";
 import DecompositionPlot from "../DecompositionPlot";
 import MethylationPlot from "../MethylationPlot";
+import OverviewDashboard from "../OverviewDashboard";
 import Axis from "../Axis";
 import { parseDecompFromTSV } from "../../utils/parseDecompInfo";
 
@@ -24,6 +25,17 @@ export default function VisualizerCanvas({
   loading,
   fullLen
 }) {
+
+  if (viewMode === "overview") {
+    return (
+      <OverviewDashboard 
+        data={data}
+        selectedSamples={selectedSamples}
+        availableSamples={availableSamples}
+      />
+    );
+  }
+
   const isDecomp = viewMode === "decomposition";
   const SAMPLE_HEIGHT = isDecomp ? 100 : 130; 
   const REF_HEIGHT = isDecomp ? 60 : 0; 

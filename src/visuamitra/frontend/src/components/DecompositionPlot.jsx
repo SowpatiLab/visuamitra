@@ -20,12 +20,12 @@ export default function DecompositionPlot({
   const [hover, setHover] = useState(null);
 
   const renderMotifs = (data, baseY, trackLabel, totalLen) => {
-    // 1. Check if we actually have motif data
+    // Check if we actually have motif data
     const hasData = data && data.lengths && data.lengths.length > 0;
     
-    // 2. Determine the width of our "container"
-    // If no data: use the full reported allele length (fallback)
-    // If data exists: use the sum of segments (no "ghost" tail)
+    // Determine the width of container
+    // If no data: use full reported allele length (fallback)
+    // If data exists: use sum of segments
     const sumOfSegments = hasData ? data.lengths.reduce((a, b) => a + b, 0) : 0;
     const visualTotal = hasData ? sumOfSegments : totalLen;
 
@@ -62,13 +62,15 @@ export default function DecompositionPlot({
           const currentOffset = data.lengths.slice(0, i).reduce((a, b) => a + b, 0);
           const x1 = scaleX(currentOffset);
           const w = scaleX(currentOffset + len) - x1;
-          
           const id = `${trackLabel}-${i}`;
           const isHovered = hover?.id === id;
-          const canonical = getCanonicalMotif(data.motifs[i] || "", refMotif);
-          //const isMainMotif = canonical === (refMotif || "").toUpperCase();
-          const isKnown = !!colorMap[canonical];  
-          const fillColor = isKnown ? colorMap[canonical] : "#bdbdbd";
+          const rawMotif = (data.motifs[i] || "").toUpperCase();
+          const currentCopies = data.copies[i] || 0;
+          const isNonRepetitive = currentCopies <= 1 || rawMotif.includes("N_REPETITIVE") || rawMotif.includes("FLANK");
+          // BYPASS CYCLIC VARIATION
+          const lookupKey = isNonRepetitive ? rawMotif : getCanonicalMotif(rawMotif, refMotif);
+          const isKnown = !!colorMap[lookupKey];  
+          const fillColor = isKnown ? colorMap[lookupKey] : "#bdbdbd";
 
           return (
             <rect
@@ -83,18 +85,15 @@ export default function DecompositionPlot({
               rx={2}
               onMouseEnter={(e) => {
               e.stopPropagation();
-              const rawMotif = (data.motifs[i] || "").toUpperCase();
-              const canonical = getCanonicalMotif(data.motifs[i] || "", refMotif);
 
               setHover({
                 id,
                 x: x1 + w / 2,
                 y: baseY - 12,
                 motif: rawMotif,
-                // Use the parsed copies and lengths directly for perfect sync
-                copy: data.copies[i], 
+                copy: currentCopies, 
                 len: len,
-                isNonRepeating: data.copies[i] <= 1,
+                isNonRepeating: isNonRepetitive,
               });
             }}
               onMouseLeave={() => setHover(null)}
