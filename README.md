@@ -142,7 +142,7 @@ VisuaMiTRa now supports the simultaneous visualization of multiple samples from 
 
   <div align="center">
   <img src="./assets/vis_download.png" alt="Workflow" width="180" >
-  <p><i>Fig 6: Download options </i></p>
+  <p><i>Fig 7: Download options </i></p>
 </div>
 
 
