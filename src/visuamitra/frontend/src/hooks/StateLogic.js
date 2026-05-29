@@ -51,6 +51,7 @@ export function useVisuaMiTRaLogic(vcfFile, tbiFile, initialState, viewMode = "d
   const [filterTrigger, setFilterTrigger] = useState(0);
   const [methThreshold, setMethThreshold] = useState("");
   const pageSize = initialState?.pageSize || 500;
+  const [expectedMotifOverrideColor, setExpectedMotifOverrideColor] = useState(null);
 
   // PAGINATION STATE 
   const [currentPage, setCurrentPage] = useState(1);
@@ -72,6 +73,14 @@ export function useVisuaMiTRaLogic(vcfFile, tbiFile, initialState, viewMode = "d
       setCurrentPage(1);
     }
   }, [selectedSampleIndices.length, totalPages, currentPage]);
+
+  useEffect(() => {
+  const currentRows = pages[currentPageIndex] || [];
+  const currentRow = currentRows[selectedIdx] || {};
+  if (currentRow.Chrom) {
+    setExpectedMotifOverrideColor(null);
+  }
+}, [currentPageIndex, selectedIdx, pages]);
 
   const fetchPageTSV = useCallback(async (cursor) => {
     const formData = new FormData();
@@ -305,5 +314,6 @@ const goNext = () => {
     paginatedIndices, currentPage, setCurrentPage, totalPages,
     hoverX, setHoverX,
     isMetadataExpanded, toggleMetadataExpansion: () => setIsMetadataExpanded(prev => !prev),
+    expectedMotifOverrideColor, setExpectedMotifOverrideColor
   };
 }

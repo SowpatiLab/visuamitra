@@ -189,21 +189,25 @@ export default function OverviewDashboard({ data, selectedSamples = [], availabl
       {/* TEXT LEGEND SUBHEADER */}
       <div style={{ borderBottom: "1px solid #f0f0f0", paddingBottom: "14px", marginBottom: "24px", display: "flex", justifyContent: "space-between", alignItems: "center" }}>
         <div>
-          <div style={{ display: "flex", alignItems: "center", gap: "16px", marginTop: "4px", fontSize: "12px", color: "#555" }}>
-            <span>Target Motif: <strong style={{ color: "#111" }}>{discoveredMotif}</strong></span>
-            <div style={{ display: "flex", alignItems: "center", gap: "6px" }}>
-              <span style={{ width: 9, height: 9, borderRadius: "50%", backgroundColor: allele1Color, display: "inline-block" }}></span>
-              <span>Allele 1 </span>
-            </div>
-            <div style={{ display: "flex", alignItems: "center", gap: "6px" }}>
-              {/* Diamond SVG Mimic Legend Icon */}
-              <svg width="10" height="10" viewBox="0 0 10 10" style={{ display: "inline-block" }}>
-                <polygon points="5,0 10,5 5,10 0,5" fill={allele2Color} />
-              </svg>
-              <span>Allele 2 </span>
-            </div>
+          <div style={{ fontSize: "15px", color: "#555" }}>
+          <strong>Cross-sample-wide statistics</strong>
+        </div>
+        </div>
+
+        {/* Right Side: Allele legend */}
+        <div style={{ display: "flex", alignItems: "center", gap: "16px", fontSize: "12px", color: "#555" }}>
+          <div style={{ display: "flex", alignItems: "center", gap: "6px" }}>
+            <span style={{ width: 9, height: 9, borderRadius: "50%", backgroundColor: allele1Color, display: "inline-block" }}></span>
+            <span>Allele 1</span>
+          </div>
+          <div style={{ display: "flex", alignItems: "center", gap: "6px" }}>
+            <svg width="10" height="10" viewBox="0 0 10 10" style={{ display: "inline-block", verticalAlign: "middle" }}>
+              <polygon points="5,0 10,5 5,10 0,5" fill={allele2Color} />
+            </svg>
+            <span>Allele 2</span>
           </div>
         </div>
+
       </div>
 
       {/* GRID CONTAINER */}
@@ -211,8 +215,13 @@ export default function OverviewDashboard({ data, selectedSamples = [], availabl
         
         {/* LEFT CHART AREA: METHYLATION */}
         <div style={{ flex: 1, minWidth: "0", border: "1px solid #f0f0f0", padding: "12px", borderRadius: "6px" }}>
-          <div style={{ marginBottom: "10px" }}>
-            <h4 style={{ margin: 0, fontSize: "13px", fontWeight: "bold", color: "#333" }}>Allele Length vs. Mean Methylation</h4>
+          <div style={{ marginBottom: "14px" }}>
+            <h4 style={{ margin: 0, fontSize: "13px", fontWeight: "bold", color: "#333" }}>
+              Allele Length vs. Mean Methylation
+            </h4>
+            <div style={{ fontSize: "11px", color: "#666", marginTop: "2px" }}>
+              Plotting <strong>{scatterPoints.length}</strong> alleles in total
+            </div>
           </div>
           <svg width="100%" height={chartHeight} viewBox={`0 0 ${chartWidth} ${chartHeight}`} style={{ display: "block", overflow: "visible" }}>
             {[0.0, 0.25, 0.50, 0.75, 1.0].map((pct, i) => {
@@ -270,8 +279,13 @@ export default function OverviewDashboard({ data, selectedSamples = [], availabl
 
         {/* RIGHT CHART AREA: LPM COPY NUMBER */}
         <div style={{ flex: 1, minWidth: "0", border: "1px solid #f0f0f0", padding: "12px", borderRadius: "6px" }}>
-          <div style={{ marginBottom: "10px" }}>
-            <h4 style={{ margin: 0, fontSize: "13px", fontWeight: "bold", color: "#333" }}>Allele Length vs. LPM Copy Number</h4>
+          <div style={{ marginBottom: "14px" }}>
+            <h4 style={{ margin: 0, fontSize: "13px", fontWeight: "bold", color: "#333" }}>
+              Allele Length vs. LPM's (Longest Pure Motif) Copy Number
+            </h4>
+            <div style={{ fontSize: "11px", color: "#666", marginTop: "2px" }}>
+              Motif: <strong>{discoveredMotif}</strong> | Plotting <strong>{lpmScatterPoints.length}</strong> alleles in total
+            </div>
           </div>
           <svg width="100%" height={chartHeight} viewBox={`0 0 ${chartWidth} ${chartHeight}`} style={{ display: "block", overflow: "visible" }}>
             {[0, 0.25, 0.5, 0.75, 1.0].map((ratio, i) => {

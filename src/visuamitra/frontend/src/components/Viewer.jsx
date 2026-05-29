@@ -43,6 +43,22 @@ export default function Viewer() {
   const metadataRef = useRef(null);
   const titleRef = useRef(null);
 
+  const activePaletteSwatches = useMemo(() => {
+  const paletteMap = {
+    Tableau10: ["#4e79a7", "#f28e2c", "#e15759", "#76b7b2", "#59a14f", "#edc949", "#af7aa1", "#ff9da7", "#9c755f", "#bab0ab"],
+    Observable10: ["#1f77b4", "#ff7f0e", "#2ca02c", "#d62728", "#9467bd", "#8c564b", "#e377c2", "#7f7f7f", "#bcbd22", "#17becf"],
+    Set1: ["#e41a1c", "#377eb8", "#4daf4a", "#984ea3", "#ff7f00", "#ffff33", "#a65628", "#f781bf", "#999999"],
+    Set2: ["#66c2a5", "#fc8d62", "#8da0cb", "#e78ac3", "#a6d854", "#ffd92f", "#e5c494", "#b3b3b3"],
+    Set3: ["#8dd3c7", "#ffffb3", "#bebada", "#fb8072", "#80b1d3", "#fdb462", "#b3de69", "#fccde5", "#bc80bd", "#ccebc5", "#ffed6f"],
+    Paired: ["#a6cee3", "#1f78b4", "#b2df8a", "#33a02c", "#fb9a99", "#e31a1c", "#fdbf6f", "#ff7f00", "#cab2d6", "#6a3d9a", "#ffff99", "#b15928"],
+    Dark2: ["#1b9e77", "#d95f02", "#7570b3", "#e7298a", "#66a61e", "#e6ab02", "#a6761d", "#666666"],
+    Accent: ["#7fc97f", "#beaed4", "#fdc086", "#ffff99", "#386cb0", "#f0027f", "#bf5b17", "#666666"],
+    Pastel1: ["#fbb4ae", "#b3cde3", "#ccebc5", "#decbe4", "#fed9a6", "#ffffcc", "#e5d8bd", "#fddaec", "#f2f2f2"],
+    Pastel2: ["#b3e2cd", "#f4cae4", "#cbd5e8", "#fdcdac", "#cbd5e8", "#e6f5c9", "#fff2ae", "#f1e2cc"]
+  };
+  return paletteMap[settings.palette] || paletteMap["Observable10"];
+}, [settings.palette]);
+
   // Custom Hook for Data & Pagination
   const {
     loading, error, setError, pages, currentPageIndex, selectedIdx,
@@ -53,7 +69,8 @@ export default function Viewer() {
      setSelectedSampleIndices,
      paginatedIndices, currentPage, setCurrentPage, setCurrentPageIndex, totalPages,
      hoverX, setHoverX,
-     isMetadataExpanded, toggleMetadataExpansion
+     isMetadataExpanded, toggleMetadataExpansion,
+     expectedMotifOverrideColor, setExpectedMotifOverrideColor
   } = useVisuaMiTRaLogic(vcfFile, tbiFile, location.state, viewMode);
 
   const allLoadedRows = useMemo(() => {
@@ -76,7 +93,6 @@ export default function Viewer() {
 
   if (row.samples && selectedSampleIndices.length > 0) {
       const firstId = selectedSampleIndices[0];
-      //console.log("8. DATA FOR FIRST SELECTED SAMPLE:", row.samples[firstId]);
   }
 
   // Reset scale to 100% whenever data row changes
@@ -87,12 +103,11 @@ export default function Viewer() {
   }, [row.Chrom, row.Start, row.End, selectedIdx]);
 
   // Scans all samples to ensure every motif has a color assigned
-    const colorMap = useMemo(() => {
+  const colorMap = useMemo(() => {
     const repeatingMotifSet = new Set();
     
     if (row && row.samples && availableSamples.length > 0) {
       availableSamples.forEach((sampleName) => {
-        
         const sample = row.samples[sampleName];
         
         // Skip if the sample hasn't loaded or is "NA"
@@ -113,9 +128,17 @@ export default function Viewer() {
         });
       });
     }
-  const motifsArray = Array.from(repeatingMotifSet).sort((a,b) => a.localeCompare(b));
-  return generateMotifColors(motifsArray, settings.palette, row.Motif);
-}, [row, availableSamples, settings.palette]); 
+    const motifsArray = Array.from(repeatingMotifSet).sort((a,b) => a.localeCompare(b));
+    
+    // Generate standard map first
+    const generatedMap = generateMotifColors(motifsArray, settings.palette, row.Motif);
+    // Inject dynamic override color into created map
+    const canonicalRef = row.Motif ? getCanonicalMotif(row.Motif, row.Motif) : "";
+    if (canonicalRef && expectedMotifOverrideColor) {
+      generatedMap[canonicalRef] = expectedMotifOverrideColor;
+    }
+    return generatedMap;
+  }, [row, availableSamples, settings.palette, expectedMotifOverrideColor]); // added expectedMotifOverrideColor dependency
 
   const getMethylationColor = useMemo(() => 
     getMethylationColorFactory(settings.methPalette), 
@@ -147,12 +170,11 @@ export default function Viewer() {
         }
       });
     }
-    // Also check the global reference track
+    // Also check global reference track
     if (row.refTrack?.lengths) {
       const refSum = row.refTrack.lengths.reduce((a, b) => a + b, 0);
       m = Math.max(m, refSum);
     }
-
     return m || 100; 
   }, [row]);
 
@@ -163,15 +185,8 @@ export default function Viewer() {
   const isRowDataMissing = !row || !row.samples || Object.keys(row.samples).length === 0;
 
   if (!vcfFile) return <div style={{ padding: 50 }}>No VCF file provided. Please go back to home.</div>;
-  //console.log("Current methThreshold state:", methThreshold);
   
   const FIXED_WIDTH = 1200;
-  /*console.log("CRITICAL DEBUG:", {
-    typeOfSelectedIdx: typeof selectedIdx,
-    typeOfGlobalIdx: typeof globalSelectedIdx,
-    isRowAnObject: typeof row === 'object' && row !== null,
-    rowKeys: row ? Object.keys(row) : []
-  });*/
 
   return (
     <div style={{
@@ -248,7 +263,7 @@ export default function Viewer() {
               width: `${BASE_WIDTH}px`, // 1200px
               display: "flex", 
               flexDirection: "column",   // Stacks pills and table vertically
-              alignItems: "center",       // Centers table horizontally
+              alignItems: "center",       
               marginBottom: "20px", 
               boxSizing: "border-box" 
             }}
@@ -323,7 +338,7 @@ export default function Viewer() {
           width: "100%", 
           overflowX: "auto",
           maxWidth: "1400px", // Limit expansion on wide screens
-          margin: "0 auto",    // Centers the entire visualizer block
+          margin: "0 auto",    // Centers entire visualizer block
           justifyContent: "center", 
           gap: "24px", 
           marginTop: 20,
@@ -332,7 +347,6 @@ export default function Viewer() {
         <div ref={visualizerRef}
           style={{ 
           width: `${BASE_WIDTH}px`, // Always keep the container 1200px
-          //overflowX: "auto",        // Only this area will scroll when zoomed
           border: "1px solid #eee",
           borderRadius: "10px",
           background: "#fff",
@@ -367,6 +381,9 @@ export default function Viewer() {
             methPalette={settings.methPalette} 
             hasDecomposition={viewMode === "decomposition"} 
             showMethylation={viewMode === "methylation"}
+            paletteSwatches={activePaletteSwatches}
+            overrideColor={expectedMotifOverrideColor}
+            onOverrideColorChange={setExpectedMotifOverrideColor}
             hasAmbiguousMeth={
               viewMode === "methylation" && 
               selectedSampleIndices.some(idx => {
@@ -399,10 +416,8 @@ export default function Viewer() {
           boxSizing: "border-box"
         }}>
           
-          {/* Zoom stays on left */}
           <ZoomControls zoomFactor={zoomFactor} setZoomFactor={setZoomFactor} />
           
-          {/* Download on right */}
           <DownloadManager 
             visualizerRef={visualizerRef}
             legendRef={legendRef}
