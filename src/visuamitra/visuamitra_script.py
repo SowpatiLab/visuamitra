@@ -183,8 +183,6 @@ def get_most_frequent_motif(sequence, motif_size, motif):
 
     return primary_motif, secondary_motif
     
-#def get_canonical_motif(motif):
-    #return min(motif[i:] + motif[:i] for i in range(len(motif)))
 
 def max_match(shift_list, gap_regions, motif_size):
     gap_wise_shift = []
@@ -213,9 +211,6 @@ def max_match(shift_list, gap_regions, motif_size):
             max_consecutive = max(len(run) for run in pattern_str.split('0')) if '1' in pattern_str else 0
             ideal_consecutive = max_consecutive + shift_value
             
-            # Score based on multiple factors
-            #score = (match_density * 0.4) + (max_consecutive / gap_length * 0.4) + (1.0 / shift_value * 0.2)
-            
             candidate_shifts.append((shift_value, ideal_consecutive, total_matches))
         
         candidate_shifts.sort(key=lambda x: x[1], reverse=True)
@@ -223,7 +218,6 @@ def max_match(shift_list, gap_regions, motif_size):
         best_shift = -1
                
         for shift_value, ideal_consecutive, total_matches in candidate_shifts:
-            #repeat_runs = max_consecutive / shift_value
             if ( ideal_consecutive / shift_value) >= 2.0:
                 best_shift = shift_value
                 break
@@ -234,10 +228,9 @@ def max_match(shift_list, gap_regions, motif_size):
     
 slide_threshold = {1:1, 2:2, 3:3, 4:4, 5:5, 6:6, 7:7, 8:8, 9:9, 10:10}
 def window_scan(shift_list, motif_size, sequence, sequential_decomp, sequential_part, overall_boundary, current_gap):
-    shift_seq = shift_list[motif_size-1]#[current_gap[0]:current_gap[1]]
+    shift_seq = shift_list[motif_size-1]
 
     slide_size = slide_threshold.get(motif_size, 8)
-    # slide_size = motif_size
     
     i=current_gap[0]
     start = i; end = current_gap[1]
@@ -335,7 +328,7 @@ def shift_decomp(seq, motif_size, motif, boundary, state):
         decomposed_parts.append(f"({primary_motif}){count}")
     else:
         decomposed_parts.append(primary_motif)
-    # decomposed_parts.append(f"({primary_motif}){count}")
+
     last_motif_end = positions[-1] + len(primary_motif)
     leftover_sequence = seq[last_motif_end:]
     if leftover_sequence:
@@ -798,13 +791,14 @@ def visuamitra_data_extract_stream(file, chr=None, start_coord=None, end_coord=N
                 if REF.islower(): REF = REF.upper()
                 REF_DECOMP, _ = motif_decomposition(REF, MOTIF_SIZE) if MOTIF_DECOMP else [None, None]
 
+                format_fields = { TAG:idx for idx,TAG in enumerate(locus[8].split(':')) }
                 sample_fields = locus[9:]
                 valid_indices = [idx for idx in samples_index if idx < len(sample_fields)]
 
                 if not valid_indices: continue
 
                 # crash?
-                SAMPLE_dict = sample_collector(sample_fields, valid_indices, ALT, MOTIF_DECOMP, REF_DECOMP, REF, MOTIF_SIZE, MOTIF)
+                SAMPLE_dict = sample_collector(sample_fields, valid_indices, format_fields, ALT, MOTIF_DECOMP, REF_DECOMP, REF, MOTIF_SIZE, MOTIF)
 
                 for s_idx in valid_indices:
                     data = SAMPLE_dict.get(s_idx)
@@ -836,7 +830,7 @@ def visuamitra_data_extract_stream(file, chr=None, start_coord=None, end_coord=N
     finally:
         vcf_obj.close()
 
-def sample_collector(sample_fields, sample_index, ALT, MOTIF_DECOMP, REF_DECOMP, REF, MOTIF_SIZE, MOTIF):
+def sample_collector(sample_fields, sample_index, format_fields, ALT, MOTIF_DECOMP, REF_DECOMP, REF, MOTIF_SIZE, MOTIF):
     """Logic to process specific sample columns."""
     SAMPLE_dict = {}
     
@@ -846,7 +840,7 @@ def sample_collector(sample_fields, sample_index, ALT, MOTIF_DECOMP, REF_DECOMP,
             continue
         
         SAMPLE = sample_fields[each_sidx].split(':')
-        gt_value = SAMPLE[0]
+        gt_value = SAMPLE[format_fields['GT']]
         
         if gt_value in ['.', './.', '.|.']:
             SAMPLE_dict[each_sidx] = ['./.', 'NA', 'NA', 'NA', 'NA', 'NA', 'NA', 'NA']
@@ -867,10 +861,9 @@ def sample_collector(sample_fields, sample_index, ALT, MOTIF_DECOMP, REF_DECOMP,
         alt2 = REF if v2 == 0 else (ALT[v2 - 1] if (v2 - 1) < len(ALT) else REF)
 
         # Pull Metadata Tags
-        MM = [float(i) if i != '.' else 0.0 for i in SAMPLE[8].split(',')] if len(SAMPLE) > 8 else 'NA'
-        MV = SAMPLE[11].split(',') if len(SAMPLE) > 11 else []
-        SD = [int(i) if i != '.' else 0 for i in SAMPLE[4].split(',')] if len(SAMPLE) > 4 else []
-        DS_raw = SAMPLE[10].split(',') if len(SAMPLE) > 10 else ['.', '.']
+        MM = [float(i) if i != '.' else 'NA' for i in SAMPLE[format_fields['MA']].split(',')] if len(SAMPLE) > 8 else 'NA'
+        SD = [int(i) if i != '.' else 0 for i in SAMPLE[format_fields['SD']].split(',')] if len(SAMPLE) > 4 else []
+        DS_raw = SAMPLE[format_fields['DS']].split(',') if len(SAMPLE) > 10 else ['.', '.']
         CREATE_DECOMP = ('.' in DS_raw) and MOTIF_DECOMP
 
         # 4. Handle Decomposition
@@ -901,7 +894,7 @@ def sample_collector(sample_fields, sample_index, ALT, MOTIF_DECOMP, REF_DECOMP,
             decoded_MV = []
             # MV contains two comma separated strings (ex-'DADDADA,ADDDDGA')
             # Split them into list of two tags
-            mv_tags = SAMPLE[11].split(',') 
+            mv_tags = SAMPLE[format_fields['MV']].split(',') 
             
             for idx, val in enumerate([v1, v2]):
                 # Get the sequence for this allele (Ref or Alt)
