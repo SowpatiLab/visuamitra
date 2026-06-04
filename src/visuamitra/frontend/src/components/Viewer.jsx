@@ -53,7 +53,8 @@ export default function Viewer() {
      setSelectedSampleIndices,
      paginatedIndices, currentPage, setCurrentPage, setCurrentPageIndex, totalPages,
      hoverX, setHoverX,
-     isMetadataExpanded, toggleMetadataExpansion
+     isMetadataExpanded, toggleMetadataExpansion,
+     refGenome 
   } = useVisuaMiTRaLogic(vcfFile, tbiFile, location.state);
 
   const allLoadedRows = useMemo(() => {
@@ -73,6 +74,8 @@ export default function Viewer() {
   
   const currentRows = pages[currentPageIndex] || [];
   const row = currentRows[selectedIdx] || {};
+
+  console.log("Assembly:", refGenome);
 
   if (row.samples && selectedSampleIndices.length > 0) {
       const firstId = selectedSampleIndices[0];
@@ -232,7 +235,10 @@ export default function Viewer() {
       <div style={{ marginTop: "-30px", marginBottom: "50px", position: "relative" }}>
         {row.Chrom && (
           <ChromosomeIdeogram 
-            chr={row.Chrom} start={Number(row.Start)} end={Number(row.End)} 
+            chr={row.Chrom} 
+            start={Number(row.Start)} 
+            end={Number(row.End)} 
+            refGenome={refGenome}
             height={80} 
             chrHeight={900}
             chrWidth={20} 

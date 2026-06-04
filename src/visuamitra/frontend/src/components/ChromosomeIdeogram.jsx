@@ -6,6 +6,7 @@ export default function ChromosomeIdeogram({
   chr,
   start,
   end,
+  refGenome = "hg38",
   height = 120,
   chrHeight = 80,
   chrWidth = 8
@@ -20,9 +21,12 @@ export default function ChromosomeIdeogram({
     const container = document.getElementById("ideogram-container");
     if (container) container.innerHTML = "";
 
+    const assemblyConfig = refGenome === "t2t-chm13" ? "T2T-CHM13v2.0" : "GRCh38";
+
     const ideo = new Ideogram({
       organism: "human",
       container: "#ideogram-container",
+      assembly: assemblyConfig,
       chromosomes: [pureChr],
       orientation: "horizontal",
       chrHeight,
@@ -48,7 +52,7 @@ export default function ChromosomeIdeogram({
     return () => {
       if (container) container.innerHTML = "";
     };
-  }, [chr, start, end, chrHeight, chrWidth]);
+  }, [chr, start, end, refGenome, chrHeight, chrWidth]);
 
   return (
     <div style={{ 

@@ -707,34 +707,40 @@ def refine_decomposition(fseq, motif_size, seq_len):
 
 def extract_methcutoff(file):
     try:
+        hg38_chr1_len = 248956422
+        t2t_chr1_len = 248387328
         vcf_obj = pysam.VariantFile(file)
         cutoff_desc = vcf_obj.header.info["MPC"].description
         total_samples = list(vcf_obj.header.samples)
+        chr1_length = vcf_obj.header.contigs['chr1'].length
+        if chr1_length == hg38_chr1_len:
+            ref_genome = "hg38"
+        elif chr1_length == t2t_chr1_len:
+            ref_genome = "t2t-chm13"
         vcf_obj.close()
-        return cutoff_desc, total_samples
+        return cutoff_desc, total_samples, ref_genome
     
     except (KeyError, AttributeError):
-        return "Not specified", list(pysam.VariantFile(file).header.samples)
+        return "Not specified", list(pysam.VariantFile(file).header.samples), "hg38"
     except Exception as e:
-        return f"Error: {str(e)}", []
+        return f"Error: {str(e)}", [], "hg38"
 
 def visuamitra_data_extract_stream(file, chr=None, start_coord=None, end_coord=None, samples_index=None, include_header=True):
-    #print("!!! VERSION CHECK: [B-12] - April 27th !!!")
-    # 1. Normalize Chromosome
+    # Normalize Chromosome
     if chr and not str(chr).startswith('chr'):
         chr = f"chr{chr}"
 
-    # DEBUG 1: Input Check
     # print(f"\n[BACKEND DEBUG] Requesting: {chr}:{start_coord}-{end_coord}")
 
     if samples_index is None:
         samples_index = [0]
 
-    cutoff_info, total_samples = extract_methcutoff(file)
+    cutoff_info, total_samples, ref_genome = extract_methcutoff(file)
 
     if include_header:        
         yield f"##METADATA\t{cutoff_info}\n"
         yield f"##SAMPLES\t{','.join(total_samples)}\n"
+        yield f"##REF_GENOME\t{ref_genome}\n"
 
         header = [
             'Chrom', 'Start', 'End', 'ID', 'Motif', 'Motif_size',
@@ -744,22 +750,21 @@ def visuamitra_data_extract_stream(file, chr=None, start_coord=None, end_coord=N
         ]
         yield "\t".join(header) + "\n"
     else:
-        _, total_samples = extract_methcutoff(file)
+        _, total_samples, _ = extract_methcutoff(file)
 
     vcf_obj = pysam.TabixFile(file)
     row_yielded_count = 0 # Initialized here to avoid NameError
 
     try:
-        # DEBUG 2: Index Check
         if chr not in vcf_obj.contigs:
             print(f"[BACKEND DEBUG] ERROR: Chromosome '{chr}' not in VCF index.")
             return
 
-        # 1. Handle Start: fallback to 0 if None
+        # Handle Start: fallback to 0 if None
         start_val = int(start_coord) if start_coord is not None else 0
         search_start = max(0, start_val - 1)
 
-        # 2. Handle End: fallback to max integer if None (pysam handles this as EOF)
+        # Handle End: fallback to max integer if None (pysam handles this as EOF)
         if end_coord is not None:
             search_end = int(end_coord)
         else:
@@ -771,8 +776,6 @@ def visuamitra_data_extract_stream(file, chr=None, start_coord=None, end_coord=N
                 locus = locus_raw.strip().split('\t')
                 if len(locus) < 10: continue
 
-
-                # Safely parse Info
                 info_parts = [x.split('=') for x in locus[7].split(';') if '=' in x]
                 info_dict = {x[0]: x[1] for x in info_parts}
 
@@ -866,7 +869,7 @@ def sample_collector(sample_fields, sample_index, format_fields, ALT, MOTIF_DECO
         DS_raw = SAMPLE[format_fields['DS']].split(',') if len(SAMPLE) > 10 else ['.', '.']
         CREATE_DECOMP = ('.' in DS_raw) and MOTIF_DECOMP
 
-        # 4. Handle Decomposition
+        # Handle Decomposition
         tmp_DS = []
         # We use a counter to pull from the VCF tags only when we hit an ALT allele
         alt_tag_index = 0
@@ -892,8 +895,8 @@ def sample_collector(sample_fields, sample_index, format_fields, ALT, MOTIF_DECO
         # Decode Methylation (Uses global cg_pos and decode64_dict)
         if len(SAMPLE) > 11 and SAMPLE[11] != '.,.':
             decoded_MV = []
-            # MV contains two comma separated strings (ex-'DADDADA,ADDDDGA')
-            # Split them into list of two tags
+            # ex-'DADDADA,ADDDDGA')
+            # Split into list of two tags
             mv_tags = SAMPLE[format_fields['MV']].split(',')
 
             for idx, val in enumerate([v1, v2]):
@@ -906,10 +909,8 @@ def sample_collector(sample_fields, sample_index, format_fields, ALT, MOTIF_DECO
                     tag = mv_tags[idx]
                     numerical_levels = [decode64_dict.get(i, 0.0) for i in tag]
 
-                    # Padding check: match position count to level count
                     if len(numerical_levels) < len(cpg_positions):
                         numerical_levels += [0.0] * (len(cpg_positions) - len(numerical_levels))
-                    # Trimming check: match position count if tag is too long
                     elif len(numerical_levels) > len(cpg_positions):
                         numerical_levels = numerical_levels[:len(cpg_positions)]
 
@@ -933,7 +934,6 @@ def sample_collector(sample_fields, sample_index, format_fields, ALT, MOTIF_DECO
                 DS_info.append([None, None])
 
         motif_set = list(motif_set)
-        # Final safety check
         if any(d is None or d == "NA" for d in complete_DS):
              # This prevents crashing on empty data
              pass
