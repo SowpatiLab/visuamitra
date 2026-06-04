@@ -79,6 +79,7 @@ export default function Legend({
                     {isExpectedMotif && (
                       <button 
                         onClick={() => setShowColorPicker(!showColorPicker)}
+                        data-html2canvas-ignore="true"
                         style={{
                           background: "none", border: "none", color: "#328547", fontSize: "12px", 
                           cursor: "pointer", padding: "2px 4px", fontWeight: "600"
@@ -91,15 +92,17 @@ export default function Legend({
 
                   {/* Swatch Picker Dropdown */}
                   {isExpectedMotif && showColorPicker && (
-                    <div style={{ 
-                      display: "grid", 
-                      gridTemplateColumns: "repeat(5, 1fr)", 
-                      gap: "4px", 
-                      background: "#fdfdfd", 
-                      padding: "6px", 
-                      border: "1px solid #eee", 
-                      borderRadius: "4px",
-                      marginTop: "2px"
+                    <div
+                      data-html2canvas-ignore="true" 
+                      style={{ 
+                        display: "grid", 
+                        gridTemplateColumns: "repeat(5, 1fr)", 
+                        gap: "4px", 
+                        background: "#fdfdfd", 
+                        padding: "6px", 
+                        border: "1px solid #eee", 
+                        borderRadius: "4px",
+                        marginTop: "2px"
                     }}>
                       {paletteSwatches.map((swatchColor) => (
                         <div
