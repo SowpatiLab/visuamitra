@@ -42,15 +42,9 @@ export function parseTSV(text) {
     };
     const sequences = safeParse(obj.Sequences);
     const meanMeth = safeParse(obj.Mean_meth);
-    const rawDecomp = safeParse(obj.Decomp_info); // Parsed into [Ref, A1, A2]
-
-    
-    /*console.log(`Sample: ${obj.SampleID}, GT: ${obj.GT}`);
-    console.log("Full Sequences Array:", sequences);
-    console.log("Full Decomp Array:", rawDecomp);*/
+    const rawDecomp = safeParse(obj.Decomp_info);
 
     const transformTrack = (arr, rMotif) => {
-      // Check if arr exists and has the expected structure [motifs[], lengths[]]
       if (!Array.isArray(arr) || !Array.isArray(arr[0]) || !Array.isArray(arr[1])) {
         return { motifs: [], lengths: [], copies: [] };
       }
@@ -70,7 +64,6 @@ export function parseTSV(text) {
         const mLen = canonical.length || 1;
         const copies = len / mLen;
 
-        // Only merge if they are the EXACT same canonical motif
         if (finalMotifs.length > 0 && finalMotifs[finalMotifs.length - 1] === canonical) {
           finalLengths[finalLengths.length - 1] += len;
           finalCopies[finalCopies.length - 1] += copies;
@@ -84,41 +77,48 @@ export function parseTSV(text) {
       return { motifs: finalMotifs, lengths: finalLengths, copies: finalCopies };
     };
 
-  // Map the raw tracks through transformer first
+   // Map raw tracks through transformer
     let parsedDecomp = Array.isArray(rawDecomp) 
       ? rawDecomp.map(track => transformTrack(track, obj.Motif)) 
       : [];
 
-    // Check homozygous missing tracks
-    const hasA1Data = parsedDecomp[1] && parsedDecomp[1].motifs && parsedDecomp[1].motifs.length > 0;
-    const hasA2Data = parsedDecomp[2] && parsedDecomp[2].motifs && parsedDecomp[2].motifs.length > 0;
+    // Keep ALL elements because backend payload doesn't include a Ref track in Decomp_info
+    const sampleAlleleTracks = parsedDecomp.slice(1);
 
-    if (hasA1Data && !hasA2Data) {
-      // clone Allele 1 over to Allele 2 slot
-      parsedDecomp[2] = JSON.parse(JSON.stringify(parsedDecomp[1]));
-    } else if (!hasA1Data && !hasA2Data) {
-      // fallback stabilizer block
-      const emptyTrack = { motifs: [], lengths: [], copies: [] };
-      if (!parsedDecomp[1]) parsedDecomp[1] = emptyTrack;
-      if (!parsedDecomp[2]) parsedDecomp[2] = emptyTrack;
+    // If it's a standard homozygous variant (1 track comes back), duplicate it for diploid display layout
+    if (sampleAlleleTracks.length === 1) {
+      sampleAlleleTracks.push(JSON.parse(JSON.stringify(sampleAlleleTracks[0])));
+    }
+
+    // Fallback safeguard if empty
+    if (sampleAlleleTracks.length === 0) {
+      sampleAlleleTracks.push({ motifs: [], lengths: [], copies: [] });
     }
       
-    const aLen1 = sequences[1]?.length || 0;
-    const aLen2 = sequences[2]?.length || 0; 
+    // Keep all elements from sequences array as well (no .slice(1))
+    const trackLengths = (Array.isArray(sequences) ? sequences : []).map(seq => seq?.length || 0);
+    
+    // Ensure trackLengths array matches the length of sampleAlleleTracks exactly
+    while (trackLengths.length < sampleAlleleTracks.length) {
+      trackLengths.push(0);
+    }
+    if (trackLengths.length > sampleAlleleTracks.length) {
+      trackLengths.length = sampleAlleleTracks.length;
+    }
 
-    // Build the sanitized sample object with PRE-PARSED data
+    const maxSampleTrackLen = trackLengths.length > 0 ? Math.max(...trackLengths) : 0;
+
+    // final sample container object
     const sampleData = { 
       ...obj, 
-      alleleLen1: aLen1, 
-      alleleLen2: aLen2, 
+      trackLengths: trackLengths,
       sequences: sequences,
       meanMeth: meanMeth,
       SampleIdx: sIdx,
-      parsedDecomp: parsedDecomp 
+      parsedDecomp: sampleAlleleTracks 
     };
 
     if (!groupedData.has(locusKey)) {
-      // Use local transformTrack to ensure global reference is also squashed
       const actualRefTrack = (Array.isArray(rawDecomp) && rawDecomp.length > 0)
           ? transformTrack(rawDecomp[0], obj.Motif)
           : { motifs: [], lengths: [], copies: [] };
@@ -129,7 +129,7 @@ export function parseTSV(text) {
         Motif: obj.Motif || "NA",
         samples: {},
         refTrack: actualRefTrack,
-        maxAlleleLen: Math.max(aLen1, aLen2)
+        maxAlleleLen: maxSampleTrackLen
       });
     }
 
@@ -141,8 +141,9 @@ export function parseTSV(text) {
       locus.samples[sName] = sampleData;
     }
     
-    locus.maxAlleleLen = Math.max(locus.maxAlleleLen, aLen1, aLen2);
+    locus.maxAlleleLen = Math.max(locus.maxAlleleLen, maxSampleTrackLen);
   });
+
   console.log("Parsed Locus Data:", Array.from(groupedData.values()));
   return Array.from(groupedData.values());
 }

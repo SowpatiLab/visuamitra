@@ -2,7 +2,6 @@ import React from "react";
 import DecompositionPlot from "../DecompositionPlot";
 import MethylationPlot from "../MethylationPlot";
 import Axis from "../Axis";
-import { parseDecompFromTSV } from "../../utils/parseDecompInfo";
 
 const safeJson = (s) => {
   if (!s) return null;
@@ -25,13 +24,24 @@ export default function VisualizerCanvas({
   fullLen
 }) {
   const isDecomp = viewMode === "decomposition";
-  const SAMPLE_HEIGHT = isDecomp ? 100 : 130; 
+  
+  const TRACK_HEIGHT = isDecomp ? 25 : 30; // Individual sizing per allele track lane
+  const TRACK_GAP = 8;
+  const SAMPLE_PADDING_BORDER = 40; // Spacing for labels and dividers
   const REF_HEIGHT = isDecomp ? 60 : 0; 
   const HEADER_TOP = 40; 
   const AXIS_HEIGHT = 60;  
-  const TOTAL_HEIGHT = HEADER_TOP + REF_HEIGHT + (selectedSamples.length * SAMPLE_HEIGHT) + AXIS_HEIGHT;
 
-  // CHECK: If data doesn't exist yet, return a skeleton or null
+  // Compute exactly how many horizontal rows each individual selected sample contains
+  const totalSamplesHeight = selectedSamples.reduce((accumulatedHeight, sIdx) => {
+    const sample = data?.samples?.[sIdx];
+    const trackCount = sample?.parsedDecomp?.length || 2; // Default fallback to 2 lines if loading
+    const sampleBlockHeight = (trackCount * TRACK_HEIGHT) + ((trackCount - 1) * TRACK_GAP) + SAMPLE_PADDING_BORDER;
+    return accumulatedHeight + sampleBlockHeight;
+  }, 0);
+
+  const TOTAL_HEIGHT = HEADER_TOP + REF_HEIGHT + totalSamplesHeight + AXIS_HEIGHT;
+
   if (!data || !data.samples || Object.keys(data.samples).length === 0) {
     return (
       <div style={containerStyle}>
@@ -42,8 +52,11 @@ export default function VisualizerCanvas({
     );
   }
 
-  const sampleKeys = Object.keys(data.samples);
   const globalRef = data.refTrack;
+  
+  // track vertical coordinates across multiple loop execution tracks dynamically
+  let currentYTracker = HEADER_TOP + REF_HEIGHT;
+
   return (
     <div style={containerStyle}>
       <svg width={totalSvgWidth} height={TOTAL_HEIGHT}>
@@ -62,7 +75,7 @@ export default function VisualizerCanvas({
             pointerEvents="none"
           />
         )}
-
+        
         {/* REFERENCE SECTION */}
         {isDecomp && (
           <g transform={`translate(0, ${HEADER_TOP})`}>
@@ -86,116 +99,109 @@ export default function VisualizerCanvas({
         {selectedSamples.map((sIdx, i) => {
           const sample = data.samples[sIdx];
           const sampleName = availableSamples[sIdx] || `Index ${sIdx}`;
-          const yOffset = HEADER_TOP + REF_HEIGHT + (i * SAMPLE_HEIGHT);
+          
+          // Capture the precise starting position for this block, then update the global tracker
+          const yOffset = currentYTracker;
+          const trackCount = sample?.parsedDecomp?.length || 2;
+          const sampleBlockHeight = (trackCount * TRACK_HEIGHT) + ((trackCount - 1) * TRACK_GAP) + SAMPLE_PADDING_BORDER;
+          currentYTracker += sampleBlockHeight;
 
-          if (!sample && loading) {
-          return (
-            <g key={sIdx} transform={`translate(0, ${yOffset})`}>
-              <text x={margins.left} y={15} fill="#666" fontStyle="italic">
-                Loading data for {sampleName}...
-              </text>
-            </g>
-          );
-        }
-
-          // DATA MISSING HANDLER: Render a labeled placeholder instead of skipping
           if (!sample) {
             return (
               <g key={sIdx} transform={`translate(0, ${yOffset})`}>
-                <text x={margins.left} y={-5} style={{ fontWeight: "bold", fontSize: "12px", fill: "#d93025" }}>
-                  {sampleName} (Data not available for this sample)
+                <text x={margins.left} y={15} fill="#666" fontStyle="italic">
+                  Loading data for {sampleName}...
                 </text>
-                <rect 
-                  x={margins.left} y={10} 
-                  width={totalSvgWidth - margins.left - margins.right} height={20} 
-                  fill="#f9f9f9" stroke="#ddd" strokeDasharray="4,4" rx={4}
-                />
-                <line x1={0} y1={SAMPLE_HEIGHT - 20} x2={totalSvgWidth} y2={SAMPLE_HEIGHT - 20} stroke="#eee" />
               </g>
             );
           }
-          // Parse Decomposition
-          const dA1 = sample.parsedDecomp?.[1] || null; 
-          const dA2 = sample.parsedDecomp?.[2] || null;
 
-          // Sum lengths using a helper to prevent NaN and leakage
-          const sumLengths = (obj) => (obj && obj.lengths ? obj.lengths.reduce((a, b) => a + (Number(b) || 0), 0) : 0);
-          const decompLen1 = sumLengths(dA1);
-          const decompLen2 = sumLengths(dA2);
           const methTags = safeJson(sample.Meth_tag) || [];
-
-          // Check the first position to decide if we need to subtract startOffset
           const firstPos = methTags[0]?.[0]?.[0] || 0;
-          const startOffset = (firstPos > 100000) ? Number(data.Start || 0) : 0; 
-
-          const m1 = { 
-            pos: (methTags[0]?.[0] || []).flat().map(p => Number(p) - startOffset), 
-            // REMOVE the check that turns things into -1, Keep the raw value.
-            lvl: (methTags[0]?.[1] || []).flat().map(l => Number(l))    
-          };
-
-          const m2 = { 
-            pos: (methTags[1]?.[0] || []).flat().map(p => Number(p) - startOffset), 
-            lvl: (methTags[1]?.[1] || []).flat().map(l => Number(l))
-          };
-
-          const lastCpGPos1 = Math.max(...(m1.pos || [0]));
-          const lastCpGPos2 = Math.max(...(m2.pos || [0]));
-
-          // Ensuring Allele 2 ONLY looks at Allele 2 data (index [2] and alleleLen2)
-          const visualLen1 = Math.max(Number(sample.alleleLen1 || 0), lastCpGPos1, decompLen1);
-          const visualLen2 = Math.max(Number(sample.alleleLen2 || 0), lastCpGPos2, decompLen2);
-
-          // Calculate pixel widths manually to verify independence
-          const startX = scaleX(0);
-          const width1 = Math.max(1, scaleX(visualLen1) - startX);
-          const width2 = Math.max(1, scaleX(visualLen2) - startX);
-
-          /*console.log(`[Width Debug] ${sample.SampleID}: A1=${visualLen1} (${width1}px), A2=${visualLen2} (${width2}px)`);   
-          console.log(`--- Data Debug: ${sample.SampleID} ---`);
-          console.log("Positions (A1):", m1.pos);
-          console.log("Levels (A1):", m1.lvl);
-          console.log("Lengths match?", m1.pos.length === m1.lvl.length);*/
-          // If lengths don't match, the 'N/A' is happening because 
-          // there is no level at index 'i' for position 'pos'
+          const startOffset = (firstPos > 100000) ? Number(data.Start || 0) : 0;
 
           return (
             <g key={sIdx} transform={`translate(0, ${yOffset})`}>
-              <text x={margins.left} y={-5} style={{ fontWeight: "bold", fontSize: "12px", fill: "#444" }}>
-                {sample.SampleID}
+              <text x={margins.left} y={12} style={{ fontWeight: "bold", fontSize: "12px", fill: "#444" }}>
+                {sample.SampleID} 
+                {trackCount > 2 &&(
+                <tspan fill="#666" fontWeight="normal"> ({trackCount} alleles detected)</tspan>
+                )}
               </text>
 
-              {isDecomp ? (
-                <DecompositionPlot
-                  decompRef={null} 
-                  decompA1={dA1} 
-                  decompA2={dA2}
-                  alleleLenRef={0}
-                  alleleLen1={sample.alleleLen1 || dA1?.totalLen || decompLen1 || 0}
-                  alleleLen2={sample.alleleLen2 || dA2?.totalLen || decompLen2 || 0}                
-                  scaleX={scaleX}
-                  leftMargin={margins.left}
-                  colorMap={colorMap}
-                  refMotif={data.Motif}
-                  yOffset={5} 
-                  rowGap={10}
-                />
-              ) : (
-                <MethylationPlot
-                  meth1={m1} meth2={m2}
-                  alleleLen1={visualLen1}
-                  alleleLen2={visualLen2}
-                  bgWidth1={width1}
-                  bgWidth2={width2}
-                  scaleX={scaleX}
-                  leftMargin={margins.left}
-                  yStart={10}
-                  rowGap={12}
-                  getColor={getMethylationColor}
-                  onHoverX={onHoverX}
-                />
-              )}
-              <line x1={0} y1={SAMPLE_HEIGHT - 20} x2={totalSvgWidth} y2={SAMPLE_HEIGHT - 20} stroke="#eee" />
+              {/* LOOP DYNAMICALLY THROUGH ALL VALID ALLELE TRACKS */}
+              {sample.parsedDecomp.map((track, trackIdx) => {
+                const currentTrackY = 25 + (trackIdx * (TRACK_HEIGHT + TRACK_GAP));
+                
+                if (isDecomp) {
+                  const calculatedLen = (track.lengths || []).reduce((a, b) => a + (Number(b) || 0), 0);
+                  const displayLen = sample.trackLengths?.[trackIdx] || calculatedLen || 0;
+
+                  return (
+                    <g key={trackIdx} transform={`translate(0, ${currentTrackY})`}>
+                      <text x={margins.left - 15} y={14} textAnchor="end" style={{ fontSize: "12px", fill: "#555" }}>
+                        Allele {trackIdx + 1}
+                      </text>
+                      <DecompositionPlot
+                        decompRef={null}
+                        decompA1={track} 
+                        decompA2={null}  
+                        alleleLenRef={0}
+                        alleleLen1={displayLen}
+                        alleleLen2={0}
+                        scaleX={scaleX}
+                        leftMargin={margins.left}
+                        colorMap={colorMap}
+                        refMotif={data.Motif}
+                        yOffset={0}
+                        rowGap={0}
+                      />
+                    </g>
+                  );
+                } else {
+                  const rawTrackMeth = methTags[trackIdx];
+                  
+                  let mTrack = { pos: [], lvl: [] };
+                  if (rawTrackMeth && rawTrackMeth !== "NA" && Array.isArray(rawTrackMeth)) {
+                    mTrack = {
+                      pos: (rawTrackMeth[0] || []).flat().map(p => Number(p) - startOffset),
+                      lvl: (rawTrackMeth[1] || []).flat().map(l => Number(l))
+                    };
+                  }
+                  // check if meanMeth explicitly flags this dynamic row lane position as "NA"
+                  const meanMethArray = safeJson(sample.Mean_meth) || [];
+                  if (meanMethArray[trackIdx] === "NA") {
+                    mTrack = { pos: [], lvl: [] };
+                  }
+
+                  const lastCpGPos = mTrack.pos.length > 0 ? Math.max(...mTrack.pos) : 0;
+                  const calculatedLen = (track.lengths || []).reduce((a, b) => a + (Number(b) || 0), 0);
+                  const visualLen = Math.max(sample.trackLengths?.[trackIdx] || 0, lastCpGPos, calculatedLen);
+                  
+                  const startX = scaleX(0);
+                  const trackPixelWidth = Math.max(1, scaleX(visualLen) - startX);
+
+                  return (
+                    <g key={trackIdx} transform={`translate(0, ${currentTrackY})`}>
+                      <text x={margins.left - 15} y={12} textAnchor="end" style={{ fontSize: "10px", fill: "#666" }}>
+                        Allele {trackIdx + 1}
+                      </text>
+                      <MethylationPlot
+                        meth1={mTrack} 
+                        bgWidth1={trackPixelWidth}
+                        scaleX={scaleX}
+                        leftMargin={margins.left}
+                        yStart={0} 
+                        getColor={getMethylationColor}
+                        onHoverX={onHoverX}
+                      />
+                    </g>
+                  );
+                }
+              })}
+              
+              
+              <line x1={0} y1={sampleBlockHeight - 10} x2={totalSvgWidth} y2={sampleBlockHeight - 10} stroke="#eee" />
             </g>
           );
         })}
@@ -208,6 +214,7 @@ export default function VisualizerCanvas({
     </div>
   );
 }
+
 
 const containerStyle = {
   width: "100%", display: "block", overflowX: "auto", overflowY: "hidden", 

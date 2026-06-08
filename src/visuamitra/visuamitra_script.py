@@ -839,74 +839,78 @@ def sample_collector(sample_fields, sample_index, format_fields, ALT, MOTIF_DECO
 
     for each_sidx in sample_index:
         if each_sidx >= len(sample_fields):
-            SAMPLE_dict[each_sidx] = ['./.', 'NA', 'NA', 'NA', 'NA', 'NA', 'NA', 'NA']
+            SAMPLE_dict[each_sidx] = ['./.', 'NA', 'NA', 'NA', 'NA', 'NA', 'NA', 'NA', 'NA']
             continue
 
         SAMPLE = sample_fields[each_sidx].split(':')
-        gt_value = SAMPLE[format_fields['GT']]
+        
+        # Safe GT Fetch
+        gt_idx = format_fields.get('GT')
+        if gt_idx is None or gt_idx >= len(SAMPLE):
+            SAMPLE_dict[each_sidx] = ['./.', 'NA', 'NA', 'NA', 'NA', 'NA', 'NA', 'NA', 'NA']
+            continue
+            
+        gt_value = SAMPLE[gt_idx]
 
         if gt_value in ['.', './.', '.|.']:
-            SAMPLE_dict[each_sidx] = ['./.', 'NA', 'NA', 'NA', 'NA', 'NA', 'NA', 'NA']
+            SAMPLE_dict[each_sidx] = ['./.', 'NA', 'NA', 'NA', 'NA', 'NA', 'NA', 'NA', 'NA']
             continue
 
         # Extract Genotype Indices
         sep = '/' if '/' in gt_value else '|'
         try:
             gt_indices = [int(i) for i in gt_value.split(sep) if i != '.']
-            while len(gt_indices) < 2:
-                gt_indices.append(gt_indices[0] if gt_indices else 0)
-            v1, v2 = gt_indices[0], gt_indices[1]
+            if not gt_indices:
+                gt_indices = [0]
         except ValueError:
-            v1, v2 = 0, 0
+            gt_indices = [0]
 
-        # Extract Sequences
-        alt1 = REF if v1 == 0 else (ALT[v1 - 1] if (v1 - 1) < len(ALT) else REF)
-        alt2 = REF if v2 == 0 else (ALT[v2 - 1] if (v2 - 1) < len(ALT) else REF)
+        # Gather sequences for ALL parsed alleles dynamically
+        # complete_seqs starts with REF (index 0) followed by every allele matched in gt_indices
+        complete_seqs = [REF]
+        for val in gt_indices:
+            seq_val = REF if val == 0 else (ALT[val - 1] if (val - 1) < len(ALT) else REF)
+            complete_seqs.append(seq_val)
 
-        # Pull Metadata Tags
-        MM = [float(i) if i != '.' else 'NA' for i in SAMPLE[format_fields['MA']].split(',')] if len(SAMPLE) > 8 else 'NA'
-        SD = [int(i) if i != '.' else 0 for i in SAMPLE[format_fields['SD']].split(',')] if len(SAMPLE) > 4 else []
-        DS_raw = SAMPLE[format_fields['DS']].split(',') if len(SAMPLE) > 10 else ['.', '.']
+        # Dynamic Tag Fetching with Bound Safety Checks
+        ma_idx = format_fields.get('MA')
+        MM = [float(i) if i != '.' else 'NA' for i in SAMPLE[ma_idx].split(',')] if (ma_idx is not None and ma_idx < len(SAMPLE)) else 'NA'
+
+        sd_idx = format_fields.get('SD')
+        SD = [int(i) if i != '.' else 0 for i in SAMPLE[sd_idx].split(',')] if (sd_idx is not None and sd_idx < len(SAMPLE)) else []
+
+        ds_idx = format_fields.get('DS')
+        DS_raw = SAMPLE[ds_idx].split(',') if (ds_idx is not None and ds_idx < len(SAMPLE)) else ['.']
         CREATE_DECOMP = ('.' in DS_raw) and MOTIF_DECOMP
 
-        # Handle Decomposition
-        tmp_DS = []
-        # We use a counter to pull from the VCF tags only when we hit an ALT allele
-        alt_tag_index = 0
-
-        for val, seq in [(v1, alt1), (v2, alt2)]:
+        # Extract and pair Decompositions dynamically for all multi-allelic variants
+        DS = []
+        for idx, val in enumerate(gt_indices):
             if val == 0:
-                # It's the reference! Use the pre-calculated REF_DECOMP
-                tmp_DS.append(REF_DECOMP)
+                DS.append(REF_DECOMP)
             else:
-                # It's an ALT! Pull from the VCF tags using our counter
                 if CREATE_DECOMP:
-                    dseq, _ = motif_decomposition(seq, MOTIF_SIZE)
-                    tmp_DS.append(dseq)
+                    dseq, _ = motif_decomposition(complete_seqs[idx + 1], MOTIF_SIZE)
+                    DS.append(dseq)
                 else:
-                    # Grab the next available tag from the VCF
-                    d_val = DS_raw[alt_tag_index] if alt_tag_index < len(DS_raw) else "NA"
-                    tmp_DS.append(d_val)
-                    alt_tag_index += 1
-        DS = tmp_DS
+                    alt_idx = val - 1
+                    d_val = DS_raw[alt_idx] if alt_idx < len(DS_raw) else "NA"
+                    DS.append(d_val)
+        complete_DS = [REF_DECOMP] + DS
 
-        complete_seqs = [REF, alt1, alt2]
-
-        # Decode Methylation (Uses global cg_pos and decode64_dict)
-        if len(SAMPLE) > 11 and SAMPLE[11] != '.,.':
+        # Decode Methylation dynamically matching total count of alleles
+        mv_idx = format_fields.get('MV')
+        if mv_idx is not None and mv_idx < len(SAMPLE) and SAMPLE[mv_idx] not in ['.', '.,.']:
             decoded_MV = []
-            # ex-'DADDADA,ADDDDGA')
-            # Split into list of two tags
-            mv_tags = SAMPLE[format_fields['MV']].split(',')
+            mv_tags = SAMPLE[mv_idx].split(',')
 
-            for idx, val in enumerate([v1, v2]):
-                # Get the sequence for this allele (Ref or Alt)
+            for idx, val in enumerate(gt_indices):
                 current_seq = complete_seqs[idx + 1]
                 cpg_positions = cg_pos(current_seq)
 
-                # Assign the corresponding MV tag (index 0 for v1, index 1 for v2)
-                if idx < len(mv_tags):
-                    tag = mv_tags[idx]
+                alt_idx = val - 1 if val > 0 else 0
+                if alt_idx < len(mv_tags):
+                    tag = mv_tags[alt_idx]
                     numerical_levels = [decode64_dict.get(i, 0.0) for i in tag]
 
                     if len(numerical_levels) < len(cpg_positions):
@@ -916,13 +920,11 @@ def sample_collector(sample_fields, sample_index, format_fields, ALT, MOTIF_DECO
 
                     decoded_MV.append([cpg_positions, numerical_levels])
                 else:
-                    # Fallback if tag is missing but allele is ALT
                     decoded_MV.append([cpg_positions, [0.0] * len(cpg_positions)])
         else:
             decoded_MV = 'NA'
 
-        complete_DS = [REF_DECOMP, DS[0], DS[1]]
-
+        # Accumulate motif lengths and structures dynamically for all 9 lanes
         DS_info = []
         motif_set = set()
         for i in complete_DS:
@@ -934,26 +936,28 @@ def sample_collector(sample_fields, sample_index, format_fields, ALT, MOTIF_DECO
                 DS_info.append([None, None])
 
         motif_set = list(motif_set)
-        if any(d is None or d == "NA" for d in complete_DS):
-             # This prevents crashing on empty data
-             pass
 
-        a1_lpm_str = "NA"
-        a2_lpm_str = "NA"
+        # Dynamically map out LPM string components 
+        lpm_idx = format_fields.get('LPM')
+        lpm_list = []
         try:
-            if len(SAMPLE) > 3:
-                lpm_fields = SAMPLE[format_fields.get('LPM', '.,.')].split(',') # Extract index 3 (LPM)
-
-                # Pull the raw LPM strings exactly as they are
-                if len(lpm_fields) > 0 and lpm_fields[0] != '.':
-                    a1_lpm_str = lpm_fields[0]
-                if len(lpm_fields) > 1 and lpm_fields[1] != '.':
-                    a2_lpm_str = lpm_fields[1]
+            if lpm_idx is not None and lpm_idx < len(SAMPLE):
+                lpm_fields = SAMPLE[lpm_idx].split(',')
+                for val in gt_indices:
+                    if val == 0:
+                        lpm_list.append("NA")
+                    else:
+                        alt_idx = val - 1
+                        if alt_idx < len(lpm_fields) and lpm_fields[alt_idx] != '.':
+                            lpm_list.append(lpm_fields[alt_idx])
+                        else:
+                            lpm_list.append("NA")
+            else:
+                lpm_list = ["NA"] * len(gt_indices)
         except (ValueError, IndexError):
-            pass
+            lpm_list = ["NA"] * len(gt_indices)
 
-        # Package them together as a flat string track (e.g. "TAACCC-18:TAACCC-18")
-        lpm_counts_str = f"{a1_lpm_str}:{a2_lpm_str}"
+        lpm_counts_str = ":".join(lpm_list)
 
         SAMPLE_dict[each_sidx] = [gt_value, complete_seqs, SD, complete_DS, DS_info, motif_set, MM, decoded_MV, lpm_counts_str]
 
