@@ -67,10 +67,11 @@ async def get_vcf_metadata(
         try:
             with open(actual_path, "wb") as f:
                 shutil.copyfileobj(vcf.file, f)
-            cutoff_info, total_samples = extract_methcutoff(actual_path)
+            cutoff_info, total_samples, ref_genome = extract_methcutoff(actual_path)
             return {
                 "meth_cutoff": cutoff_info,
-                "samples": total_samples
+                "samples": total_samples,
+                "ref_genome": ref_genome
             }
         finally:
             if os.path.exists(actual_path):

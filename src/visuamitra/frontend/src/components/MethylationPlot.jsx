@@ -1,18 +1,14 @@
 import React, { useState } from "react";
 
 export default function MethylationPlot({
-  meth1,
-  meth2,
+  meth1,            // current single mTrack object { pos: [...], lvl: [...] }
   bgWidth1,
-  bgWidth2,
-  alleleLen1 = 0,
-  alleleLen2 = 0,
   scaleX,
   leftMargin,
-  yStart = 200,
-  rowGap = 40,
+  yStart = 0,
   getColor,
   onHoverX,
+  alleleLabel = "",
 }) {
   const barHeight = 20;
   const MAGNIFY_SIZE = 7; // Expansion amount in pixels
@@ -20,8 +16,7 @@ export default function MethylationPlot({
 
   /* CpG bars  */
   const drawCpGs = (positions = [], levels = [], baseY, alleleKey) => {
-    // Create a "Zipped" and Filtered list to ensure coordinate integrity
-    // This removes -2 values before they ever hit the .map()
+    // Filter out missing/null data and -2 codes
     const validData = (positions || [])
       .map((pos, i) => ({ pos, lvl: levels[i], originalIdx: i }))
       .filter(item => item.lvl !== -2 && item.lvl !== null && !isNaN(item.lvl));
@@ -62,25 +57,35 @@ export default function MethylationPlot({
     });
   };
 
-  const titleY = 18;
-  const y1 = yStart + 20;
-  const y2 = y1 + barHeight + rowGap;
   const startX = scaleX(0);
+  const y1 = yStart; // Directly utilize the native lane baseline
 
-  
+  // Fallback to safely verify coordinate arrays exist before trying to draw CpG sites
+  const positions = meth1?.pos || [];
+  const levels = meth1?.lvl || [];
 
   return (
     <>
+      {/* Background Track Container*/}
+      <rect 
+        x={startX} 
+        y={y1} 
+        width={bgWidth1 > 0 ? bgWidth1 : 100} 
+        height={barHeight} 
+        fill="rgba(200,200,200,0.25)" 
+        stroke="#AAA" 
+        strokeWidth={1} 
+        rx={4} 
+      />
       
-      {/* Allele 1 */}
-      <rect x={startX} y={y1} width={bgWidth1} height={barHeight} fill="rgba(200,200,200,0.25)" stroke="#AAA" strokeWidth={1} rx={4} />
-      <text x={leftMargin - 95} y={y1 + barHeight / 1.5} fontSize="14" fontWeight="bold" fill="#222">Allele 1</text>
-      {drawCpGs(meth1?.pos, meth1?.lvl, y1, "a1")}
+      {alleleLabel && (
+        <text x={leftMargin - 95} y={y1 + barHeight / 1.5} fontSize="14" fontWeight="bold" fill="#222">
+          {alleleLabel}
+        </text>
+      )}
 
-      {/* Allele 2 */}
-      <rect x={startX} y={y2} width={bgWidth2} height={barHeight} fill="rgba(200,200,200,0.25)" stroke="#AAA" strokeWidth={1} rx={4} />
-      <text x={leftMargin - 95} y={y2 + barHeight / 1.5} fontSize="14" fontWeight="bold" fill="#222">Allele 2</text>
-      {drawCpGs(meth2?.pos, meth2?.lvl, y2, "a2")}
+      {/* CpG Sites */}
+      {positions.length > 0 && drawCpGs(positions, levels, y1, "single-allele")}
 
       {/* Dynamic Tooltip */}
       {tooltip && (
