@@ -1,8 +1,11 @@
-import React, { useMemo, useState } from "react";
-import { useNavigate } from "react-router-dom";
-import favicon from '../assets/favicon.png'
+import React, { useMemo, useState, useEffect } from "react";
+import { useNavigate, useSearchParams } from "react-router-dom";
+import favicon from '../assets/favicon.png';
+import { validateSelectedFiles, validateSubmission } from "../utils/fileValidation";
 
 export default function VCFUploadPanel({ onLoad }) {
+  const [searchParams] = useSearchParams();
+  const isCLI = searchParams.get("mode") === "cli";
   const navigate = useNavigate();
   const [vcfFile, setVcfFile] = useState(null);
   const [tbiFile, setTbiFile] = useState(null);
@@ -16,12 +19,56 @@ export default function VCFUploadPanel({ onLoad }) {
   const [selectedSamples, setSelectedSamples] = useState([]);
   const [searchTerm, setSearchTerm] = useState("");
 
+  useEffect(() => {
+    if (isCLI) {
+      handleCLILoad();
+    }
+  }, [isCLI]);
+
+  const handleCLILoad = async () => {
+    setLoading(true);
+    try {
+      // Get local file paths from backend 
+      const ctxRes = await fetch("/api/local-context");
+      if (!ctxRes.ok) throw new Error("CLI context not available");
+      const paths = await ctxRes.json();
+
+      if (paths.vcf && paths.tbi) {
+        // Set mock file objects so UI shows filenames
+        setVcfFile({ name: paths.vcf, isLocal: true });
+        setTbiFile({ name: paths.tbi, isLocal: true });
+
+        // Fetch metadata using PATH instead of File object
+        // We pass 'vcf_path' so the backend knows to read from disk
+        const formData = new FormData();
+        formData.append("vcf_path", paths.vcf);
+
+        const metaRes = await fetch("/api/get-vcf-metadata", { 
+          method: "POST", 
+          body: formData 
+        });
+        
+        if (!metaRes.ok) throw new Error("Could not read local VCF metadata");
+        
+        const meta = await metaRes.json();
+        if (meta.samples) {
+          setAvailableSamples(meta.samples);
+          setSelectedSamples([meta.samples[0]]);
+        }
+      }
+    } catch (err) {
+      setError("CLI Load Error: " + err.message);
+    } finally {
+      setLoading(false);
+    }
+  };
+
   // Filter Logic  
   const filteredSamples = useMemo(() => {
     return availableSamples.filter(name =>
       name.toLowerCase().includes(searchTerm.toLowerCase())
     );
-  }, [availableSamples, searchTerm])
+  }, [availableSamples, searchTerm]);
 
   const selectFiltered = () => {
     const newSelection = Array.from(new Set([...selectedSamples, ...filteredSamples]));
@@ -36,29 +83,31 @@ export default function VCFUploadPanel({ onLoad }) {
   const handleFileChange = async (e) => {
     const selectedFiles = Array.from(e.target.files);
     setError("");
-    const vcf = selectedFiles.find((f) => f.name.endsWith(".vcf.gz"));
-    if (!vcf) {
-      setError("Please select a .vcf.gz file");
+
+    // Use validation checker for file properties
+    const fileCheck = validateSelectedFiles(selectedFiles);
+    
+    if (fileCheck.errorMsg && !fileCheck.vcf) {
+      setError(fileCheck.errorMsg);
       return;
     }
 
-    const expectedTbiName = `${vcf.name}.tbi`;
-    const tbi = selectedFiles.find((f) => f.name === expectedTbiName);
-    setVcfFile(vcf);
-    setTbiFile(tbi || null);
+    setVcfFile(fileCheck.vcf);
+    setTbiFile(fileCheck.tbi);
 
-    if (vcf && tbi) {
+    if (fileCheck.errorMsg && !fileCheck.tbi) {
+      setError(fileCheck.errorMsg);
+    }
+
+    if (fileCheck.vcf && fileCheck.tbi) {
       const formData = new FormData();
-      formData.append("vcf", vcf);
-      // Note: backend get-vcf-metadata only takes 'vcf' 
-      // because it reads the header, which doesn't strictly need the .tbi
+      formData.append("vcf", fileCheck.vcf);
 
       try {
         const res = await fetch("/api/get-vcf-metadata", { method: "POST", body: formData });
         if (!res.ok) throw new Error("Could not fetch VCF metadata");
         
         const meta = await res.json();
-        // meta.samples is the array of strings ['Sample1', 'Sample2', ...]
         if (meta.samples) {
           setAvailableSamples(meta.samples);
           setSelectedSamples([meta.samples[0]]); // Default to first
@@ -68,35 +117,41 @@ export default function VCFUploadPanel({ onLoad }) {
         setError("Failed to read VCF samples. Check if file is valid.");
       }
     }
-
-    if (!tbi) {
-      setError(
-        `Index file not found. Expected "${expectedTbiName}" in the same folder.`
-      );
-    }
   };
 
   const handleSubmit = async (e) => {
     e.preventDefault();
-    if (!vcfFile || !tbiFile)  {
-      setError("No files selected to visualize");
+    setError("");
+
+    // Run deep validation validation logic asynchronously
+    const submissionCheck = await validateSubmission({ vcfFile, tbiFile, isCLI });
+    if (!submissionCheck.isValid) {
+      setError(submissionCheck.errorMsg);
       return;
-    };
+    }
 
     setLoading(true);
-    setError("");
 
     const finalSelectedNames = selectedSamples.length > 0 
       ? selectedSamples 
       : availableSamples;
 
     const indices = finalSelectedNames
-    .map(name => availableSamples.indexOf(name))
-    .filter(idx => idx !== -1);
+      .map(name => availableSamples.indexOf(name))
+      .filter(idx => idx !== -1);
 
     const formData = new FormData();
-    formData.append("vcf", vcfFile);
-    formData.append("tbi", tbiFile);
+    
+    if (vcfFile.isLocal) {
+      // Send absolute paths instead of file blobs
+      formData.append("vcf_path", vcfFile.name);
+      formData.append("tbi_path", tbiFile.name);
+    } else {
+      // browser upload 
+      formData.append("vcf", vcfFile);
+      formData.append("tbi", tbiFile);
+    }
+    
     if (chr) formData.append("chr", chr);
     if (start) formData.append("start", start);
     if (end) formData.append("end", end);
@@ -112,59 +167,72 @@ export default function VCFUploadPanel({ onLoad }) {
       });
 
       if (!res.ok) {
-      // Try to parse validation response from backend
-      let errorMessage = "Server error";
-      try {
-        const errorJson = await res.json();
-        if (errorJson.detail) errorMessage = errorJson.detail;
-      } catch {
-        // fallback
+        let errorMessage = "Server error";
+        try {
+          const errorJson = await res.json();
+          if (errorJson.detail) errorMessage = errorJson.detail;
+        } catch {
+          
+        }
+        throw new Error(errorMessage);
       }
-      throw new Error(errorMessage);
-    }
 
-    const text = await res.text();
-    navigate("/viewer", {
-      state: {
-        vcfFile,
-        tbiFile,
-        chr,
-        start,
-        endPos: end,
-        pageSize: 100,
-        lastCursor: res.headers.get("X-Next-Cursor") || null,
-        tsvText: text,
-        allSamples: availableSamples,
-        selectedSamples: selectedSamples,
-        initialIndices: indices.length > 0 ? indices : availableSamples.map((_, i) => i)
-      },
-    });
-  } catch (err) {
-    setError(err.message);
-  } finally {
-    setLoading(false);
-  }
-};
+      const text = await res.text();
+      navigate("/viewer", {
+        state: {
+          vcfFile,
+          tbiFile,
+          chr,
+          start,
+          endPos: end,
+          pageSize: 100,
+          lastCursor: res.headers.get("X-Next-Cursor") || null,
+          tsvText: text,
+          allSamples: availableSamples,
+          selectedSamples: selectedSamples,
+          initialIndices: indices.length > 0 ? indices : availableSamples.map((_, i) => i)
+        },
+      });
+    } catch (err) {
+      setError(err.message);
+    } finally {
+      setLoading(false);
+    }
+  };
 
   return (
     <div style={styles.page}>
       <form onSubmit={handleSubmit} style={styles.card}>
-        <h2 style={styles.title}><img 
-              src={favicon} 
-              alt="Logo" 
-              style={styles.logoImageStyle} 
-            /></h2>
+
+        <button 
+          type="button" 
+          onClick={() => navigate("/")} 
+          style={{ ...styles.linkBtn, marginBottom: 10 }}
+        >
+          ← Back to Launch Options
+        </button>
+
+        <h2 style={styles.title}>
+          <img 
+            src={favicon} 
+            alt="Logo" 
+            style={styles.logoImageStyle} 
+          />
+        </h2>
         <p style={styles.subtitle}>
-          Upload a compressed VCF file & TBI file
+          {isCLI ? "CLI Mode: Using local system files" : "Upload compressed VCF file (.vcf.gz) & its TBI file (.vcf.gz.tbi)"}
         </p>
 
-        <input
-          type="file"
-          accept=".vcf.gz,.tbi"
-          multiple
-          onChange={handleFileChange}
-          style={styles.fileInput}
-        />
+        {/* Hide input if in CLI mode */}
+        {!isCLI && (
+          <input
+            type="file"
+            accept=".vcf.gz,.tbi"
+            multiple
+            onChange={handleFileChange}
+            style={styles.fileInput}
+          />
+        )}
 
         {vcfFile && (
           <div style={styles.status}>
@@ -304,8 +372,6 @@ const styles = {
     background: "none", border: "none", color: "#328547", fontSize: "11px", fontWeight: "bold", cursor: "pointer", padding: 0
   },
   logoImageStyle: {
-  width: "100px", height: "100px", borderRadius: 8,
-  objectFit: "contain"
+    width: "100px", height: "100px", borderRadius: 8, objectFit: "contain"
   }
 };
-

@@ -3,7 +3,7 @@ import { useLocation } from "react-router-dom";
 
 import { useVisuaMiTRaLogic } from "../hooks/StateLogic";
 import { parseDecompFromTSV } from "../utils/parseDecompInfo";
-import { generateMotifColors, getCanonicalMotif, getMethylationColorFactory } from "../utils/colorUtils";
+import { generateMotifColors, getCanonicalMotif, getMethylationColorFactory, getVisibleColorMap } from "../utils/colorUtils";
 
 import HeaderSection from "./viewer/HeaderSection";
 import NavigationControls from "./viewer/NavigationControls";
@@ -36,6 +36,7 @@ export default function Viewer() {
     palette: "Observable10", font: "Arial", theme: "light", methPalette: "Viridis",
   });
   const [isDropDownOpen, setIsDropDownOpen] = useState(false);
+  const [isExporting, setIsExporting] = useState(false);
 
   const visualizerRef = useRef(null);
   const legendRef = useRef(null);
@@ -44,7 +45,7 @@ export default function Viewer() {
 
   // Custom Hook for Data & Pagination
   const {
-    loading, error, pages, currentPageIndex, selectedIdx,
+    loading, error, setError, pages, currentPageIndex, selectedIdx,
     chr, setChr, start, setStart, endPos, setEndPos,
     setSelectedIdx, applyRegionFilter, goNext, goPrev, methThreshold,
     availableSamples = [],
@@ -52,8 +53,11 @@ export default function Viewer() {
      setSelectedSampleIndices,
      paginatedIndices, currentPage, setCurrentPage, setCurrentPageIndex, totalPages,
      hoverX, setHoverX,
-     isMetadataExpanded, toggleMetadataExpansion
+
+     isMetadataExpanded, toggleMetadataExpansion,
+     refGenome 
   } = useVisuaMiTRaLogic(vcfFile, tbiFile, location.state, viewMode);
+
 
   const allLoadedRows = useMemo(() => {
     if (!pages) return [];
@@ -73,6 +77,8 @@ export default function Viewer() {
   const currentRows = pages[currentPageIndex] || [];
   const row = currentRows[selectedIdx] || {};
 
+  console.log("Assembly:", refGenome);
+
   if (row.samples && selectedSampleIndices.length > 0) {
       const firstId = selectedSampleIndices[0];
       //console.log("8. DATA FOR FIRST SELECTED SAMPLE:", row.samples[firstId]);
@@ -89,9 +95,9 @@ export default function Viewer() {
     const colorMap = useMemo(() => {
     const repeatingMotifSet = new Set();
     
-    if (row && row.samples && selectedSampleIndices.length > 0) {
-      selectedSampleIndices.forEach((idx) => {
-        const sampleName = availableSamples[idx];
+    if (row && row.samples && availableSamples.length > 0) {
+      availableSamples.forEach((sampleName) => {
+        
         const sample = row.samples[sampleName];
         
         // Skip if the sample hasn't loaded or is "NA"
@@ -112,9 +118,9 @@ export default function Viewer() {
         });
       });
     }
-  const motifsArray = Array.from(repeatingMotifSet);
+  const motifsArray = Array.from(repeatingMotifSet).sort((a,b) => a.localeCompare(b));
   return generateMotifColors(motifsArray, settings.palette, row.Motif);
-}, [row, selectedSampleIndices, settings.palette]); // Add selectedSampleIndices as dependency
+}, [row, availableSamples, settings.palette]); 
 
   const getMethylationColor = useMemo(() => 
     getMethylationColorFactory(settings.methPalette), 
@@ -198,6 +204,8 @@ export default function Viewer() {
         onApply={applyRegionFilter} 
         loading={loading} 
         error={error}
+        setError={setError}
+        rows={allLoadedRows}
       />
 
       <div style={{ zIndex: 10, width: "100%", display: "flex", justifyContent: "center", marginTop: "-10px" }}>
@@ -229,7 +237,10 @@ export default function Viewer() {
       <div style={{ marginTop: "-30px", marginBottom: "50px", position: "relative" }}>
         {row.Chrom && (
           <ChromosomeIdeogram 
-            chr={row.Chrom} start={Number(row.Start)} end={Number(row.End)} 
+            chr={row.Chrom} 
+            start={Number(row.Start)} 
+            end={Number(row.End)} 
+            refGenome={refGenome}
             height={80} 
             chrHeight={900}
             chrWidth={20} 
@@ -257,6 +268,7 @@ export default function Viewer() {
               availableSamples={availableSamples} 
               isExpanded={isMetadataExpanded}
               onToggle={toggleMetadataExpansion}
+              forceExpand={isExporting}
             />
           </div>
         </div>
@@ -358,7 +370,7 @@ export default function Viewer() {
         {viewMode !== "overview" &&(
         <div ref={legendRef} style={{ flexShrink: 0 }}>
           <Legend 
-            colorMap={colorMap} 
+            colorMap={getVisibleColorMap(row, paginatedIndices, availableSamples, colorMap)} 
             refMotif={row?.Motif}
             methPalette={settings.methPalette} 
             hasDecomposition={viewMode === "decomposition"} 
@@ -407,6 +419,8 @@ export default function Viewer() {
             viewMode={viewMode}
             chrom={row.Chrom}
             start={row.Start}
+            isExporting={isExporting}
+            setIsExporting={setIsExporting}
           />
         </div>
       </div>

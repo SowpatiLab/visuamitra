@@ -1,7 +1,7 @@
 import { useState, useEffect, useCallback, useMemo, useRef } from "react";
 import { parseTSV } from "../utils/parseTSV";
 
-const extractMetadataAndClean = (text, setMethThreshold, setAvailableSamples) => {
+const extractMetadataAndClean = (text, setMethThreshold, setAvailableSamples, setRefGenome) => {
   if (!text) return "";
   
   // split by any newline type
@@ -19,6 +19,14 @@ const extractMetadataAndClean = (text, setMethThreshold, setAvailableSamples) =>
       const parts = trimmed.split("\t");
       if (parts.length > 1) setMethThreshold(parts[1]);
       return false;   
+    }
+
+    if (trimmed.startsWith("##REF_GENOME")) {
+      const parts = trimmed.split("\t");
+      if (parts.length > 1) {
+        setRefGenome(parts[1].trim()); // Sets "hg38" or "t2t-chm13"
+      }
+      return false;
     }
     
     // Drop other file-level headers (##)
@@ -50,6 +58,7 @@ export function useVisuaMiTRaLogic(vcfFile, tbiFile, initialState, viewMode = "d
   const [endPos, setEndPos] = useState(initialState?.endPos || "");
   const [filterTrigger, setFilterTrigger] = useState(0);
   const [methThreshold, setMethThreshold] = useState("");
+  const [refGenome, setRefGenome] = useState("hg38");
   const pageSize = initialState?.pageSize || 500;
 
   // PAGINATION STATE 
@@ -159,7 +168,7 @@ export function useVisuaMiTRaLogic(vcfFile, tbiFile, initialState, viewMode = "d
       
       if (!isMounted) return;
 
-      const cleanText = extractMetadataAndClean(text, setMethThreshold);
+      const cleanText = extractMetadataAndClean(text, setMethThreshold, setAvailableSamples, setRefGenome);
       const parsed = parseTSV(cleanText);
 
       if (parsed.length === 0) {
@@ -292,6 +301,7 @@ const goNext = () => {
     chr, setChr, start, setStart, endPos, setEndPos,
     setSelectedIdx, 
     applyRegionFilter: () => {
+    setError(null);
     setPages([]); 
     setCursorHistory([null]);
     setCurrentPageIndex(0);

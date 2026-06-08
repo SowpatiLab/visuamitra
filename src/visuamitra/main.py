@@ -8,6 +8,8 @@ from fastapi.staticfiles import StaticFiles
 from fastapi.responses import FileResponse
 from .routes import router
 from pathlib import Path
+import argparse
+
 
 from . import visuamitra_script
 #print(f"!!! BACKEND SCRIPT LOCATION: {visuamitra_script.__file__}")
@@ -18,7 +20,7 @@ logger = logging.getLogger("timing")
 
 app = FastAPI(
     title="Visuamitra Backend",
-    version="0.1.0"
+    version="1.0.1"
 )
 # Timing Middleware
 @app.middleware("http")
@@ -43,6 +45,14 @@ app.add_middleware(
 # API routes
 app.include_router(router, prefix="/api")
 
+# API route to fetch local paths
+@app.get("/api/local-context")
+async def get_local_context():
+    return {
+        "vcf": os.environ.get("VISUAMITRA_VCF"),
+        "tbi": os.environ.get("VISUAMITRA_TBI")
+    }
+
 # STATIC FILE SERVING LOGIC
 # Determine where the React build files are located
 package_dir = Path(__file__).parent.resolve()
@@ -50,32 +60,30 @@ package_dir = Path(__file__).parent.resolve()
 # folder name used in src/visuamitra/
 frontend_build_dir = package_dir / "frontend" / "build"
 
+#   STATIC FILE SERVING LOGIC 
 if frontend_build_dir.exists():
-    # React's 'npm run build' puts assets in a 'static' subfolder
-    # We mount that so the browser can find CSS/JS files
+    # Mount the /static subfolder (CSS/JS) first
     static_assets = frontend_build_dir / "static"
     if static_assets.exists():
         app.mount("/static", StaticFiles(directory=str(static_assets)), name="static")
-    
-    @app.get("/{rest_of_path:path}")
-    async def serve_frontend(rest_of_path: str):
-        if rest_of_path.startswith("api/"):
-             return {"error": "API route not found"}
-        
-        # Check if the requested file exists (e.g. favicon.ico)
-        file_path = frontend_build_dir / rest_of_path
+
+    # Serve specific files (favicon, manifest, etc.) if they exist
+    @app.get("/{file_name}")
+    async def serve_root_files(file_name: str):
+        file_path = frontend_build_dir / file_name
         if file_path.is_file():
             return FileResponse(str(file_path))
-            
-        # Default to index.html (for React Router support)
+        # If not a file, it's likely a React Route, so fall through to index.html
+        return FileResponse(str(frontend_build_dir / "index.html"))
+
+    # Catch-all for React Router (Landing, Upload, Viewer)
+    @app.get("/{rest_of_path:path}")
+    async def serve_frontend(rest_of_path: str):
         return FileResponse(str(frontend_build_dir / "index.html"))
 else:
     @app.get("/")
     def health_check():
-        return {
-            "status": "Visuamitra backend running (Frontend build missing)",
-            "searched_at": str(frontend_build_dir)
-        }
+        return {"status": "Frontend build missing", "path": str(frontend_build_dir)}
 
 # ENTRY POINT FOR PIP 
 def run_server():
@@ -84,8 +92,35 @@ def run_server():
     import webbrowser
     from threading import Timer
 
+    parser = argparse.ArgumentParser(description="VisuaMiTRa CLI")
+    parser.add_argument("vcf", nargs="?", help="Path to the VCF file")
+    args = parser.parse_args()
+
+    vcf_path = None
+    tbi_path = None
+
+    if args.vcf:
+        vcf_file = Path(args.vcf).resolve()
+        tbi_file = vcf_file.with_suffix(vcf_file.suffix + ".tbi")
+
+        if not vcf_file.exists():
+            print(f"Error: VCF file not found at {vcf_file}")
+            return
+        if not tbi_file.exists():
+            print(f"Error: TBI index missing. Both must be in: {vcf_file.parent}")
+            return
+        
+        # Store paths globally for the API to hand to the frontend
+        os.environ["VISUAMITRA_VCF"] = str(vcf_file)
+        os.environ["VISUAMITRA_TBI"] = str(tbi_file)
+        vcf_path = str(vcf_file)
+
     port = 8088
-    url = f"http://127.0.0.1:{port}"
+    # we go straight to /upload if file is provided
+    if args.vcf:
+        url = f"http://127.0.0.1:{port}/upload?mode=cli&file={os.path.basename(vcf_path)}"
+    else:
+        url = f"http://127.0.0.1:{port}/" # Go to Landing Page
 
     def open_browser():
         webbrowser.open_new(url)
@@ -93,9 +128,9 @@ def run_server():
     print(f"Starting VisuaMiTRa on {url}")
     
     # Optional: Automatically open the browser after 1.5 seconds
-    Timer(1.5, open_browser).start()
+    Timer(2.5, open_browser).start()
 
-    # We use the string import to avoid issues with signal handlers in some OS
+    # We use string import to avoid issues with signal handlers in some OS
     uvicorn.run("visuamitra.main:app", host="127.0.0.1", port=port, reload=False)
 
 if __name__ == "__main__":

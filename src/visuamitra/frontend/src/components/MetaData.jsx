@@ -24,7 +24,8 @@ export default function MetadataDisplay({
    availableSamples = [], 
    isExpanded, 
    onToggle, 
-   titleRef
+   titleRef,
+   forceExpand
 }) {
 
   // Safeguard: if data hasn't loaded yet
@@ -40,7 +41,8 @@ export default function MetadataDisplay({
   const motifDisplay = isLong ? `${motif.slice(0, 20)}…` : motif;
   const showMotifTooltip = isLong ? `${motif} (length: ${motif.length})` : "";
 
-  const itemsToShow = isExpanded ? selectedIndices : selectedIndices.slice(0, 3);
+  const shouldShowAll = isExpanded || forceExpand;
+  const itemsToShow = shouldShowAll ? selectedIndices : selectedIndices.slice(0, 3);
   const hasHiddenItems = selectedIndices.length > 3;
 
   return (
@@ -111,7 +113,7 @@ export default function MetadataDisplay({
         </table>
 
         {/* COMPACT BUTTON FOOTER */}
-        {hasHiddenItems && (
+        {hasHiddenItems && !forceExpand && (
           <div style={buttonContainerStyle}>
             <button 
               style={expandButtonStyle} 

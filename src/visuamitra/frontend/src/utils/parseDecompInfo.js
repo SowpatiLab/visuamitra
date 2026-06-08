@@ -57,10 +57,19 @@ export function parseDecompFromTSV(decompInfoStr, decompSeq, refMotif) {
 
   // Case 1: Standard [Ref, A1, A2] structure
   if (Array.isArray(parsed) && parsed.length >= 3) {
+    const refTrack = extract(parsed[0]);
+    const a1Track = extract(parsed[1]);
+     
+    // Check if Allele 2 data is missing or empty ([[], []]) while Allele 1 has content
+    const hasA2Data = parsed[2] && Array.isArray(parsed[2][0]) && parsed[2][0].length > 0;
+    const hasA1Data = parsed[1] && Array.isArray(parsed[1][0]) && parsed[1][0].length > 0;
+    
+    const a2Track = (!hasA2Data && hasA1Data) ? extract(parsed[1]) : extract(parsed[2]);
+
     return {
-      ref: extract(parsed[0]),
-      a1: extract(parsed[1]),
-      a2: extract(parsed[2]),
+      ref: refTrack,
+      a1: a1Track,
+      a2: a2Track,
     };
   }
 

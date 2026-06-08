@@ -1,16 +1,19 @@
 import os
 import shutil
 import tempfile
-from fastapi import APIRouter, UploadFile, File, Form, HTTPException, BackgroundTasks
+import signal
+from fastapi import APIRouter, UploadFile, File, Form, HTTPException, WebSocket, WebSocketDisconnect
 from fastapi.responses import StreamingResponse
 import pysam
-from typing import Optional
+from typing import Optional, Any
 import base64
 import re
 
 from .visuamitra_script import visuamitra_data_extract_stream, extract_methcutoff
 
 router = APIRouter()
+
+_CLI_VCF_PATH_CACHE = None
 
 def encode_cursor(chr, pos):
     raw = f"{chr}:{pos}"
@@ -25,36 +28,63 @@ def decode_cursor(cursor):
         raise HTTPException(status_code=400, detail="Invalid cursor format")
     
 def numerical_sort_key(s):
-    """Key function for numerical sorting (chr1, chr2, ... chr10)"""
+    # numerical sorting (chr1, chr2, ... chr10)
     return [int(text) if text.isdigit() else text.lower() 
             for text in re.split('([0-9]+)', s)]
 
 # Samples Endpoint
 @router.post("/get-vcf-metadata")
 async def get_vcf_metadata(
-    vcf: UploadFile = File(...),
+    vcf: Optional[UploadFile] = File(None),
+    vcf_path: Optional[str] = Form(None)     
 ):
-    """Returns the list of samples and metadata description without streaming data."""
-    tmpdir = tempfile.mkdtemp(prefix="vcf_meta_")
-    vcf_path = os.path.join(tmpdir, vcf.filename)
+    """Returns the list of samples and metadata description."""
+
+    global _CLI_VCF_PATH_CACHE
     
-    with open(vcf_path, "wb") as f:
-        shutil.copyfileobj(vcf.file, f)
+    # CASE 1: CLI Mode (vcf_path is provided)
+    if vcf_path:
+        if not os.path.exists(vcf_path):
+            raise HTTPException(
+                status_code=400, 
+                detail=f"Local VCF file path not found on disk: {vcf_path}"
+            )
+        # Convert relative path to absolute
+        absolute_vcf_path = os.path.abspath(vcf_path)
+        if os.path.exists(absolute_vcf_path):
+            _CLI_VCF_PATH_CACHE = absolute_vcf_path
+            actual_path = absolute_vcf_path            
+            cutoff_info, total_samples = extract_methcutoff(actual_path)
+            return {
+                "meth_cutoff": cutoff_info,
+                "samples": total_samples
+            }
+
+    # CASE 2: Browser Mode (vcf file is uploaded)
+    if vcf:
+        tmpdir = tempfile.mkdtemp(prefix="vcf_meta_")
+        actual_path = os.path.join(tmpdir, vcf.filename)
+        try:
+            with open(actual_path, "wb") as f:
+                shutil.copyfileobj(vcf.file, f)
+            cutoff_info, total_samples, ref_genome = extract_methcutoff(actual_path)
+            return {
+                "meth_cutoff": cutoff_info,
+                "samples": total_samples,
+                "ref_genome": ref_genome
+            }
+        finally:
+            if os.path.exists(actual_path):
+                shutil.rmtree(tmpdir)
     
-    try:
-        cutoff_info, total_samples = extract_methcutoff(vcf_path)
-        return {
-            "meth_cutoff": cutoff_info,
-            "samples": total_samples
-        }
-    finally:
-        if os.path.exists(vcf_path):
-            shutil.rmtree(tmpdir)
+    raise HTTPException(status_code=400, detail="No VCF source provided")
 
 @router.post("/vcf-to-tsv-cursor")
 async def vcf_to_tsv_cursor(
-    vcf: UploadFile = File(...),
-    tbi: UploadFile = File(...),
+    vcf: Any = File(None),
+    tbi: Any = File(None),
+    vcf_path: Optional[str] = Form(None),       
+    tbi_path: Optional[str] = Form(None),       
     last_cursor: Optional[str] = Form(None),
     page_size: int = Form(100),
     chr: Optional[str] = Form(None),
@@ -69,20 +99,68 @@ async def vcf_to_tsv_cursor(
         except ValueError:
             raise HTTPException(status_code=400, detail="Samples must be comma-separated integers")
 
-    tmpdir = tempfile.mkdtemp(prefix="vcf_")
-    vcf_path = f"{tmpdir}/{vcf.filename}"
-    tbi_path = f"{tmpdir}/{tbi.filename}"
+    # FIXED SOURCE LOGIC 
+    working_vcf_path = ""
+    tmpdir = None
 
-    with open(vcf_path, "wb") as f:
-        shutil.copyfileobj(vcf.file, f)
-    with open(tbi_path, "wb") as f:
-        shutil.copyfileobj(tbi.file, f)
+    # Check if a path came from frontend form
+    resolved_path = vcf_path if vcf_path else _CLI_VCF_PATH_CACHE
+
+    # CLI Mode / Cached Fallback
+    if resolved_path:
+        if not os.path.exists(resolved_path):
+            raise HTTPException(
+                status_code=400, 
+                detail=f"Local VCF path not found on disk: {resolved_path}"
+            )
+            
+        if tbi_path and not os.path.exists(tbi_path):
+            raise HTTPException(
+                status_code=400, 
+                detail=f"Local TBI index path not found on disk: {tbi_path}"
+            )
+        absolute_vcf_path = os.path.abspath(resolved_path)
+        if os.path.exists(absolute_vcf_path):
+            working_vcf_path = absolute_vcf_path
+        else:
+            raise HTTPException(
+                status_code=400, 
+                 detail=f"CLI path tracking failed. File not found at: {absolute_vcf_path}"
+            )
+        
+    # Browser Mode (vcf must be a real UploadFile)
+    elif vcf and hasattr(vcf, "filename") and vcf.filename:
+        tmpdir = tempfile.mkdtemp(prefix="vcf_")
+        working_vcf_path = os.path.join(tmpdir, vcf.filename)
+        
+        # Guard the TBI logic too
+        if tbi and hasattr(tbi, "filename"):
+            working_tbi_path = os.path.join(tmpdir, tbi.filename)
+            with open(working_vcf_path, "wb") as f:
+                shutil.copyfileobj(vcf.file, f)
+            with open(working_tbi_path, "wb") as f:
+                shutil.copyfileobj(tbi.file, f)
+        else:
+            # Fallback if only VCF is uploaded but TBI is missing
+            with open(working_vcf_path, "wb") as f:
+                shutil.copyfileobj(vcf.file, f)
+    else:
+        # This triggers if both are missing or 'vcf' was just the string "[object Object]"
+        raise HTTPException(
+            status_code=400, 
+            detail="No valid VCF source found. Check if file path is correct."
+        )
 
     try:
-        tabix = pysam.TabixFile(vcf_path)
-    except Exception:
-        raise HTTPException(status_code=400, detail="Could not open VCF or index")
-
+        tabix = pysam.TabixFile(working_vcf_path)
+    except OSError:
+        raise HTTPException(
+            status_code=400,
+            detail=(
+                f"Failed to open index structure for '{os.path.basename(working_vcf_path)}'. "
+                f"The file or its matching '.tbi' tracker may be empty, uncompressed, or corrupted."
+            )
+        )
     contigs = set(tabix.contigs)
 
     # BASIC VALIDATION
@@ -183,10 +261,10 @@ async def vcf_to_tsv_cursor(
             break
 
         # DEBUG: verify the handoff in logs
-        print(f"[BACKEND] Handoff Check: {current_iter_chr} starting at {iter_start}")
+        # print(f"[BACKEND] Handoff Check: {current_iter_chr} starting at {iter_start}")
 
         for raw_line in visuamitra_data_extract_stream(
-            vcf_path, 
+            working_vcf_path, 
             chr=current_iter_chr, 
             start_coord=iter_start, 
             end_coord=end if (chr and current_iter_chr == chr) else None,

@@ -34,15 +34,15 @@ export function getCanonicalMotif(motif, rMotif, allowFragments = false) {
 }
 
 export function generateMotifColors(motifs, paletteName = "Observable10", refMotif = "") {
-  // Guard: If motifs isn't an array, return empty map 
   if (!Array.isArray(motifs)) return {};
 
-  // Canonicalize and filter out any nulls/undefined
+  // Force a strict alphabetical sort on all unique motifs
+  // This guarantees absolute consistency across pagination chunks
   const uniqueCanonical = [...new Set(
     motifs
     .filter(m => !!m)
     .map(m => getCanonicalMotif(m, refMotif))
-  )].sort();
+  )].sort((a, b) => a.localeCompare(b));
   
   const paletteMap = {
     Tableau10: d3Chromatic.schemeTableau10,
@@ -57,45 +57,59 @@ export function generateMotifColors(motifs, paletteName = "Observable10", refMot
     Pastel2: d3Chromatic.schemePastel2,
   };
 
-  // Fallback to Tableau10 if the passed paletteName doesn't exist
   const baseColors = paletteMap[paletteName] || d3Chromatic.schemeTableau10;
   const colorMap = {};
-  const used = [];
 
-  // uniqueCanonical for the loop, not 'motifs'
-  uniqueCanonical.forEach((motif, i) => {
-    let finalColor;
-
-    if (i < baseColors.length) {
-      // Get base color from the palette
-      const col = baseColors[i];
-      const h = hsl(col);
-      //h.s = 0.8; // Set saturation to 40% (0.0 to 1.0)
-      //h.l = 0.6; // Optional: Adjust lightness too if needed
-     // h.opacity = 0.9;  //opacity 
-      finalColor = h.toString();
-      
-      colorMap[motif] = finalColor;
-      used.push(finalColor);
-    } else {
-      // Fallback for high-diversity regions (already uses HSL)
-      let extraIndex = i - baseColors.length;
-      let candidate;
-      do {
-        const hue = (360 * extraIndex) / (uniqueCanonical.length || 1);
-        // Ensure fallback also matches the lower saturation (e.g., 40%)
-        candidate = hsl(hue, 0.4, 0.5).toString(); 
-        extraIndex++;
-      } while (used.some((u) => areEqualRgb(u, candidate)));
-      
-      colorMap[motif] = candidate;
-      used.push(candidate);
+  // ANCHOR THE EXPECTED MOTIF (Index 0)
+  const canonicalRef = refMotif ? getCanonicalMotif(refMotif, refMotif) : "";
+  if (canonicalRef) {
+    const h = hsl(baseColors[0]);
+    // If the first color of a custom palette is greyish, force a solid green
+    if (isNearGrey(h)) {
+      h.h = 130; h.s = 0.65; h.l = 0.50;
     }
+    colorMap[canonicalRef] = h.toString();
+  }
+
+  // ASSIGN CONTRASTING COLORS SEQUENTIALLY TO SECONDARY MOTIFS
+  let colorSlotPointer = 1; 
+
+  uniqueCanonical.forEach((motif) => {
+    if (motif === canonicalRef) return;
+
+    const colorIndex = colorSlotPointer % baseColors.length;
+    const col = baseColors[colorIndex];
+    const h = hsl(col);
+
+    // GREY EXCLUSION GUARD
+    // If the palette color's saturation is low, transform it into a vibrant hue
+    if (isNearGrey(h) || h.s < 0.25) {
+      // Generate a dynamic hue angle using the position pointer to guarantee unique colors
+      h.h = (15 + colorSlotPointer * 75) % 360; 
+      h.s = 0.75; // Pump up saturation to prevent muddy greys
+      h.l = 0.52; // Balance lightness
+    }
+
+    // INTRA-PALETTE CONTRAST ADJUSTMENTS
+    // Apply contrasting lightness alterations so adjacent motifs look distinctly different
+    const cycle = Math.floor(colorSlotPointer / baseColors.length);
+    if (cycle > 0) {
+      h.l = cycle % 2 === 1 ? Math.max(0.20, h.l - 0.20) : Math.min(0.82, h.l + 0.18);
+      h.s = Math.min(1.0, h.s + 0.15);
+    } else {
+      if (colorSlotPointer % 2 === 0) {
+        h.l = Math.max(0.24, h.l - 0.12);
+      } else {
+        h.l = Math.min(0.80, h.l + 0.10);
+      }
+    }
+
+    colorMap[motif] = h.toString();
+    colorSlotPointer++; 
   });
-  //console.log("Final colormap keys:", Object.keys(colorMap));
+
   return colorMap;
 }
-
 function isNearGrey(color) {
   const c = hsl(color);
   return c.s < 0.3;
@@ -138,4 +152,58 @@ export function getMethylationColorFactory(scaleName = "viridis") {
 
     return interpolator(1-v);
   };
+}
+
+/**
+ * Filters the global color map to only include motifs that are visible on current page.
+ * * @param {Object} row - The active locus row data object containing all sample information.
+ * @param {Array<number>} paginatedIndices - Array of indexes representing the samples currently on screen.
+ * @param {Array<string>} availableSamples - The global array of all available sample names.
+ * @param {Object} colorMap - The current global motif color map object.
+ * @returns {Object} A filtered subset of the color map containing only active visible motifs.
+ */
+export function getVisibleColorMap(row, paginatedIndices, availableSamples, colorMap) {
+  if (!row || !row.samples || !Array.isArray(paginatedIndices) || paginatedIndices.length === 0) {
+    return {};
+  }
+
+  const visibleMotifs = new Set();
+  const refMotifUpper = row.Motif?.toUpperCase();
+
+  // Scan only the active page's samples
+  paginatedIndices.forEach((idx) => {
+    const sampleName = availableSamples[idx];
+    const sample = row.samples[sampleName];
+
+    if (sample && typeof sample !== 'string' && sample.parsedDecomp) {
+      sample.parsedDecomp.forEach((track) => {
+        if (track && Array.isArray(track.motifs)) {
+          track.motifs.forEach((motif, i) => {
+            // Confirm the motif is drawing structural blocks on screen
+            if (motif && track.copies && track.copies[i] > 0) {
+              const cleanMotif = motif.trim().toUpperCase();
+              const canon = getCanonicalMotif(cleanMotif, refMotifUpper);
+              visibleMotifs.add(canon);
+            }
+          });
+        }
+      });
+    }
+  });
+
+  // Build the filtered subset map
+  const filteredMap = {};
+  visibleMotifs.forEach((motif) => {
+    if (colorMap[motif]) {
+      filteredMap[motif] = colorMap[motif];
+    }
+  });
+
+  // Keep the main Expected Motif anchored in legend baseline
+  const canonicalRef = refMotifUpper ? getCanonicalMotif(row.Motif, row.Motif) : "";
+  if (canonicalRef && colorMap[canonicalRef]) {
+    filteredMap[canonicalRef] = colorMap[canonicalRef];
+  }
+
+  return filteredMap;
 }

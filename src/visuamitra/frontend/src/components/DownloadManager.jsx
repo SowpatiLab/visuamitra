@@ -9,10 +9,11 @@ export default function DownloadManager({
   titleRef,  
   viewMode, 
   chrom, 
-  start 
+  start,
+  isExporting,      
+  setIsExporting     
 }) {
   const [isOpen, setIsOpen] = useState(false);
-  const [isExporting, setIsExporting] = useState(false);
   const [options, setOptions] = useState({
     includeLegend: true,
     includeMetadata: false,
@@ -36,10 +37,24 @@ export default function DownloadManager({
       return;
     }
 
+    // Signal parent layout to natively reveal all table rows 
     setIsExporting(true);
 
+    // Small delay to let React fully update the DOM elements with all rows
+    await new Promise((resolve) => setTimeout(resolve, 120));
+
     try {
-      // Clone SVG, Inject Styles
+      const metadataElement = metadataRef.current;
+      const padding = 24;
+      
+      
+      // Read measurements directly off the fully unrolled live elements
+      const metaRect = options.includeMetadata && metadataElement ? metadataElement.getBoundingClientRect() : { width: 0, height: 0 };
+      const titleRect = titleRef.current?.getBoundingClientRect() || { width: 0, height: 0 };
+      const svgRect = svgElement.getBoundingClientRect();
+      const legendRect = options.includeLegend ? legendRef.current?.getBoundingClientRect() : { width: 0, height: 0 };
+
+      // Clone SVG and map runtime font family values
       const svgClone = svgElement.cloneNode(true);
       const currentFont = window.getComputedStyle(visualizerRef.current).fontFamily;
       
@@ -50,14 +65,81 @@ export default function DownloadManager({
           text.setAttribute("fill", computedStyle.fill);
       });
 
-      // SVG specific logic 
+      // Calculate dynamic bounds using the unrolled layouts
+      let totalWidth = svgRect.width + padding * 2;
+      if (options.includeLegend) totalWidth += legendRect.width + padding;
+      
+      let totalHeight = titleRect.height + Math.max(svgRect.height, legendRect.height) + (padding * 2);
+      if (options.includeMetadata) totalHeight += metaRect.height + padding;
+      totalHeight += padding; 
+
+      // SVG FORMAT PATH 
       if (options.format === "svg") {
-          svgClone.setAttribute("xmlns", "http://www.w3.org/2000/svg");
-          svgClone.setAttribute("xmlns:xlink", "http://www.w3.org/1999/xlink");
+          const masterSvg = document.createElementNS("http://www.w3.org/2000/svg", "svg");
+          masterSvg.setAttribute("width", totalWidth);
+          masterSvg.setAttribute("height", totalHeight);
+          masterSvg.setAttribute("viewBox", `0 0 ${totalWidth} ${totalHeight}`);
+          masterSvg.setAttribute("xmlns", "http://www.w3.org/2000/svg");
+          masterSvg.setAttribute("xmlns:xlink", "http://www.w3.org/1999/xlink");
+          masterSvg.style.backgroundColor = "#ffffff";
+          masterSvg.style.fontFamily = currentFont;
+
+          let currentY = padding;
+
+          // Render metadata layout
+          if (options.includeMetadata && metadataElement) {
+              const metaCanvas = await html2canvas(metadataElement, { scale: 2, backgroundColor: "#ffffff" });
+              const metaDataUrl = metaCanvas.toDataURL("image/png");
+
+              const svgMetaImage = document.createElementNS("http://www.w3.org/2000/svg", "image");
+              svgMetaImage.setAttributeNS("http://www.w3.org/1999/xlink", "href", metaDataUrl);
+              svgMetaImage.setAttribute("x", padding);
+              svgMetaImage.setAttribute("y", currentY);
+              svgMetaImage.setAttribute("width", metaRect.width);
+              svgMetaImage.setAttribute("height", metaRect.height);
+
+              masterSvg.appendChild(svgMetaImage);
+              currentY += metaRect.height + padding;
+          }
+
+          // Title
+          if (titleRef.current) {
+              const titleCanvas = await html2canvas(titleRef.current, { scale: 2, backgroundColor: "#ffffff" });
+              const titleDataUrl = titleCanvas.toDataURL("image/png");
+
+              const svgTitleImage = document.createElementNS("http://www.w3.org/2000/svg", "image");
+              svgTitleImage.setAttributeNS("http://www.w3.org/1999/xlink", "href", titleDataUrl);
+              svgTitleImage.setAttribute("x", padding);
+              svgTitleImage.setAttribute("y", currentY);
+              svgTitleImage.setAttribute("width", titleRect.width);
+              svgTitleImage.setAttribute("height", titleRect.height);
+
+              masterSvg.appendChild(svgTitleImage);
+              currentY += titleRect.height + padding;
+          }
+
+          // Core Plot 
+          svgClone.setAttribute("x", padding);
+          svgClone.setAttribute("y", currentY);
+          masterSvg.appendChild(svgClone);
+
+          // Legend
+          if (options.includeLegend && legendRef.current) {
+              const legCanvas = await html2canvas(legendRef.current, { scale: 2, backgroundColor: "#ffffff" });
+              const legDataUrl = legCanvas.toDataURL("image/png");
+
+              const svgLegendImage = document.createElementNS("http://www.w3.org/2000/svg", "image");
+              svgLegendImage.setAttributeNS("http://www.w3.org/1999/xlink", "href", legDataUrl);
+              svgLegendImage.setAttribute("x", svgRect.width + padding * 2);
+              svgLegendImage.setAttribute("y", currentY);
+              svgLegendImage.setAttribute("width", legendRect.width);
+              svgLegendImage.setAttribute("height", legendRect.height);
+
+              masterSvg.appendChild(svgLegendImage);
+          }
 
           const serializer = new XMLSerializer();
-          let source = serializer.serializeToString(svgClone); // Use the CLONE here
-
+          let source = serializer.serializeToString(masterSvg);
           if (!source.startsWith('<?xml')) {
               source = '<?xml version="1.0" standalone="no"?>\r\n' + source;
           }
@@ -68,28 +150,14 @@ export default function DownloadManager({
           link.download = `visuamitra_${chrom}_${start}_${viewMode}.svg`;
           link.click();
           
-          setIsExporting(false);
           setIsOpen(false);
           return; 
       }
 
-      // PNG/JPG logic
+      // PNG/JPEG FORMAT PATH 
       const scale = 2;
-      const padding = 40;
-      const titleRect = titleRef.current?.getBoundingClientRect() || { width: 0, height: 0 };
-      const svgRect = svgElement.getBoundingClientRect();
-      const legendRect = options.includeLegend ? legendRef.current?.getBoundingClientRect() : { width: 0, height: 0 };
-      const metadataElement = metadataRef.current?.querySelector('table')?.parentElement || metadataRef.current;
-      const metaRect = options.includeMetadata ? metadataElement?.getBoundingClientRect() : { width: 0, height: 0 };
-
       const canvas = document.createElement("canvas");
       const ctx = canvas.getContext("2d");
-
-      let totalWidth = svgRect.width + padding * 2;
-      if (options.includeLegend) totalWidth += legendRect.width + padding;
-      let totalHeight = titleRect.height + Math.max(svgRect.height, legendRect.height) + (padding * 2);
-      if (options.includeMetadata) totalHeight += metaRect.height + padding;
-      totalHeight += padding; 
 
       canvas.width = totalWidth * scale;
       canvas.height = totalHeight * scale;
@@ -99,22 +167,19 @@ export default function DownloadManager({
 
       let currentY = padding;      
 
-      // Metadata Table
       if (options.includeMetadata && metadataElement) {
         const metaCanvas = await html2canvas(metadataElement, { scale: scale, backgroundColor: "#ffffff" });
         ctx.drawImage(metaCanvas, padding, currentY, metaRect.width, metaRect.height);
         currentY += metaRect.height + padding;
       }
 
-      // Title
       if (titleRef.current) {
         const titleCanvas = await html2canvas(titleRef.current, { scale: scale, backgroundColor: "#ffffff" });
         ctx.drawImage(titleCanvas, padding, currentY, titleRect.width, titleRect.height);
         currentY += titleRect.height + padding;
       }
 
-      // Drwa styled SVG clone onto Canvas
-      const svgData = new XMLSerializer().serializeToString(svgClone); // Use the CLONE here
+      const svgData = new XMLSerializer().serializeToString(svgClone);
       const svgBlob = new Blob([svgData], { type: "image/svg+xml;charset=utf-8" });
       const url = URL.createObjectURL(svgBlob);
       const img = new Image();
@@ -128,7 +193,6 @@ export default function DownloadManager({
         };
       });
 
-      // Legend
       if (options.includeLegend && legendRef.current) {
         const legCanvas = await html2canvas(legendRef.current, { scale: scale, backgroundColor: "#ffffff" });
         ctx.drawImage(legCanvas, svgRect.width + padding * 2, currentY, legendRect.width, legendRect.height);
@@ -143,9 +207,10 @@ export default function DownloadManager({
     } catch (err) {
       console.error("Export Error:", err);
     } finally {
+      // Turn flag off to collapse layout immediately back down to 3 rows
       setIsExporting(false);
     }
-};
+  };
 
   return (
     <div style={{ position: "relative" }} ref={menuRef}>
