@@ -139,7 +139,7 @@ export default function VisualizerCanvas({
 
                   return (
                     <g key={trackIdx} transform={`translate(0, ${currentTrackY})`}>
-                      <text x={margins.left - 15} y={14} textAnchor="end" style={{ fontSize: "12px", fill: "#555" }}>
+                      <text x={margins.left - 15} y={14} textAnchor="end" style={{ fontSize: "14px", fill: "#333" }}>
                         Allele {trackIdx + 1}
                       </text>
                       <DecompositionPlot
@@ -183,7 +183,7 @@ export default function VisualizerCanvas({
 
                   return (
                     <g key={trackIdx} transform={`translate(0, ${currentTrackY})`}>
-                      <text x={margins.left - 15} y={12} textAnchor="end" style={{ fontSize: "10px", fill: "#666" }}>
+                      <text x={margins.left - 15} y={12} textAnchor="end" style={{ fontSize: "14px", fill: "#333" }}>
                         Allele {trackIdx + 1}
                       </text>
                       <MethylationPlot
