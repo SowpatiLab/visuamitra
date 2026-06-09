@@ -341,24 +341,27 @@ export default function Viewer() {
         </div>
       </div>
 
-      <div style={{display: "flex", 
+      <div style={{
+          display: "flex", 
           width: "100%", 
           overflowX: "auto",
-          maxWidth: "1400px", // Limit expansion on wide screens
-          margin: "0 auto",    // Centers entire visualizer block
+          maxWidth: "1400px", 
+          margin: "0 auto",    
           justifyContent: "center", 
           gap: "24px", 
           marginTop: 20,
           overflow: "visible"
         }}>
+        
+        {/* Main Canvas Container - Stays locked at 1200px */}
         <div ref={visualizerRef}
           style={{ 
-          width: `${BASE_WIDTH}px`, // Always keep the container 1200px
-          border: "1px solid #eee",
-          borderRadius: "10px",
-          background: "#fff",
-          flexShrink: 0
-        }}
+            width: `${BASE_WIDTH}px`, 
+            border: "1px solid #eee",
+            borderRadius: "10px",
+            background: "#fff",
+            flexShrink: 0
+          }}
         >
           <VisualizerCanvas 
             data={row}
@@ -380,8 +383,16 @@ export default function Viewer() {
             onHoverX={setHoverX}
           />
         </div>
-        {viewMode !== "overview" &&(
-        <div ref={legendRef} style={{ flexShrink: 0 }}>
+
+        {/* Unified Legend Wrapper: Preserves spacing geometry during layout shifts */}
+        <div 
+          ref={legendRef} 
+          style={{ 
+            flexShrink: 0, 
+            width: "180px", // Explicit width match to prevent container collapse
+            visibility: viewMode === "overview" ? "hidden" : "visible" 
+          }}
+        >
           <Legend 
             colorMap={getVisibleColorMap(row, paginatedIndices, availableSamples, colorMap)} 
             refMotif={row?.Motif}
@@ -396,14 +407,12 @@ export default function Viewer() {
               selectedSampleIndices.some(idx => {
                 const sampleName = availableSamples[idx];
                 const sampleData = row.samples?.[sampleName];
-                // checks if the string contains "-1" (the ambiguous marker)
                 return sampleData?.Meth_tag?.includes("-1");
               })
             }
             methThreshold={methThreshold}
           />
         </div>
-        )}
       </div>
       
       {/* FOOTER CONTROLS: Aligned to the Plot boundaries */}
@@ -449,13 +458,13 @@ const settingsButtonStyle = {
 };
 
 const activeTabStyle = {
-  padding: "8px 16px", background: "#328547", color: "#fff", border: "none", 
-  borderRadius: "4px 4px 0 0", cursor: "pointer", fontWeight: "bold"
+  padding: "8px 16px", background: "#328547", color: "#fff", border: "1px solid #328547", borderBottom: "none",
+  borderRadius: "4px 4px 0 0", cursor: "pointer", fontWeight: "bold", 
 };
 
 const inactiveTabStyle = {
-  padding: "8px 16px", background: "#ddd", color: "#666", border: "none", 
-  borderRadius: "4px 4px 0 0", cursor: "pointer",
+  padding: "8px 16px", background: "#eee", color: "#333", border: "1px solid #999", borderBottom: "none",
+  borderRadius: "4px 4px 0 0", cursor: "pointer", transition: "background 0.2s"
 };
 
 const controlsContainerStyle = {

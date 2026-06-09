@@ -76,12 +76,24 @@ export default function OverviewDashboard({ data, selectedSamples = [], availabl
 
     if (!sample) return;
 
-    const len1 = Number(sample.alleleLen1 || sample.parsedDecomp?.[1]?.totalLen || 0);
-    const len2 = Number(sample.alleleLen2 || sample.parsedDecomp?.[2]?.totalLen || 0);
-    
-    const [rawM1, rawM2] = parseMethylationValues(sample.Mean_meth || sample.meanMeth);
+    //Methylation Check: Exit early if data is missing or marked "NA"
+    const rawMeth = sample.Mean_meth || sample.meanMeth;
+    if (!rawMeth || rawMeth === "NA" || rawMeth === "." || rawMeth === "") return;
+
+    const [rawM1, rawM2] = parseMethylationValues(rawMeth);
     const m1 = rawM1 > 1.0 ? rawM1 / 100 : rawM1;
     const m2 = rawM2 > 1.0 ? rawM2 / 100 : rawM2;
+
+    if (isNaN(m1) || isNaN(m2)) return;
+
+    const track1Len = sample.parsedDecomp?.[0]?.lengths?.reduce((a, b) => a + b, 0) || 0;
+    const track2Len = sample.parsedDecomp?.[1]?.lengths?.reduce((a, b) => a + b, 0) || track1Len;
+    const len1 = Number(sample.alleleLen1 || track1Len);
+    const len2 = Number(sample.alleleLen2 || track2Len);
+    
+    // If length information is missing or 0, skip plotting.
+    
+    if (len1 <= 0 || len2 <= 0 || isNaN(len1) || isNaN(len2)) return;
 
     let a1LpmCount = null;
     let a2LpmCount = null;
