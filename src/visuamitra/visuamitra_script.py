@@ -893,8 +893,8 @@ def sample_collector(sample_fields, sample_index, format_fields, ALT, MOTIF_DECO
                     dseq, _ = motif_decomposition(complete_seqs[idx + 1], MOTIF_SIZE)
                     DS.append(dseq)
                 else:
-                    alt_idx = val - 1
-                    d_val = DS_raw[alt_idx] if alt_idx < len(DS_raw) else "NA"
+                    alt_idx = idx 
+                    d_val = DS_raw[alt_idx] if alt_idx < len(DS_raw) else (DS_raw[0] if DS_raw else "NA")
                     DS.append(d_val)
         complete_DS = [REF_DECOMP] + DS
 
@@ -908,7 +908,7 @@ def sample_collector(sample_fields, sample_index, format_fields, ALT, MOTIF_DECO
                 current_seq = complete_seqs[idx + 1]
                 cpg_positions = cg_pos(current_seq)
 
-                alt_idx = val - 1 if val > 0 else 0
+                alt_idx = idx
                 if alt_idx < len(mv_tags):
                     tag = mv_tags[alt_idx]
                     numerical_levels = [decode64_dict.get(i, 0.0) for i in tag]
@@ -943,11 +943,11 @@ def sample_collector(sample_fields, sample_index, format_fields, ALT, MOTIF_DECO
         try:
             if lpm_idx is not None and lpm_idx < len(SAMPLE):
                 lpm_fields = SAMPLE[lpm_idx].split(',')
-                for val in gt_indices:
+                for idx, val in enumerate(gt_indices):
                     if val == 0:
                         lpm_list.append("NA")
                     else:
-                        alt_idx = val - 1
+                        alt_idx = idx
                         if alt_idx < len(lpm_fields) and lpm_fields[alt_idx] != '.':
                             lpm_list.append(lpm_fields[alt_idx])
                         else:

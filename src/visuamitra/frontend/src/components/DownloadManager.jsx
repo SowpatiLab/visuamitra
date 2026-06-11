@@ -40,18 +40,32 @@ export default function DownloadManager({
     // Signal parent layout to natively reveal all table rows 
     setIsExporting(true);
 
-    // Small delay to let React fully update the DOM elements with all rows
+    // Small delay to let React fully update DOM elements with all rows
     await new Promise((resolve) => setTimeout(resolve, 120));
+
+    // Store original styling parameters to cleanly restore after layout calculation
+    let originalWidth = "";
+    let originalOverflow = "";
 
     try {
       const metadataElement = metadataRef.current;
       const padding = 24;
       
-      
-      // Read measurements directly off the fully unrolled live elements
+      // Force expand legend container before calculating master boundaries
+      if (options.includeLegend && legendRef.current) {
+        originalWidth = legendRef.current.style.width;
+        originalOverflow = legendRef.current.style.overflow;
+        legendRef.current.style.width = "auto";
+        legendRef.current.style.overflow = "visible";
+      }
+
+      // Extract raw baseline pixel attributes from the SVG structure to completely ignore screen scaling factors
+      const rawSvgWidth = parseFloat(svgElement.getAttribute("width")) || svgElement.viewBox.baseVal.width || 800;
+      const rawSvgHeight = parseFloat(svgElement.getAttribute("height")) || svgElement.viewBox.baseVal.height || 600;
+
+      // Read surrounding HTML block measurements accurately (Legend now measures at its TRUE full width)
       const metaRect = options.includeMetadata && metadataElement ? metadataElement.getBoundingClientRect() : { width: 0, height: 0 };
       const titleRect = titleRef.current?.getBoundingClientRect() || { width: 0, height: 0 };
-      const svgRect = svgElement.getBoundingClientRect();
       const legendRect = options.includeLegend ? legendRef.current?.getBoundingClientRect() : { width: 0, height: 0 };
 
       // Clone SVG and map runtime font family values
@@ -59,17 +73,21 @@ export default function DownloadManager({
       const currentFont = window.getComputedStyle(visualizerRef.current).fontFamily;
       
       svgClone.style.fontFamily = currentFont;
+      svgClone.style.width = `${rawSvgWidth}px`;
+      svgClone.style.height = `${rawSvgHeight}px`;
+      svgClone.style.transform = "none"; 
+
       svgClone.querySelectorAll("text").forEach(text => {
           text.setAttribute("font-family", currentFont);
           const computedStyle = window.getComputedStyle(text);
           text.setAttribute("fill", computedStyle.fill);
       });
 
-      // Calculate dynamic bounds using the unrolled layouts
-      let totalWidth = svgRect.width + padding * 2;
-      if (options.includeLegend) totalWidth += legendRect.width + padding;
+      // Calculate master horizontal size using updated full width + extra buffer space
+      let totalWidth = rawSvgWidth + padding * 2;
+      if (options.includeLegend) totalWidth += legendRect.width + padding + 16; 
       
-      let totalHeight = titleRect.height + Math.max(svgRect.height, legendRect.height) + (padding * 2);
+      let totalHeight = titleRect.height + Math.max(rawSvgHeight, legendRect.height) + (padding * 2);
       if (options.includeMetadata) totalHeight += metaRect.height + padding;
       totalHeight += padding; 
 
@@ -86,7 +104,6 @@ export default function DownloadManager({
 
           let currentY = padding;
 
-          // Render metadata layout
           if (options.includeMetadata && metadataElement) {
               const metaCanvas = await html2canvas(metadataElement, { scale: 2, backgroundColor: "#ffffff" });
               const metaDataUrl = metaCanvas.toDataURL("image/png");
@@ -102,7 +119,6 @@ export default function DownloadManager({
               currentY += metaRect.height + padding;
           }
 
-          // Title
           if (titleRef.current) {
               const titleCanvas = await html2canvas(titleRef.current, { scale: 2, backgroundColor: "#ffffff" });
               const titleDataUrl = titleCanvas.toDataURL("image/png");
@@ -118,21 +134,23 @@ export default function DownloadManager({
               currentY += titleRect.height + padding;
           }
 
-          // Core Plot 
           svgClone.setAttribute("x", padding);
           svgClone.setAttribute("y", currentY);
           masterSvg.appendChild(svgClone);
 
-          // Legend
           if (options.includeLegend && legendRef.current) {
-              const legCanvas = await html2canvas(legendRef.current, { scale: 2, backgroundColor: "#ffffff" });
+              const legCanvas = await html2canvas(legendRef.current, { 
+                scale: 2, 
+                backgroundColor: "#ffffff",
+                width: legendRect.width 
+              });
               const legDataUrl = legCanvas.toDataURL("image/png");
 
               const svgLegendImage = document.createElementNS("http://www.w3.org/2000/svg", "image");
               svgLegendImage.setAttributeNS("http://www.w3.org/1999/xlink", "href", legDataUrl);
-              svgLegendImage.setAttribute("x", svgRect.width + padding * 2);
+              svgLegendImage.setAttribute("x", rawSvgWidth + padding * 2);
               svgLegendImage.setAttribute("y", currentY);
-              svgLegendImage.setAttribute("width", legendRect.width);
+              svgLegendImage.setAttribute("width", legendRect.width); 
               svgLegendImage.setAttribute("height", legendRect.height);
 
               masterSvg.appendChild(svgLegendImage);
@@ -153,7 +171,6 @@ export default function DownloadManager({
           setIsOpen(false);
           return; 
       }
-
       // PNG/JPEG FORMAT PATH 
       const scale = 2;
       const canvas = document.createElement("canvas");
@@ -187,15 +204,20 @@ export default function DownloadManager({
 
       await new Promise((resolve) => {
         img.onload = () => {
-          ctx.drawImage(img, padding, currentY, svgRect.width, svgRect.height);
+          ctx.drawImage(img, padding, currentY, rawSvgWidth, rawSvgHeight);
           URL.revokeObjectURL(url);
           resolve();
         };
       });
 
       if (options.includeLegend && legendRef.current) {
-        const legCanvas = await html2canvas(legendRef.current, { scale: scale, backgroundColor: "#ffffff" });
-        ctx.drawImage(legCanvas, svgRect.width + padding * 2, currentY, legendRect.width, legendRect.height);
+        const legCanvas = await html2canvas(legendRef.current, { 
+          scale: scale, 
+          backgroundColor: "#ffffff",
+          width: legendRect.width 
+        });
+
+        ctx.drawImage(legCanvas, rawSvgWidth + padding * 2, currentY, legendRect.width, legendRect.height);
       }
 
       const link = document.createElement("a");
@@ -207,7 +229,11 @@ export default function DownloadManager({
     } catch (err) {
       console.error("Export Error:", err);
     } finally {
-      // Turn flag off to collapse layout immediately back down to 3 rows
+      // Reset styles back to normal screen interface doesn't shift permanently
+      if (options.includeLegend && legendRef.current) {
+        legendRef.current.style.width = originalWidth;
+        legendRef.current.style.overflow = originalOverflow;
+      }
       setIsExporting(false);
     }
   };

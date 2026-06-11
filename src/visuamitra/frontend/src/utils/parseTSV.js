@@ -88,9 +88,10 @@ export function parseTSV(text) {
 
     // Keep ALL elements because backend payload doesn't include a Ref track in Decomp_info
     const sampleAlleleTracks = parsedDecomp.slice(1);
+    const isDiploidOrMore = obj.GT && (obj.GT.includes("|") || obj.GT.includes("/"));
 
     // If it's a standard homozygous variant (1 track comes back), duplicate it for diploid display layout
-    if (sampleAlleleTracks.length === 1) {
+    if (sampleAlleleTracks.length === 1 && isDiploidOrMore) {
       sampleAlleleTracks.push(JSON.parse(JSON.stringify(sampleAlleleTracks[0])));
     }
 

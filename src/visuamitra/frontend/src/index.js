@@ -5,7 +5,7 @@ import App from './App';
 import reportWebVitals from './reportWebVitals';
 import {BrowserRouter} from 'react-router-dom';
 
-document.title = "Visuamitra-Atharva"
+document.title = "Visuamitra-Atarva"
 
 const root = ReactDOM.createRoot(document.getElementById('root'));
 root.render(
