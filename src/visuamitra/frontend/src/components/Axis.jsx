@@ -7,7 +7,6 @@ function niceStep(max) {
   return candidates.find((c) => raw <= c) || candidates[candidates.length - 1];
 }
 
-
 function getTickStep(min, max, pixelWidth, targetPx = 70) {
   const span = max - min;
   // how many ticks to aim for:
@@ -29,6 +28,7 @@ export default function Axis({
   rightMargin,
   bottomY,
   label,
+  baseFontSize = 13
 }) {
   const [min, max] = visibleRange;
 
@@ -45,6 +45,10 @@ export default function Axis({
   if (!ticks.includes(max)) {
     ticks.push(max);
   }
+
+  // Calculate dynamic offsets so numbers don't collide when text scales up
+  const tickLabelY = bottomY + Math.max(14, baseFontSize * 1.15);
+  const axisLabelY = tickLabelY + Math.max(16, baseFontSize * 1.25);
 
   return (
     <>
@@ -69,8 +73,8 @@ export default function Axis({
             />
             <text
               x={x}
-              y={bottomY + 15}
-              fontSize="12"
+              y={tickLabelY} // Dynamic layout coordinate
+              fontSize={`${Math.max(13, baseFontSize - 2)}px`} 
               textAnchor="middle"
               fill="#444"
             >
@@ -83,10 +87,11 @@ export default function Axis({
       {label && (
         <text
           x={(leftMargin + width - rightMargin) / 2}
-          y={bottomY + 32}
-          fontSize="13"
+          y={axisLabelY} // <-- Dynamic layout coordinate
+          fontSize={`${baseFontSize}px`} // <-- CHANGED from "13"
           textAnchor="middle"
           fill="#444"
+          style={{ fontWeight: "600" }}
         >
           {label}
         </text>

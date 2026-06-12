@@ -1,7 +1,7 @@
 import React from "react";
 import GenomicLocationPicker from "../GenomicLocationPicker";
 
-export default function NavigationControls({ onPrev, onNext, rows, selectedIdx, onSelect, onOpenSettings }) {
+export default function NavigationControls({ onPrev, onNext, rows, selectedIdx, onSelect, onOpenSettings, baseFontSize = 13 }) {
   return (
     <div style={navWrapperStyle}>
       {/* Grouping the navigation elements */}
@@ -37,11 +37,11 @@ const navWrapperStyle = {
   padding: "0 10px"
 };
 
-const btnStyle = { padding: "4px 12px", fontSize: "14px", cursor: "pointer", borderRadius: "4px", border: "1px solid #ccc", background: "#fff" };
+const btnStyle = { padding: "4px 12px", fontSize: "inherit", cursor: "pointer", borderRadius: "4px", border: "1px solid #ccc", background: "#fff" };
 
 const settingsBtnStyle = {
   padding: "6px 12px",
-  fontSize: "14px",
+  fontSize: "inherit",
   fontWeight: "600",
   cursor: "pointer",
   border: "1px solid #328547",

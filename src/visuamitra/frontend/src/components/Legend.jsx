@@ -3,12 +3,13 @@ import { getMethylationColorFactory, getCanonicalMotif } from "../utils/colorUti
 
 export default function Legend({
    colorMap, refMotif, hasDecomposition, hasAmbiguousMeth, methPalette, methThreshold, showMethylation, 
-   paletteSwatches = [], overrideColor, onOverrideColorChange 
+   paletteSwatches = [], overrideColor, onOverrideColorChange,
+   baseFontSize = 13 // Receives explicit numeric font-sizes (e.g. 11, 12, 13...)
 }) {
   const canonicalMotifs = useMemo(() => {
     if (!colorMap) return [];
     return Object.entries(colorMap)
-      .filter(([motif]) => motif !== "Non-repetitive seq") // safety filter
+      .filter(([motif]) => motif !== "Non-repetitive seq") 
       .sort((a, b) => a[0].localeCompare(b[0]));
   }, [colorMap]);
   
@@ -18,61 +19,75 @@ export default function Legend({
 
   const gradientSteps = 20;
   const gradientArray = Array.from({ length: gradientSteps }, (_, i) =>
-    getMethylationColor((i / (gradientSteps - 1)) * 100)
+    getMethylationColor(((gradientSteps - 1 - i) / (gradientSteps - 1)) * 100)
   );
 
   const [showColorPicker, setShowColorPicker] = useState(false);
 
-  // If neither mode is active, hide whole box
   if (!hasDecomposition && !methPalette) return null;
+
+  // Calculate matching element dimension scales cleanly relative to base user integer 
+  const boxDimension = Math.max(12, baseFontSize - 1);
+  const internalGradHeight = Math.max(65, baseFontSize * 5);
 
   return (
     <div
       className="legend-container"
       style={{
         marginTop: "20px",
-        padding: "12px",
-        border: "1px solid #dad8d8ff",
-        borderRadius: "6px",
-        background: "#fff",
-        fontSize: "14px",
+        padding: "10px 12px", 
+        border: "1px solid #e2e8f0",
+        borderRadius: "8px",
+        background: "#ffffff",
+        fontSize: `${baseFontSize}px`, 
         display: "flex",
         flexDirection: "column",
+        gap: "10px",
         height: "fit-content", 
-        width: "200px", 
-        boxShadow: "0px 4px 6px rgba(0,0,0,0.1)"
+        width: "max-content",    
+        minWidth: "125px",       
+        maxWidth: `${baseFontSize * 14}px`, // Dynamically expands max width scale for larger custom sizes
+        boxShadow: "0px 4px 10px rgba(0, 0, 0, 0.04)",
+        boxSizing: "border-box"
       }}
     >
       {/* Motif Legend */}
       {hasDecomposition && (
-        <div style={{ paddingBottom: "12px" }}>
-          <div style={{ fontWeight: "600", marginBottom: "8px", fontSize: "13px", color: "#333" }}>
+        <div style={{ display: "flex", flexDirection: "column", gap: "6px", minWidth: 0 }}>
+          <div style={{ fontWeight: "700", fontSize: `${Math.max(10, baseFontSize - 2)}px`, color: "#4a5568", textTransform: "uppercase", letterSpacing: "0.5px" }}>
             Motifs
           </div>
-          <div style={{ display: "flex", flexDirection: "column", gap: "6px" }}>
+          <div style={{ display: "flex", flexDirection: "column", gap: "6px", minWidth: 0 }}>
             {canonicalMotifs.map(([motif, color]) => {
               const canonicalRef = refMotif ? getCanonicalMotif(refMotif, refMotif) : "";
               const isExpectedMotif = motif === canonicalRef;
 
               return (
-                <div key={motif} style={{ display: "flex", flexDirection: "column", gap: "4px" }}>
-                  <div style={{ display: "flex", alignItems: "center", justifyContent: "space-between" }}>
-                    <div style={{ display: "flex", alignItems: "center" }}>
+                <div key={motif} style={{ display: "flex", flexDirection: "column", gap: "2px", minWidth: 0 }}>
+                  <div style={{ display: "flex", alignItems: "center", justifyContent: "space-between", gap: "6px", minWidth: 0 }}>
+                    <div style={{ display: "flex", alignItems: "center", minWidth: 0, flexGrow: 1 }}>
                       <div 
                         style={{ 
-                          width: "16px", 
-                          height: "16px", 
+                          width: `${boxDimension}px`, 
+                          height: `${boxDimension}px`, 
                           background: color, 
-                          border: "1px solid #444", 
-                          marginRight: "8px", 
+                          border: "1px solid #4a5568", 
+                          marginRight: "6px", 
                           borderRadius: "2px",
-                          cursor: isExpectedMotif ? "pointer" : "default" 
+                          cursor: isExpectedMotif ? "pointer" : "default",
+                          flexShrink: 0
                         }} 
                         onClick={() => isExpectedMotif && setShowColorPicker(!showColorPicker)}
-                        title={isExpectedMotif ? "Click to change expected motif color" : ""}
                       />
-                      <span style={{ fontSize: "13px", fontWeight: isExpectedMotif ? "bold" : "normal" }}>
-                        {motif} {isExpectedMotif}
+                      <span style={{ 
+                        fontSize: `${baseFontSize}px`, 
+                        fontWeight: isExpectedMotif ? "600" : "normal", 
+                        color: "#2d3748",
+                        whiteSpace: "nowrap",
+                        overflow: "hidden",
+                        textOverflow: "ellipsis"
+                      }} title={motif}>
+                        {motif}
                       </span>
                     </div>
 
@@ -81,11 +96,11 @@ export default function Legend({
                         onClick={() => setShowColorPicker(!showColorPicker)}
                         data-html2canvas-ignore="true"
                         style={{
-                          background: "none", border: "none", color: "#328547", fontSize: "12px", 
-                          cursor: "pointer", padding: "2px 4px", fontWeight: "600"
+                          background: "none", border: "none", color: "#328547", fontSize: `${Math.max(10, baseFontSize - 3)}px`, 
+                          cursor: "pointer", padding: "0 2px", fontWeight: "700", flexShrink: 0
                         }}
                       >
-                        {showColorPicker ? "close" : "color 🎨"}
+                        {showColorPicker ? "×" : "🎨"}
                       </button>
                     )}
                   </div>
@@ -97,10 +112,10 @@ export default function Legend({
                       style={{ 
                         display: "grid", 
                         gridTemplateColumns: "repeat(5, 1fr)", 
-                        gap: "4px", 
-                        background: "#fdfdfd", 
-                        padding: "6px", 
-                        border: "1px solid #eee", 
+                        gap: "3px", 
+                        background: "#f7fafc", 
+                        padding: "4px", 
+                        border: "1px solid #e2e8f0", 
                         borderRadius: "4px",
                         marginTop: "2px"
                     }}>
@@ -109,14 +124,13 @@ export default function Legend({
                           key={swatchColor}
                           onClick={() => onOverrideColorChange(swatchColor)}
                           style={{
-                            height: "18px",
+                            height: "14px",
                             background: swatchColor,
                             borderRadius: "2px",
                             cursor: "pointer",
-                            border: color === swatchColor ? "2px solid #000" : "1px solid #ccc",
+                            border: color === swatchColor ? "2px solid #1a202c" : "1px solid #cbd5e0",
                             boxSizing: "border-box"
                           }}
-                          title={swatchColor}
                         />
                       ))}
                     </div>
@@ -124,48 +138,59 @@ export default function Legend({
                 </div>
               );
             })}
-            <div style={{ display: "flex", alignItems: "center" }}>
-              <div style={{ width: "16px", height: "16px", background: "#bdbdbd", border: "1px solid #444", marginRight: "8px", borderRadius: "2px" }} />
-              <span style={{ fontSize: "13px" }}>Non-repetitive seq</span>
+            
+            {/* Non-repetitive seq block */}
+            <div style={{ display: "flex", alignItems: "center", minWidth: 0 }}>
+              <div style={{ width: `${boxDimension}px`, height: `${boxDimension}px`, background: "#bdbdbd", border: "1px solid #4a5568", marginRight: "6px", borderRadius: "2px", flexShrink: 0 }} />
+              <span style={{ fontSize: `${baseFontSize}px`, color: "#4a5568", whiteSpace: "nowrap", overflow: "hidden", textOverflow: "ellipsis" }}>
+                Non-repetitive seq
+              </span>
             </div>
           </div>
+          {showMethylation && methPalette && <hr style={{ border: "none", borderTop: "1px solid #edf2f7", margin: "4px 0" }} />}
         </div>
       )}
 
-      {/* 2. Meth Legend */}
+      {/* Meth Legend */}
       {(showMethylation && methPalette) && (
-        <div style={{ paddingTop: hasDecomposition ? "12px" : "0px" }}>
-          <div style={{ fontWeight: "600", marginBottom: "8px", fontSize: "13px", color: "#333" }}>
-            Methylation Level %
+        <div style={{ display: "flex", flexDirection: "column", gap: "6px" }}>
+          <div style={{ fontWeight: "700", fontSize: `${Math.max(10, baseFontSize - 2)}px`, color: "#4a5568", textTransform: "uppercase", letterSpacing: "0.5px" }}>
+            Methylation Level
           </div>
-          <div
-            style={{
-              height: "12px",
-              width: "100%",
-              background: `linear-gradient(to right, ${gradientArray.join(", ")})`,
-              border: "1px solid #444",
-              marginBottom: "4px",
-            }}
-          />
-          <div style={{ display: "flex", justifyContent: "space-between", fontSize: "11px", color: "#222" }}>
-            <span>0</span><span>50</span><span>100</span>
+          
+          <div style={{ display: "flex", alignItems: "center", gap: "8px", paddingLeft: "2px" }}>
+            <div
+              style={{
+                height: `${internalGradHeight}px`, 
+                width: "12px",  
+                background: `linear-gradient(to bottom, ${gradientArray.join(", ")})`,
+                border: "1px solid #4a5568",
+                borderRadius: "2px",
+                flexShrink: 0
+              }}
+            />
+            <div style={{ display: "flex", flexDirection: "column", justifyContent: "space-between", height: `${internalGradHeight}px`, fontSize: `${Math.max(9, baseFontSize - 3)}px`, fontWeight: "600", color: "#4a5568", lineHeight: "1" }}>
+              <span>100%</span>
+              <span>50%</span>
+              <span>0%</span>
+            </div>
           </div>
 
-          {/* Ambiguous state: Only shows if prop is true */}
+          {/* Ambiguous State Flag */}
           {hasAmbiguousMeth && (
-            <div style={{ marginTop: "12px", display: "flex", alignItems: "center", fontSize: "12px", color: "#666", fontStyle: "italic" }}>
-              <div style={{ width: "8px", height: "16px", border: "1px solid #888", background: "rgba(200,200,200,0.25)", marginRight: "8px" }} />
-              Ambiguous state
+            <div style={{ marginTop: "2px", display: "flex", alignItems: "center", fontSize: `${Math.max(10, baseFontSize - 1)}px`, color: "#718096", minWidth: 0 }}>
+              <div style={{ width: `${boxDimension}px`, height: `${boxDimension}px`, border: "1px dashed #718096", background: "rgba(226, 232, 240, 0.6)", marginRight: "6px", borderRadius: "2px", flexShrink: 0 }} />
+              <span style={{ fontStyle: "italic", whiteSpace: "nowrap", overflow: "hidden", textOverflow: "ellipsis" }}>Ambiguous state</span>
             </div>
           )}
 
-          {/* Methylation Cutoff: Only shows if threshold exists */}
+          {/* Cutoff Badge */}
           {methThreshold && (
-            <div style={{ marginTop: "16px", display: "flex", justifyContent: "space-between", alignItems: "center" }}>
-              <span style={{ fontSize: "12px", fontWeight: "700", color: "#333" }}>
-                Methylation-Cutoff
+            <div style={{ marginTop: "4px", display: "flex", justifyContent: "space-between", alignItems: "center", background: "#f7fafc", padding: "4px 6px", borderRadius: "4px", border: "1px solid #edf2f7", width: "100%", boxSizing: "border-box" }}>
+              <span style={{ fontSize: `${Math.max(9, baseFontSize - 3)}px`, fontWeight: "600", color: "#4a5568" }}>
+                Cutoff
               </span>
-              <span style={{ fontSize: "13px", fontWeight: "700", color: "#fff", backgroundColor: "#328547", padding: "2px 8px", borderRadius: "4px" }}>
+              <span style={{ fontSize: `${Math.max(9, baseFontSize - 3)}px`, fontWeight: "700", color: "#fff", backgroundColor: "#328547", padding: "1px 4px", borderRadius: "3px", flexShrink: 0 }}>
                 {methThreshold}
               </span>
             </div>

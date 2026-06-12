@@ -25,7 +25,8 @@ export default function MetadataDisplay({
    isExpanded, 
    onToggle, 
    titleRef,
-   forceExpand
+   forceExpand,
+   baseFontSize = 13
 }) {
 
   // Safeguard: if data hasn't loaded yet
@@ -169,7 +170,7 @@ const expandButtonStyle = {
   border: "1px solid #d0e0d0",
   borderRadius: "16px",     
   color: "#2d5a27",
-  fontSize: "11px",         
+  fontSize: "0.9em",         
   fontWeight: "600",
   cursor: "pointer",
   transition: "all 0.2s ease",
@@ -179,12 +180,12 @@ const expandButtonStyle = {
 };
 
 const containerStyle = { width: "100%", maxWidth: "1240px", marginBottom: "-25px" };
-const headerStyle = { display: "flex", gap: "10px", marginBottom: "0px", marginTop: "24px"};
-const pillStyle = { background: "rgba(0,0,0,0.03)", padding: "5px 15px", borderRadius: "100px", fontSize: "12px", color: "#222", border: "1px solid rgba(0,0,0,0.05)" };
+const headerStyle = { display: "flex", gap: "10px", marginBottom: "0px", marginTop: "24px", fontSize: "1.25em"};
+const pillStyle = { background: "rgba(0,0,0,0.03)", padding: "5px 15px", borderRadius: "100px", fontSize: "0.95em", color: "#222", border: "1px solid rgba(0,0,0,0.05)" };
 const motifStyle = { color: '#328547', fontWeight: 'bold' };
 const tableWrapperStyle = { background: "#fff", borderRadius: "8px", border: "1px solid #eee", overflow: "hidden", boxShadow: "0 2px 8px rgba(0,0,0,0.02)" };
-const tableStyle = { width: "100%", borderCollapse: "collapse", fontSize: "13px" };
-const thStyle = { textAlign: "left", padding: "12px 15px", background: "#fafafa", color: "#999", fontWeight: "600", fontSize: "11px", textTransform: "uppercase", borderBottom: "1px solid #eee" };
+const tableStyle = { width: "100%", borderCollapse: "collapse", fontSize: "inherit" };
+const thStyle = { textAlign: "left", padding: "12px 15px", background: "#fafafa", color: "#666", fontWeight: "800", fontSize: "0.8em", textTransform: "uppercase", borderBottom: "1px solid #eee" };
 const trStyle = { borderBottom: "1px solid #f9f9f9" };
 const tdStyle = { padding: "12px 15px", color: "#444" };
 const sampleNameTdStyle = { ...tdStyle, fontFamily: "inherit", fontWeight: "700", color: "#2d5a27" };

@@ -11,6 +11,7 @@ export default function DecompositionPlot({
   colorMap,
   yOffset = 0,
   refMotif,
+  baseFontSize = 13
 }) {
   const barHeight = 20;
   const MAGNIFY_SIZE = 6;
@@ -101,7 +102,11 @@ export default function DecompositionPlot({
       {/* Reference Track */}
       {decompRef && (
         <g>
-          <text x={leftMargin - 95} y={yOffset + barHeight / 1.5} fontSize="14" fontWeight="bold">
+          <text 
+            x={leftMargin - 95} 
+            y={yOffset + barHeight / 1.5} 
+            style={{ fontSize: `${baseFontSize + 1}px`, fontWeight: "bold" }} // <-- FIX: Uses dynamic template string with px unit
+          >
             Ref. Allele
           </text>
           {renderMotifs(decompRef, yOffset, "ref", alleleLenRef)}

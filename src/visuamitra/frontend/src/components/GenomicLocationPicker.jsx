@@ -22,6 +22,7 @@ export default function GenomicLocationPicker({
   rows,
   selectedIdx,
   onSelect,
+  baseFontSize = 13
 }) {
   const [open, setOpen] = useState(false);
   const [query, setQuery] = useState("");
@@ -93,7 +94,7 @@ export default function GenomicLocationPicker({
             border: "none",
             outline: "none",
             flex: 1,
-            fontSize: "14px",
+            fontSize: "inherit",
           }}
         />
         
@@ -112,7 +113,7 @@ export default function GenomicLocationPicker({
             border: "1px solid #aaa",
             background: "#fff",
             zIndex: 1000,
-            fontSize: "13px", 
+            fontSize: "inherit", 
           }}
         >
           {filtered.length === 0 && (
