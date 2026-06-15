@@ -42,7 +42,7 @@ pip install visuamitra
 
 # Usage
 
-**Visuamitra v1.0.3** is compatible with **ATaRVa ( > v0.7.0)**
+**Visuamitra v1.0.4** is compatible with **ATaRVa ( > v0.7.0)**
 #### Browser mode
 Once installed, to launch the tool and manually select or upload your VCF files via the web interface:
 ```Bash
@@ -103,7 +103,7 @@ VisuaMiTRa now supports the simultaneous visualization of multiple samples from 
 * VisuaMiTRa features independent tabs for motif decomposition & methylation that maintain strict allele-length consistency, enabling precise  comparison across multiple samples.
 
 #### 📍 Effortless Navigation
-* Target specific loci using coordinate inputs (Chr, Start, End) or manually browse thousands of records smoothly, alongside an indicator with a track of genomic context in Chromosome. (Note: visuamitra v1.0.3 currently supports Hg38 assembly reference only.)
+* Target specific loci using coordinate inputs (Chr, Start, End) or manually browse thousands of records smoothly, alongside an indicator with a track of genomic context in Chromosome. (Note: visuamitra v1.0.4 currently supports Hg38 assembly reference only.)
 
 <div align="center">
   <img src="./assets/vis_LocPicker1.png" alt="Workflow" width="600">
@@ -123,7 +123,7 @@ VisuaMiTRa now supports the simultaneous visualization of multiple samples from 
 
 * Customize view with professional color palettes, scales & fonts.
 
-* The expected motif can be viewed in interchangeable colors, within a palette as well (New in v1.0.3).
+* The expected motif can be viewed in interchangeable colors, within a palette as well (New in v1.0.4).
 
 
 <div align="center">
@@ -147,7 +147,7 @@ VisuaMiTRa now supports the simultaneous visualization of multiple samples from 
   <p><i>Fig 7: Download options </i></p>
 </div> -->
 
-#### 📊 Overview Tab (New in v1.0.3)
+#### 📊 Overview Tab (New in v1.0.4)
 
 * A third tab with a comparitive summary of the samples selected. 
 
