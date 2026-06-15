@@ -1,6 +1,9 @@
 import React, { useState, useRef, useEffect } from "react";
 import { Download, ChevronDown, Check } from "lucide-react";
 import html2canvas from "html2canvas";
+import faviconAsset from '../assets/favicon.png';
+
+const WATERMARK_OPACITY = 0.75; 
 
 export default function DownloadManager({ 
   visualizerRef, 
@@ -30,6 +33,24 @@ export default function DownloadManager({
     return () => document.removeEventListener("mousedown", handleClickOutside);
   }, []);
 
+  // HELPER UTILITY: Generates a valid, uncorrupted base64 data stream at download runtime
+  const convertAssetToBase64 = (url) => {
+    return new Promise((resolve, reject) => {
+      const img = new Image();
+      img.crossOrigin = "anonymous"; 
+      img.src = url;
+      img.onload = () => {
+        const canvas = document.createElement("canvas");
+        canvas.width = img.width;
+        canvas.height = img.height;
+        const ctx = canvas.getContext("2d");
+        ctx.drawImage(img, 0, 0);
+        resolve(canvas.toDataURL("image/png"));
+      };
+      img.onerror = (err) => reject(err);
+    });
+  };
+
   const handleStartDownload = async () => {
     const svgElement = visualizerRef.current?.querySelector("svg");
     if (!svgElement) {
@@ -37,21 +58,20 @@ export default function DownloadManager({
       return;
     }
 
-    // Signal parent layout to natively reveal all table rows 
     setIsExporting(true);
-
-    // Small delay to let React fully update DOM elements with all rows
     await new Promise((resolve) => setTimeout(resolve, 120));
 
-    // Store original styling parameters to cleanly restore after layout calculation
     let originalWidth = "";
     let originalOverflow = "";
 
     try {
+      // DYNAMIC ASSET CONVERSION
+      // Compiles the valid full binary string before entering layout steps
+      const realLogoData = await convertAssetToBase64(faviconAsset);
+
       const metadataElement = metadataRef.current;
       const padding = 24;
       
-      // Force expand legend container before calculating master boundaries
       if (options.includeLegend && legendRef.current) {
         originalWidth = legendRef.current.style.width;
         originalOverflow = legendRef.current.style.overflow;
@@ -59,19 +79,16 @@ export default function DownloadManager({
         legendRef.current.style.overflow = "visible";
       }
 
-      // Extract raw baseline pixel attributes from the SVG structure to completely ignore screen scaling factors
       const rawSvgWidth = parseFloat(svgElement.getAttribute("width")) || svgElement.viewBox.baseVal.width || 800;
       const rawSvgHeight = parseFloat(svgElement.getAttribute("height")) || svgElement.viewBox.baseVal.height || 600;
 
-      // Read surrounding HTML block measurements accurately (Legend now measures at its TRUE full width)
       const metaRect = options.includeMetadata && metadataElement ? metadataElement.getBoundingClientRect() : { width: 0, height: 0 };
       const titleRect = titleRef.current?.getBoundingClientRect() || { width: 0, height: 0 };
       const legendRect = options.includeLegend ? legendRef.current?.getBoundingClientRect() : { width: 0, height: 0 };
 
-      // Clone SVG and map runtime font family values
-      const svgClone = svgElement.cloneNode(true);
       const currentFont = window.getComputedStyle(visualizerRef.current).fontFamily;
       
+      const svgClone = svgElement.cloneNode(true);
       svgClone.style.fontFamily = currentFont;
       svgClone.style.width = `${rawSvgWidth}px`;
       svgClone.style.height = `${rawSvgHeight}px`;
@@ -83,13 +100,16 @@ export default function DownloadManager({
           text.setAttribute("fill", computedStyle.fill);
       });
 
-      // Calculate master horizontal size using updated full width + extra buffer space
       let totalWidth = rawSvgWidth + padding * 2;
       if (options.includeLegend) totalWidth += legendRect.width + padding + 16; 
       
       let totalHeight = titleRect.height + Math.max(rawSvgHeight, legendRect.height) + (padding * 2);
       if (options.includeMetadata) totalHeight += metaRect.height + padding;
       totalHeight += padding; 
+
+      const logoSize = 48;
+      const logoXPosition = totalWidth - logoSize - padding;
+      const logoYPosition = totalHeight - logoSize - padding;
 
       // SVG FORMAT PATH 
       if (options.format === "svg") {
@@ -99,8 +119,14 @@ export default function DownloadManager({
           masterSvg.setAttribute("viewBox", `0 0 ${totalWidth} ${totalHeight}`);
           masterSvg.setAttribute("xmlns", "http://www.w3.org/2000/svg");
           masterSvg.setAttribute("xmlns:xlink", "http://www.w3.org/1999/xlink");
-          masterSvg.style.backgroundColor = "#ffffff";
           masterSvg.style.fontFamily = currentFont;
+
+          // Background Canvas Plate
+          const bgRect = document.createElementNS("http://www.w3.org/2000/svg", "rect");
+          bgRect.setAttribute("width", "100%");
+          bgRect.setAttribute("height", "100%");
+          bgRect.setAttribute("fill", "#ffffff");
+          masterSvg.appendChild(bgRect); 
 
           let currentY = padding;
 
@@ -156,6 +182,16 @@ export default function DownloadManager({
               masterSvg.appendChild(svgLegendImage);
           }
 
+          // INJECT BASE64 LOGO
+          const svgLogoImage = document.createElementNS("http://www.w3.org/2000/svg", "image");
+          svgLogoImage.setAttributeNS("http://www.w3.org/1999/xlink", "href", realLogoData);
+          svgLogoImage.setAttribute("x", logoXPosition);
+          svgLogoImage.setAttribute("y", logoYPosition);
+          svgLogoImage.setAttribute("width", logoSize);
+          svgLogoImage.setAttribute("height", logoSize);
+          svgLogoImage.setAttribute("opacity", WATERMARK_OPACITY);
+          masterSvg.appendChild(svgLogoImage);
+
           const serializer = new XMLSerializer();
           let source = serializer.serializeToString(masterSvg);
           if (!source.startsWith('<?xml')) {
@@ -171,6 +207,7 @@ export default function DownloadManager({
           setIsOpen(false);
           return; 
       }
+
       // PNG/JPEG FORMAT PATH 
       const scale = 2;
       const canvas = document.createElement("canvas");
@@ -216,9 +253,21 @@ export default function DownloadManager({
           backgroundColor: "#ffffff",
           width: legendRect.width 
         });
-
         ctx.drawImage(legCanvas, rawSvgWidth + padding * 2, currentY, legendRect.width, legendRect.height);
       }
+
+      // Render logo onto canvas
+      const logoImg = new Image();
+      logoImg.src = realLogoData;
+      await new Promise((resolve) => {
+        logoImg.onload = () => {
+          ctx.save();
+          ctx.globalAlpha = WATERMARK_OPACITY;
+          ctx.drawImage(logoImg, logoXPosition, logoYPosition, logoSize, logoSize);
+          ctx.restore();
+          resolve();
+        };
+      });
 
       const link = document.createElement("a");
       link.download = `visuamitra_${chrom}_${start}_${viewMode}.${options.format}`;
@@ -229,7 +278,6 @@ export default function DownloadManager({
     } catch (err) {
       console.error("Export Error:", err);
     } finally {
-      // Reset styles back to normal screen interface doesn't shift permanently
       if (options.includeLegend && legendRef.current) {
         legendRef.current.style.width = originalWidth;
         legendRef.current.style.overflow = originalOverflow;

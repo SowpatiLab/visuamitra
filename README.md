@@ -103,7 +103,7 @@ VisuaMiTRa now supports the simultaneous visualization of multiple samples from 
 * VisuaMiTRa features independent tabs for motif decomposition & methylation that maintain strict allele-length consistency, enabling precise  comparison across multiple samples.
 
 #### 📍 Effortless Navigation
-* Target specific loci using coordinate inputs (Chr, Start, End) or manually browse thousands of records smoothly, alongside an indicator with a track of genomic context in Chromosome. (Note: visuamitra v1.0.1 currently supports Hg38 reference only.)
+* Target specific loci using coordinate inputs (Chr, Start, End) or manually browse thousands of records smoothly, alongside an indicator with a track of genomic context in Chromosome. (Note: visuamitra v1.0.3 currently supports Hg38 assembly reference only.)
 
 <div align="center">
   <img src="./assets/vis_LocPicker1.png" alt="Workflow" width="600">
