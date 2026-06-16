@@ -4,16 +4,16 @@ import logging
 import uvicorn
 import argparse
 import webbrowser
-from fastapi import FastAPI, Request, HTTPException
+from fastapi import FastAPI, Request, Response, HTTPException
 from fastapi.middleware.cors import CORSMiddleware
 from fastapi.staticfiles import StaticFiles
 from fastapi.responses import FileResponse
 from .routes import router
 from pathlib import Path
 from threading import Timer
-
+from starlette.middleware.base import BaseHTTPMiddleware
 from . import visuamitra_script
-#print(f"!!! BACKEND SCRIPT LOCATION: {visuamitra_script.__file__}")
+
 
 # Setup Logging
 logging.basicConfig(level=logging.INFO)
@@ -23,6 +23,25 @@ app = FastAPI(
     title="Visuamitra Backend",
     version="1.0.4"
 )
+
+class CacheBustingMiddleware(BaseHTTPMiddleware):
+    async def dispatch(self, request: Request, call_next):
+        response = await call_next(request)
+        
+        if "text/html" in response.headers.get("content-type", ""):
+            response.headers["Cache-Control"] = "no-store, no-cache, must-revalidate, max-age=0"
+            response.headers["Pragma"] = "no-cache"
+            response.headers["Expires"] = "0"
+            
+            # Use safe deletion for MutableHeaders
+            if "etag" in response.headers:
+                del response.headers["etag"]
+            if "last-modified" in response.headers:
+                del response.headers["last-modified"]
+            
+        return response
+
+app.add_middleware(CacheBustingMiddleware)
 
 # Timing Middleware
 @app.middleware("http")
@@ -77,8 +96,21 @@ if frontend_build_dir.exists():
     # Helper to clean response headers for index.html
     def serve_index_with_no_cache():
         index_file = frontend_build_dir / "index.html"
-        response = FileResponse(str(index_file))
-        # Cache Busting Strategy Step 2: Force index.html to fetch fresh versions immediately
+        
+        try:
+            html_content = index_file.read_text(encoding="utf-8")
+            
+            # Dynamically inject a timestamp version string to force browser to update components
+            cache_buster = f"?v={int(time.time())}"
+            html_content = html_content.replace(".js\"", f".js{cache_buster}\"")
+            html_content = html_content.replace(".css\"", f".css{cache_buster}\"")
+            
+            response = Response(content=html_content, media_type="text/html")
+        except Exception:
+            # Fallback to standard delivery if file read fails
+            response = FileResponse(str(index_file))
+        
+        # Force browser no-cache structures on the document frame
         response.headers["Cache-Control"] = "no-store, no-cache, must-revalidate, max-age=0"
         response.headers["Pragma"] = "no-cache"
         response.headers["Expires"] = "0"
@@ -94,7 +126,6 @@ if frontend_build_dir.exists():
             if file_path.is_file():
                 return FileResponse(str(file_path))
         
-        # Safe fall through to index.html with caching disabled
         return serve_index_with_no_cache()
 
     # Catch-all routing context for UI sub-paths
