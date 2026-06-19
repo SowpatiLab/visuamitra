@@ -103,9 +103,10 @@ export default function DecompositionPlot({
       {decompRef && (
         <g>
           <text 
-            x={leftMargin - 95} 
-            y={yOffset + barHeight / 1.5} 
-            style={{ fontSize: `${baseFontSize + 1}px`, fontWeight: "bold" }} // <-- FIX: Uses dynamic template string with px unit
+            x={leftMargin - 15} 
+            y={yOffset + (barHeight * 0.72)} 
+            textAnchor="end"
+            style={{ fontSize: `${baseFontSize}px`, fontWeight: "bold", fill: "#222" }}
           >
             Ref. Allele
           </text>

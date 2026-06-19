@@ -8,12 +8,13 @@ import pysam
 from typing import Optional, Any
 import base64
 import re
+from pathlib import Path
 
 from .visuamitra_script import visuamitra_data_extract_stream, extract_methcutoff
 
 router = APIRouter()
 
-_CLI_VCF_PATH_CACHE = None
+_CLI_PATHS_CACHE = {"vcf": None, "tbi": None}
 
 def encode_cursor(chr, pos):
     raw = f"{chr}:{pos}"
@@ -39,27 +40,37 @@ async def get_vcf_metadata(
     vcf_path: Optional[str] = Form(None)     
 ):
     """Returns the list of samples and metadata description."""
-
-    global _CLI_VCF_PATH_CACHE
     
-    # CASE 1: CLI Mode (vcf_path is provided)
-    if vcf_path:
-        if not os.path.exists(vcf_path):
+    # CASE 1: CLI Mode (Check form value OR fallback to system environment vars)
+    env_vcf_path = os.environ.get("VISUAMITRA_VCF")
+    resolved_input_path = vcf_path if (vcf_path and os.path.isabs(vcf_path)) else env_vcf_path
+
+    if resolved_input_path:
+        if not os.path.exists(resolved_input_path):
             raise HTTPException(
                 status_code=400, 
-                detail=f"Local VCF file path not found on disk: {vcf_path}"
+                detail=f"Local VCF file path not found on disk: {resolved_input_path}"
             )
-        # Convert relative path to absolute
-        absolute_vcf_path = os.path.abspath(vcf_path)
+        absolute_vcf_path = os.path.abspath(resolved_input_path)
         if os.path.exists(absolute_vcf_path):
-            _CLI_VCF_PATH_CACHE = absolute_vcf_path
+            # Resolve the expected TBI index path location safely
+            p = Path(absolute_vcf_path)
+            absolute_tbi_path = p.with_suffix(p.suffix + ".tbi")
+            if not absolute_tbi_path.exists():
+                # Fallback check if it uses the shorter .tbi naming scheme
+                absolute_tbi_path = p.with_suffix(".tbi")
+
+            # Update global tracking matrix dictionary
+            _CLI_PATHS_CACHE["vcf"] = absolute_vcf_path
+            _CLI_PATHS_CACHE["tbi"] = os.path.abspath(absolute_tbi_path) if absolute_tbi_path.exists() else None
+            
             actual_path = absolute_vcf_path            
-            cutoff_info, total_samples = extract_methcutoff(actual_path)
+            cutoff_info, total_samples, ref_genome = extract_methcutoff(actual_path)
             return {
                 "meth_cutoff": cutoff_info,
-                "samples": total_samples
+                "samples": total_samples,
+                "ref_genome": ref_genome
             }
-
     # CASE 2: Browser Mode (vcf file is uploaded)
     if vcf:
         tmpdir = tempfile.mkdtemp(prefix="vcf_meta_")
@@ -103,31 +114,32 @@ async def vcf_to_tsv_cursor(
     working_vcf_path = ""
     tmpdir = None
 
-    # Check if a path came from frontend form
-    resolved_path = vcf_path if vcf_path else _CLI_VCF_PATH_CACHE
+    # Only trust form values if they provide an absolute path layout
+    if vcf_path and os.path.isabs(vcf_path):
+        resolved_vcf = vcf_path
+    else:
+        resolved_vcf = _CLI_PATHS_CACHE["vcf"]
 
+    if tbi_path and os.path.isabs(tbi_path):
+        resolved_tbi = tbi_path
+    else:
+        resolved_tbi = _CLI_PATHS_CACHE["tbi"]
     # CLI Mode / Cached Fallback
-    if resolved_path:
-        if not os.path.exists(resolved_path):
+    if resolved_vcf:
+        if not os.path.exists(resolved_vcf):
             raise HTTPException(
                 status_code=400, 
-                detail=f"Local VCF path not found on disk: {resolved_path}"
-            )
-            
-        if tbi_path and not os.path.exists(tbi_path):
-            raise HTTPException(
-                status_code=400, 
-                detail=f"Local TBI index path not found on disk: {tbi_path}"
-            )
-        absolute_vcf_path = os.path.abspath(resolved_path)
-        if os.path.exists(absolute_vcf_path):
-            working_vcf_path = absolute_vcf_path
-        else:
-            raise HTTPException(
-                status_code=400, 
-                 detail=f"CLI path tracking failed. File not found at: {absolute_vcf_path}"
+                detail=f"Local VCF path not found on disk: {resolved_vcf}"
             )
         
+        # verify if index tracker location exists on disk
+        if not resolved_tbi or not os.path.exists(resolved_tbi):
+            raise HTTPException(
+                status_code=400, 
+                detail="Local TBI index path missing or not found on disk."
+            )
+            
+        working_vcf_path = os.path.abspath(resolved_vcf)
     # Browser Mode (vcf must be a real UploadFile)
     elif vcf and hasattr(vcf, "filename") and vcf.filename:
         tmpdir = tempfile.mkdtemp(prefix="vcf_")

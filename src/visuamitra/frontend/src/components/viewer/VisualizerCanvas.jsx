@@ -42,27 +42,27 @@ export default function VisualizerCanvas({
     );
   }
 
-  const isDecomp = viewMode === "decomposition";
+ const isDecomp = viewMode === "decomposition";
   const isCombined = viewMode === "combined";
   
-  const TRACK_HEIGHT = isDecomp ? Math.max(22, baseFontSize * 1.8) : Math.max(26, baseFontSize * 2.2); 
-  const TRACK_GAP = Math.max(6, baseFontSize * 0.6);
-  const SAMPLE_PADDING_BORDER = Math.max(35, baseFontSize * 3);
+  const TRACK_HEIGHT = isDecomp ? 24 : 28; 
+  const TRACK_GAP = 8; 
+  const TEXT_VERTICAL_OFFSET = (TRACK_HEIGHT / 2) + (baseFontSize * 0.35); 
+  const SAMPLE_PADDING_BORDER = Math.max(30, baseFontSize * 1.5);
   
-  const HEADER_TOP = Math.max(35, baseFontSize * 3); 
-  const REF_HEIGHT = (isDecomp || isCombined) ? Math.max(50, baseFontSize * 4) : 0; 
-  const AXIS_HEIGHT = Math.max(75, baseFontSize * 6);
+  const HEADER_TOP = Math.max(70, baseFontSize * 3.5); 
+  const REF_HEIGHT = (isDecomp || isCombined) ? Math.max(50, baseFontSize * 2) : 0; 
+  const AXIS_HEIGHT = Math.max(65, baseFontSize * 2.5);
 
   let totalSamplesHeight = 0;
-  
   if (isCombined) {
     const singleSampleName = selectedSamples[0];
     const sample = data.samples[singleSampleName];
     const trackCount = sample?.parsedDecomp?.length || 2;
     
-    const decompBlockHeight = (trackCount * TRACK_HEIGHT) + ((trackCount - 1) * TRACK_GAP) + 40; 
-    const methBlockHeight = (trackCount * (TRACK_HEIGHT + 5)) + ((trackCount - 1) * TRACK_GAP) + 40;
-    totalSamplesHeight = decompBlockHeight + methBlockHeight + 30; 
+    const decompBlockHeight = (trackCount * TRACK_HEIGHT) + ((trackCount - 1) * TRACK_GAP) + (baseFontSize * 2); 
+    const methBlockHeight = (trackCount * (TRACK_HEIGHT + 5)) + ((trackCount - 1) * TRACK_GAP) + (baseFontSize * 2);
+    totalSamplesHeight = decompBlockHeight + methBlockHeight + baseFontSize; 
   } else {
     selectedSamples.forEach((sampleName) => {
       const sample = data.samples[sampleName];
@@ -72,7 +72,7 @@ export default function VisualizerCanvas({
     });
   }
 
-  // Final computed height calculation for the SVG canvas
+  // Final computed height calculation for SVG canvas
   const TOTAL_HEIGHT = HEADER_TOP + REF_HEIGHT + totalSamplesHeight + AXIS_HEIGHT;
   const globalRef = data.refTrack;
   let currentYTracker = HEADER_TOP + REF_HEIGHT;
@@ -103,9 +103,9 @@ export default function VisualizerCanvas({
               decompRef={globalRef} decompA1={null} decompA2={null}
               alleleLenRef={(globalRef?.lengths || []).reduce((a, b) => a + b, 0)}
               scaleX={scaleX} leftMargin={margins.left} refMotif={data.Motif} colorMap={colorMap} yOffset={0} rowGap={0} 
-              baseFontSize={baseFontSize}
+              baseFontSize={baseFontSize} barHeight={TRACK_HEIGHT - 4}
             />
-            <line x1={0} y1={45} x2={totalSvgWidth} y2={45} stroke="#2d5a27" strokeWidth="1" strokeDasharray="4,4" opacity="0.3" />
+            <line x1={0} y1={REF_HEIGHT - 10} x2={totalSvgWidth} y2={REF_HEIGHT - 10} stroke="#2d5a27" strokeWidth="1" strokeDasharray="4,4" opacity="0.3" />
           </g>
         )}
 
@@ -120,13 +120,13 @@ export default function VisualizerCanvas({
           const firstPos = methTags[0]?.[0]?.[0] || 0;
           const startOffset = (firstPos > 100000) ? Number(data.Start || 0) : 0;
 
-          const decompPlotTracksHeight = (trackCount * 25) + ((trackCount - 1) * 8);
+          const decompPlotTracksHeight = (trackCount * TRACK_HEIGHT) + ((trackCount - 1) * TRACK_GAP);
           
-          const yDecompHeader = currentYTracker + 20;
-          const yDecompPlotStart = yDecompHeader + 20;
+          const yDecompHeader = currentYTracker + baseFontSize;
+          const yDecompPlotStart = yDecompHeader + (baseFontSize * 1.2);
           
-          const yMethHeader = yDecompPlotStart + decompPlotTracksHeight + 35;
-          const yMethPlotStart = yMethHeader + 20;
+          const yMethHeader = yDecompPlotStart + decompPlotTracksHeight + (baseFontSize * 2);
+          const yMethPlotStart = yMethHeader + (baseFontSize * 1.2);
 
           return (
             <g key={sampleName}>
@@ -141,13 +141,13 @@ export default function VisualizerCanvas({
 
                   return (
                     <g key={`decomp-${trackIdx}`} transform={`translate(0, ${currentTrackY})`}>
-                      <text x={margins.left - 15} y={15} textAnchor="end" style={{ fontSize: `${baseFontSize + 1}px`, fill: "#333", fontWeight: "500" }}>
+                      <text x={margins.left - 15} y={TEXT_VERTICAL_OFFSET} textAnchor="end" style={{ fontSize: `${baseFontSize}px`, fill: "#333", fontWeight: "500" }}>
                         Allele {trackIdx + 1}
                       </text>
                       <DecompositionPlot
                         decompRef={null} decompA1={track} decompA2={null} alleleLenRef={0} alleleLen1={displayLen} alleleLen2={0}
                         scaleX={scaleX} leftMargin={margins.left} colorMap={colorMap} refMotif={data.Motif} yOffset={0} rowGap={0}
-                        baseFontSize={baseFontSize}
+                        baseFontSize={baseFontSize} barHeight={TRACK_HEIGHT - 4}
                       />
                     </g>
                   );
@@ -180,12 +180,12 @@ export default function VisualizerCanvas({
 
                   return (
                     <g key={`meth-${trackIdx}`} transform={`translate(0, ${currentTrackY})`}>
-                      <text x={margins.left - 15} y={16} textAnchor="end" style={{ fontSize: `${baseFontSize + 1}px`, fill: "#333", fontWeight: "500" }}>
+                      <text x={margins.left - 15} y={TEXT_VERTICAL_OFFSET} textAnchor="end" style={{ fontSize: `${baseFontSize}px`, fill: "#333", fontWeight: "500" }}>
                         Allele {trackIdx + 1}
                       </text>
                       <MethylationPlot
                         meth1={mTrack} bgWidth1={trackPixelWidth} scaleX={scaleX} leftMargin={margins.left}
-                        yStart={0} getColor={getMethylationColor} onHoverX={onHoverX}
+                        yStart={0} getColor={getMethylationColor} onHoverX={onHoverX} baseFontSize={baseFontSize}
                       />
                     </g>
                   );
@@ -201,7 +201,9 @@ export default function VisualizerCanvas({
 
             const yOffset = currentYTracker;
             const trackCount = sample.parsedDecomp?.length || 2;
-            const sampleBlockHeight = (trackCount * TRACK_HEIGHT) + ((trackCount - 1) * TRACK_GAP) + SAMPLE_PADDING_BORDER;
+            
+            const sampleLabelHeight = baseFontSize * 1.5;
+            const sampleBlockHeight = sampleLabelHeight + (trackCount * TRACK_HEIGHT) + ((trackCount - 1) * TRACK_GAP) + SAMPLE_PADDING_BORDER;
             currentYTracker += sampleBlockHeight;
 
             const methTags = safeJson(sample.Meth_tag) || [];
@@ -210,13 +212,13 @@ export default function VisualizerCanvas({
 
             return (
               <g key={sampleName} transform={`translate(0, ${yOffset})`}>
-                <text x={margins.left} y={12} style={{ fontWeight: "bold", fontSize: `${baseFontSize}px`, fill: "#333" }}>
+                <text x={margins.left} y={baseFontSize} style={{ fontWeight: "bold", fontSize: `${baseFontSize}px`, fill: "#333" }}>
                   {sample.SampleID}
                   {trackCount > 2 && <tspan fill="#666" fontWeight="normal" fontSize={`${baseFontSize - 2}px`}> ({trackCount} alleles detected)</tspan>}
                 </text>
 
                 {sample.parsedDecomp.map((track, trackIdx) => {
-                  const currentTrackY = 25 + (trackIdx * (TRACK_HEIGHT + TRACK_GAP));
+                  const currentTrackY = sampleLabelHeight + (trackIdx * (TRACK_HEIGHT + TRACK_GAP));
                   
                   if (isDecomp) {
                     const calculatedLen = (track.lengths || []).reduce((a, b) => a + (Number(b) || 0), 0);
@@ -224,12 +226,13 @@ export default function VisualizerCanvas({
 
                     return (
                       <g key={trackIdx} transform={`translate(0, ${currentTrackY})`}>
-                        <text x={margins.left - 15} y={14} textAnchor="end" style={{ fontSize: `${baseFontSize + 1}px`, fill: "#333" }}>
+                        <text x={margins.left - 15} y={TEXT_VERTICAL_OFFSET} textAnchor="end" style={{ fontSize: `${baseFontSize}px`, fill: "#333" }}>
                           Allele {trackIdx + 1}
                         </text>
                         <DecompositionPlot
                           decompRef={null} decompA1={track} decompA2={null} alleleLenRef={0} alleleLen1={displayLen} alleleLen2={0}
                           scaleX={scaleX} leftMargin={margins.left} colorMap={colorMap} refMotif={data.Motif} yOffset={0} rowGap={0}
+                          baseFontSize={baseFontSize} barHeight={TRACK_HEIGHT - 4}
                         />
                       </g>
                     );
@@ -253,18 +256,18 @@ export default function VisualizerCanvas({
 
                     return (
                       <g key={trackIdx} transform={`translate(0, ${currentTrackY})`}>
-                        <text x={margins.left - 15} y={12} textAnchor="end" style={{ fontSize: `${baseFontSize + 1}px`, fill: "#333" }}>
+                        <text x={margins.left - 15} y={TEXT_VERTICAL_OFFSET} textAnchor="end" style={{ fontSize: `${baseFontSize}px`, fill: "#333" }}>
                           Allele {trackIdx + 1}
                         </text>
                         <MethylationPlot
                           meth1={mTrack} bgWidth1={trackPixelWidth} scaleX={scaleX} leftMargin={margins.left}
-                          yStart={0} getColor={getMethylationColor} onHoverX={onHoverX}
+                          yStart={0} getColor={getMethylationColor} onHoverX={onHoverX} baseFontSize={baseFontSize}
                         />
                       </g>
                     );
                   }
                 })}
-                <line x1={0} y1={sampleBlockHeight - 10} x2={totalSvgWidth} y2={sampleBlockHeight - 10} stroke="#eee" />
+                <line x1={0} y1={sampleBlockHeight - 15} x2={totalSvgWidth} y2={sampleBlockHeight - 15} stroke="#eee" />
               </g>
             );
           })
@@ -278,7 +281,7 @@ export default function VisualizerCanvas({
             leftMargin={margins.left} 
             rightMargin={margins.right} 
             bottomY={20}
-            baseFontSize={baseFontSize} // Ensure Axis internal ticks change size too
+            baseFontSize={baseFontSize} 
           />
         </g>
       </svg>

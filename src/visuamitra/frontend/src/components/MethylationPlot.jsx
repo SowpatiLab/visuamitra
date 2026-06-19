@@ -9,6 +9,7 @@ export default function MethylationPlot({
   getColor,
   onHoverX,
   alleleLabel = "",
+  baseFontSize = 13
 }) {
   const barHeight = 20;
   const MAGNIFY_SIZE = 7; // Expansion amount in pixels
@@ -79,7 +80,12 @@ export default function MethylationPlot({
       />
       
       {alleleLabel && (
-        <text x={leftMargin - 95} y={y1 + barHeight / 1.5} fontSize="14" fontWeight="bold" fill="#222">
+        <text 
+          x={leftMargin - 15} 
+          y={y1 + (barHeight * 0.72)} 
+          textAnchor="end" 
+          style={{ fontSize: `${baseFontSize}px`, fontWeight: "bold", fill: "#222" }}
+        >
           {alleleLabel}
         </text>
       )}

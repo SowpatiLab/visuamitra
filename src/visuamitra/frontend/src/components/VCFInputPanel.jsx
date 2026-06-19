@@ -227,7 +227,7 @@ export default function VCFUploadPanel({ onLoad }) {
         {!isCLI && (
           <input
             type="file"
-            accept=".vcf.gz,.tbi"
+            accept=".vcf, .vcf.gz, .gz, .tbi, application/gzip, application/x-gzip"
             multiple
             onChange={handleFileChange}
             style={styles.fileInput}
