@@ -31,7 +31,7 @@ export default function Viewer() {
   const [viewMode, setViewMode] = useState("decomposition");
   const [zoomFactor, setZoomFactor] = useState(1);
   const [settings, setSettings] = useState({
-    palette: "Observable10", font: "Arial", theme: "light", methPalette: "Viridis", baseFontSize: 13
+    palette: "Observable10", font: "Arial, sans-serif", theme: "light", methPalette: "Viridis", baseFontSize: 13
   });
   const [isDropDownOpen, setIsDropDownOpen] = useState(false);
   const [isExporting, setIsExporting] = useState(false);
@@ -126,12 +126,6 @@ export default function Viewer() {
     [settings.methPalette]
   );
 
-  const LEFT_MARGIN = 140;
-  const RIGHT_MARGIN = 30;
-  const BASE_WIDTH = 1200;
-  const drawWidth = (BASE_WIDTH - LEFT_MARGIN - RIGHT_MARGIN) * zoomFactor;
-  const totalSvgWidth = drawWidth + LEFT_MARGIN + RIGHT_MARGIN;
-
   const currentFontSize = settings.baseFontSize || 13;
 
   const alleleMax = useMemo(() => {
@@ -157,7 +151,19 @@ export default function Viewer() {
     return m || 100; 
   }, [row, selectedSampleIndices, availableSamples]);
 
-  const scaleX = (v) => LEFT_MARGIN + (v / alleleMax) * drawWidth;
+  // DYNAMIC MEASUREMENT METRICS
+  const RIGHT_MARGIN = 30;
+  const BASE_WIDTH = 1200;
+
+  const isWideFont = settings.font.toLowerCase().includes("mono") || settings.font.toLowerCase().includes("courier");
+  const estimatedCharWidth = isWideFont ? currentFontSize * 0.75 : currentFontSize * 0.6;
+  const DYNAMIC_LEFT_MARGIN = Math.max(140, estimatedCharWidth * 9); 
+
+  const drawWidth = (BASE_WIDTH - DYNAMIC_LEFT_MARGIN - RIGHT_MARGIN) * zoomFactor;
+  const totalSvgWidth = drawWidth + DYNAMIC_LEFT_MARGIN + RIGHT_MARGIN;
+
+  // Single global mapping instance used across the component hierarchy
+  const scaleX = (v) => DYNAMIC_LEFT_MARGIN + (v / alleleMax) * drawWidth;
 
   const isSingleSample = selectedSampleIndices.length === 1;
   const effectiveViewMode = (isSingleSample && viewMode !== "overview") ? "combined" : viewMode;
@@ -225,7 +231,7 @@ export default function Viewer() {
         width: `${BASE_WIDTH - 90}px`, 
         margin: "0 auto 15px auto", 
         display: "flex", 
-        justifyContent: "flex-end", // Pushes contents all the way to the right
+        justifyContent: "flex-end", 
         alignItems: "center",
         boxSizing: "border-box"
       }}>
@@ -304,10 +310,11 @@ export default function Viewer() {
             getMethylationColor={getMethylationColor}
             colorMap={colorMap}
             fullLen={alleleMax}
-            margins={{ left: LEFT_MARGIN, right: RIGHT_MARGIN }}
+            margins={{ left: DYNAMIC_LEFT_MARGIN, right: RIGHT_MARGIN }}
             hoverX={hoverX}
             onHoverX={setHoverX}
             baseFontSize={currentFontSize} 
+            currentFont={settings.font}
           />
         </div>
 

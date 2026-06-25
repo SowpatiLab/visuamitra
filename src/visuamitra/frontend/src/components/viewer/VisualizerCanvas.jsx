@@ -23,7 +23,8 @@ export default function VisualizerCanvas({
   onHoverX,
   loading,
   fullLen,
-  baseFontSize = 13
+  baseFontSize = 13,
+  currentFont = "Arial, sans-serif"
 }) {
 
   if (viewMode === "overview") {
@@ -42,17 +43,24 @@ export default function VisualizerCanvas({
     );
   }
 
- const isDecomp = viewMode === "decomposition";
+  const isDecomp = viewMode === "decomposition";
   const isCombined = viewMode === "combined";
   
-  const TRACK_HEIGHT = isDecomp ? 24 : 28; 
-  const TRACK_GAP = 8; 
-  const TEXT_VERTICAL_OFFSET = (TRACK_HEIGHT / 2) + (baseFontSize * 0.35); 
-  const SAMPLE_PADDING_BORDER = Math.max(30, baseFontSize * 1.5);
+  // Detect if a wider, monospaced font is currently active
+  const isWideFont = currentFont.toLowerCase().includes("mono") || currentFont.toLowerCase().includes("courier");
   
-  const HEADER_TOP = Math.max(70, baseFontSize * 3.5); 
-  const REF_HEIGHT = (isDecomp || isCombined) ? Math.max(50, baseFontSize * 2) : 0; 
-  const AXIS_HEIGHT = Math.max(65, baseFontSize * 2.5);
+  // DYNAMIC SCALING RATIOS
+  const estimatedCharWidth = isWideFont ? baseFontSize * 0.78 : baseFontSize * 0.6;
+  const leftMarginOffset = Math.max(margins.left, estimatedCharWidth * 9.5); 
+
+  const TRACK_HEIGHT = baseFontSize * 2.2; 
+  const TRACK_GAP = Math.max(10, baseFontSize * 0.75); 
+  const TEXT_VERTICAL_OFFSET = (TRACK_HEIGHT / 2) + (baseFontSize * 0.35); 
+  const SAMPLE_PADDING_BORDER = Math.max(45, baseFontSize * 3.0);
+  
+  const HEADER_TOP = Math.max(80, baseFontSize * 4.5); 
+  const REF_HEIGHT = (isDecomp || isCombined) ? TRACK_HEIGHT + (baseFontSize * 2.0) : 0; 
+  const AXIS_HEIGHT = Math.max(75, baseFontSize * 4.0);
 
   let totalSamplesHeight = 0;
   if (isCombined) {
@@ -60,25 +68,28 @@ export default function VisualizerCanvas({
     const sample = data.samples[singleSampleName];
     const trackCount = sample?.parsedDecomp?.length || 2;
     
-    const decompBlockHeight = (trackCount * TRACK_HEIGHT) + ((trackCount - 1) * TRACK_GAP) + (baseFontSize * 2); 
-    const methBlockHeight = (trackCount * (TRACK_HEIGHT + 5)) + ((trackCount - 1) * TRACK_GAP) + (baseFontSize * 2);
+    const decompBlockHeight = (trackCount * TRACK_HEIGHT) + ((trackCount - 1) * TRACK_GAP) + (baseFontSize * 2.5); 
+    const methBlockHeight = (trackCount * TRACK_HEIGHT) + ((trackCount - 1) * TRACK_GAP) + (baseFontSize * 2.5);
     totalSamplesHeight = decompBlockHeight + methBlockHeight + baseFontSize; 
   } else {
     selectedSamples.forEach((sampleName) => {
       const sample = data.samples[sampleName];
       const trackCount = sample?.parsedDecomp?.length || 2;
-      const sampleBlockHeight = (trackCount * TRACK_HEIGHT) + ((trackCount - 1) * TRACK_GAP) + SAMPLE_PADDING_BORDER;
+      
+      const sampleLabelHeight = baseFontSize * 2.2; 
+      const tracksAreaHeight = (trackCount * TRACK_HEIGHT) + ((trackCount - 1) * TRACK_GAP);
+      const sampleBlockHeight = sampleLabelHeight + tracksAreaHeight + SAMPLE_PADDING_BORDER;
+      
       totalSamplesHeight += sampleBlockHeight;
     });
   }
 
-  // Final computed height calculation for SVG canvas
   const TOTAL_HEIGHT = HEADER_TOP + REF_HEIGHT + totalSamplesHeight + AXIS_HEIGHT;
   const globalRef = data.refTrack;
   let currentYTracker = HEADER_TOP + REF_HEIGHT;
 
   return (
-    <div style={{ ...containerStyle, paddingBottom: "35px" }}>
+    <div style={{ ...containerStyle, paddingBottom: "35px", fontFamily: currentFont }}>
       <svg 
         width={totalSvgWidth} 
         height={TOTAL_HEIGHT} 
@@ -91,7 +102,7 @@ export default function VisualizerCanvas({
         
         {/* GLOBAL SAMPLE NAME LABEL */}
         {isCombined && selectedSamples[0] && (
-          <text x={margins.left} y={25} style={{ fontWeight: "bold", fontSize: `${baseFontSize + 2}px`, fill: "#222" }}>
+          <text x={leftMarginOffset} y={25} style={{ fontWeight: "bold", fontSize: `${baseFontSize + 2}px`, fill: "#222", fontFamily: currentFont }}>
             {data.samples[selectedSamples[0]]?.SampleID || selectedSamples[0]}
           </text>
         )}
@@ -102,8 +113,8 @@ export default function VisualizerCanvas({
             <DecompositionPlot
               decompRef={globalRef} decompA1={null} decompA2={null}
               alleleLenRef={(globalRef?.lengths || []).reduce((a, b) => a + b, 0)}
-              scaleX={scaleX} leftMargin={margins.left} refMotif={data.Motif} colorMap={colorMap} yOffset={0} rowGap={0} 
-              baseFontSize={baseFontSize} barHeight={TRACK_HEIGHT - 4}
+              scaleX={scaleX} leftMargin={leftMarginOffset} refMotif={data.Motif} colorMap={colorMap} yOffset={0} rowGap={0} 
+              baseFontSize={baseFontSize} barHeight={TRACK_HEIGHT - 6}
             />
             <line x1={0} y1={REF_HEIGHT - 10} x2={totalSvgWidth} y2={REF_HEIGHT - 10} stroke="#2d5a27" strokeWidth="1" strokeDasharray="4,4" opacity="0.3" />
           </g>
@@ -123,14 +134,14 @@ export default function VisualizerCanvas({
           const decompPlotTracksHeight = (trackCount * TRACK_HEIGHT) + ((trackCount - 1) * TRACK_GAP);
           
           const yDecompHeader = currentYTracker + baseFontSize;
-          const yDecompPlotStart = yDecompHeader + (baseFontSize * 1.2);
+          const yDecompPlotStart = yDecompHeader + (baseFontSize * 1.5);
           
-          const yMethHeader = yDecompPlotStart + decompPlotTracksHeight + (baseFontSize * 2);
-          const yMethPlotStart = yMethHeader + (baseFontSize * 1.2);
+          const yMethHeader = yDecompPlotStart + decompPlotTracksHeight + (baseFontSize * 2.5);
+          const yMethPlotStart = yMethHeader + (baseFontSize * 1.5);
 
           return (
             <g key={sampleName}>
-              <text x={margins.left} y={yDecompHeader} style={{ fontWeight: "bold", fontSize: `${baseFontSize}px`, fill: "#333" }}>
+              <text x={leftMarginOffset} y={yDecompHeader} style={{ fontWeight: "bold", fontSize: `${baseFontSize}px`, fill: "#333", fontFamily: currentFont }}>
                 Decomposition
               </text>
               <g transform={`translate(0, ${yDecompPlotStart})`}>
@@ -141,25 +152,25 @@ export default function VisualizerCanvas({
 
                   return (
                     <g key={`decomp-${trackIdx}`} transform={`translate(0, ${currentTrackY})`}>
-                      <text x={margins.left - 15} y={TEXT_VERTICAL_OFFSET} textAnchor="end" style={{ fontSize: `${baseFontSize}px`, fill: "#333", fontWeight: "500" }}>
+                      <text x={leftMarginOffset - 15} y={TEXT_VERTICAL_OFFSET} textAnchor="end" style={{ fontSize: `${baseFontSize}px`, fill: "#333", fontWeight: "500", fontFamily: currentFont }}>
                         Allele {trackIdx + 1}
                       </text>
                       <DecompositionPlot
                         decompRef={null} decompA1={track} decompA2={null} alleleLenRef={0} alleleLen1={displayLen} alleleLen2={0}
-                        scaleX={scaleX} leftMargin={margins.left} colorMap={colorMap} refMotif={data.Motif} yOffset={0} rowGap={0}
-                        baseFontSize={baseFontSize} barHeight={TRACK_HEIGHT - 4}
+                        scaleX={scaleX} leftMargin={leftMarginOffset} colorMap={colorMap} refMotif={data.Motif} yOffset={0} rowGap={0}
+                        baseFontSize={baseFontSize} barHeight={TRACK_HEIGHT - 6}
                       />
                     </g>
                   );
                 })}
               </g>
 
-              <text x={margins.left} y={yMethHeader} style={{ fontWeight: "bold", fontSize: `${baseFontSize}px`, fill: "#333" }}>
+              <text x={leftMarginOffset} y={yMethHeader} style={{ fontWeight: "bold", fontSize: `${baseFontSize}px`, fill: "#333", fontFamily: currentFont }}>
                 Methylation
               </text>
               <g transform={`translate(0, ${yMethPlotStart})`}>
                 {sample.parsedDecomp.map((track, trackIdx) => {
-                  const currentTrackY = trackIdx * ((TRACK_HEIGHT + 5) + TRACK_GAP);
+                  const currentTrackY = trackIdx * (TRACK_HEIGHT + TRACK_GAP);
                   const rawTrackMeth = methTags[trackIdx];
                   
                   let mTrack = { pos: [], lvl: [] };
@@ -180,11 +191,11 @@ export default function VisualizerCanvas({
 
                   return (
                     <g key={`meth-${trackIdx}`} transform={`translate(0, ${currentTrackY})`}>
-                      <text x={margins.left - 15} y={TEXT_VERTICAL_OFFSET} textAnchor="end" style={{ fontSize: `${baseFontSize}px`, fill: "#333", fontWeight: "500" }}>
+                      <text x={leftMarginOffset - 15} y={TEXT_VERTICAL_OFFSET} textAnchor="end" style={{ fontSize: `${baseFontSize}px`, fill: "#333", fontWeight: "500", fontFamily: currentFont }}>
                         Allele {trackIdx + 1}
                       </text>
                       <MethylationPlot
-                        meth1={mTrack} bgWidth1={trackPixelWidth} scaleX={scaleX} leftMargin={margins.left}
+                        meth1={mTrack} bgWidth1={trackPixelWidth} scaleX={scaleX} leftMargin={leftMarginOffset}
                         yStart={0} getColor={getMethylationColor} onHoverX={onHoverX} baseFontSize={baseFontSize}
                       />
                     </g>
@@ -202,8 +213,9 @@ export default function VisualizerCanvas({
             const yOffset = currentYTracker;
             const trackCount = sample.parsedDecomp?.length || 2;
             
-            const sampleLabelHeight = baseFontSize * 1.5;
-            const sampleBlockHeight = sampleLabelHeight + (trackCount * TRACK_HEIGHT) + ((trackCount - 1) * TRACK_GAP) + SAMPLE_PADDING_BORDER;
+            const sampleLabelHeight = baseFontSize * 2.2;
+            const tracksAreaHeight = (trackCount * TRACK_HEIGHT) + ((trackCount - 1) * TRACK_GAP);
+            const sampleBlockHeight = sampleLabelHeight + tracksAreaHeight + SAMPLE_PADDING_BORDER;
             currentYTracker += sampleBlockHeight;
 
             const methTags = safeJson(sample.Meth_tag) || [];
@@ -212,7 +224,7 @@ export default function VisualizerCanvas({
 
             return (
               <g key={sampleName} transform={`translate(0, ${yOffset})`}>
-                <text x={margins.left} y={baseFontSize} style={{ fontWeight: "bold", fontSize: `${baseFontSize}px`, fill: "#333" }}>
+                <text x={leftMarginOffset} y={baseFontSize * 1.4} style={{ fontWeight: "bold", fontSize: `${baseFontSize}px`, fill: "#333", fontFamily: currentFont }}>
                   {sample.SampleID}
                   {trackCount > 2 && <tspan fill="#666" fontWeight="normal" fontSize={`${baseFontSize - 2}px`}> ({trackCount} alleles detected)</tspan>}
                 </text>
@@ -226,13 +238,13 @@ export default function VisualizerCanvas({
 
                     return (
                       <g key={trackIdx} transform={`translate(0, ${currentTrackY})`}>
-                        <text x={margins.left - 15} y={TEXT_VERTICAL_OFFSET} textAnchor="end" style={{ fontSize: `${baseFontSize}px`, fill: "#333" }}>
+                        <text x={leftMarginOffset - 15} y={TEXT_VERTICAL_OFFSET} textAnchor="end" style={{ fontSize: `${baseFontSize}px`, fill: "#333", fontFamily: currentFont }}>
                           Allele {trackIdx + 1}
                         </text>
                         <DecompositionPlot
                           decompRef={null} decompA1={track} decompA2={null} alleleLenRef={0} alleleLen1={displayLen} alleleLen2={0}
-                          scaleX={scaleX} leftMargin={margins.left} colorMap={colorMap} refMotif={data.Motif} yOffset={0} rowGap={0}
-                          baseFontSize={baseFontSize} barHeight={TRACK_HEIGHT - 4}
+                          scaleX={scaleX} leftMargin={leftMarginOffset} colorMap={colorMap} refMotif={data.Motif} yOffset={0} rowGap={0}
+                          baseFontSize={baseFontSize} barHeight={TRACK_HEIGHT - 6}
                         />
                       </g>
                     );
@@ -256,18 +268,26 @@ export default function VisualizerCanvas({
 
                     return (
                       <g key={trackIdx} transform={`translate(0, ${currentTrackY})`}>
-                        <text x={margins.left - 15} y={TEXT_VERTICAL_OFFSET} textAnchor="end" style={{ fontSize: `${baseFontSize}px`, fill: "#333" }}>
+                        <text x={leftMarginOffset - 15} y={TEXT_VERTICAL_OFFSET} textAnchor="end" style={{ fontSize: `${baseFontSize}px`, fill: "#333", fontFamily: currentFont }}>
                           Allele {trackIdx + 1}
                         </text>
                         <MethylationPlot
-                          meth1={mTrack} bgWidth1={trackPixelWidth} scaleX={scaleX} leftMargin={margins.left}
+                          meth1={mTrack} bgWidth1={trackPixelWidth} scaleX={scaleX} leftMargin={leftMarginOffset}
                           yStart={0} getColor={getMethylationColor} onHoverX={onHoverX} baseFontSize={baseFontSize}
                         />
                       </g>
                     );
                   }
                 })}
-                <line x1={0} y1={sampleBlockHeight - 15} x2={totalSvgWidth} y2={sampleBlockHeight - 15} stroke="#eee" />
+                
+                <line 
+                  x1={0} 
+                  y1={sampleBlockHeight - (SAMPLE_PADDING_BORDER / 2)} 
+                  x2={totalSvgWidth} 
+                  y2={sampleBlockHeight - (SAMPLE_PADDING_BORDER / 2)} 
+                  stroke="#eee" 
+                  strokeWidth="1.5"
+                />
               </g>
             );
           })
@@ -278,7 +298,7 @@ export default function VisualizerCanvas({
             scale={scaleX} 
             visibleRange={[0, fullLen]} 
             width={totalSvgWidth} 
-            leftMargin={margins.left} 
+            leftMargin={leftMarginOffset} 
             rightMargin={margins.right} 
             bottomY={20}
             baseFontSize={baseFontSize} 

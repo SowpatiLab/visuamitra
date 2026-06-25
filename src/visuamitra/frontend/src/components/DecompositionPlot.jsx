@@ -106,7 +106,12 @@ export default function DecompositionPlot({
             x={leftMargin - 15} 
             y={yOffset + (barHeight * 0.72)} 
             textAnchor="end"
-            style={{ fontSize: `${baseFontSize}px`, fontWeight: "bold", fill: "#222" }}
+            style={{ 
+              fontFamily: "inherit", 
+              fontSize: `${baseFontSize}px`, 
+              fontWeight: "bold", 
+              fill: "#222" 
+            }}
           >
             Ref. Allele
           </text>
