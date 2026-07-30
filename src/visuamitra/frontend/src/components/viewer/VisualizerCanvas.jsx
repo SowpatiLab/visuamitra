@@ -9,6 +9,44 @@ const safeJson = (s) => {
   try { return JSON.parse(s.replace(/'/g, '"')); } catch { return null; }
 };
 
+const PATHOGENICITY_THEME = {
+  'BENIGN': { bg: '#DEF7EC', text: '#03543F', stroke: '#BCF0DA', label: 'Benign' },
+  'INTERMEDIATE': { bg: '#FEF08A', text: '#713F12', stroke: '#FDE047', label: 'Intermediate' },
+  'PATHOGENIC': { bg: '#FDE8E8', text: '#9B1C1C', stroke: '#FBD5D5', label: 'Pathogenic' },
+  'UNKNOWN': { bg: '#F3F4F6', text: '#374151', stroke: '#E5E7EB', label: 'Unknown' }
+};
+
+// Helper function to format tag with inheritance
+const formatPathogenicityLabel = (pathogenicity, inheritance, gt) => {
+
+  if (!pathogenicity) return "";
+  
+  const baseLabel = pathogenicity.trim();
+  const upperBase = baseLabel.toUpperCase();
+
+  // If the locus was not found in reference BED file or is untracked, DO NOT show a tag
+  if (!baseLabel || upperBase === "NOT_TRACKED" || upperBase === "UNKNOWN" || upperBase === "NA" ) {
+    return "";
+  }
+
+  const inh = inheritance ? inheritance.trim().toUpperCase() : "";
+  if (!inh || inh === "NA") return baseLabel;
+
+  const inheritanceMap = {
+    'AD': 'Dominant',
+    'AR': 'Recessive',
+    'XLR': 'X-linked Recessive',
+    'XLD': 'X-linked Dominant'
+  };
+
+  const formattedInh = inh.split(';').map(code => {
+    const cleanCode = code.trim();
+    return inheritanceMap[cleanCode] || cleanCode;
+  }).join(', ');
+
+  return `${baseLabel} (${formattedInh})`;
+};
+
 export default function VisualizerCanvas({ 
   data,               
   viewMode = "decomposition",           
@@ -76,7 +114,7 @@ export default function VisualizerCanvas({
       const sample = data.samples[sampleName];
       const trackCount = sample?.parsedDecomp?.length || 2;
       
-      const sampleLabelHeight = baseFontSize * 2.2; 
+      const sampleLabelHeight = baseFontSize * 2.8; 
       const tracksAreaHeight = (trackCount * TRACK_HEIGHT) + ((trackCount - 1) * TRACK_GAP);
       const sampleBlockHeight = sampleLabelHeight + tracksAreaHeight + SAMPLE_PADDING_BORDER;
       
@@ -100,11 +138,40 @@ export default function VisualizerCanvas({
           <line x1={hoverX} y1={0} x2={hoverX} y2={TOTAL_HEIGHT - AXIS_HEIGHT} stroke="#444" strokeWidth="1.5" strokeDasharray="4,2" opacity="0.4" pointerEvents="none" />
         )}
         
-        {/* GLOBAL SAMPLE NAME LABEL */}
+        {/* GLOBAL SAMPLE NAME LABEL (COMBINED VIEW) */}
         {isCombined && selectedSamples[0] && (
-          <text x={leftMarginOffset} y={25} style={{ fontWeight: "bold", fontSize: `${baseFontSize + 2}px`, fill: "#222", fontFamily: currentFont }}>
-            {data.samples[selectedSamples[0]]?.SampleID || selectedSamples[0]}
-          </text>
+          <g>
+            <text x={leftMarginOffset} y={25} style={{ fontWeight: "bold", fontSize: `${baseFontSize + 2}px`, fill: "#222", fontFamily: currentFont }}>
+              {data.samples[selectedSamples[0]]?.SampleID || selectedSamples[0]}
+            </text>
+            
+            {(() => {
+              const activeSample = data.samples[selectedSamples[0]];
+              const fullLabel = formatPathogenicityLabel(activeSample?.Pathogenicity, activeSample?.Inheritance);
+              
+              if (!fullLabel) return null;
+
+              // Theme key is derived from the primary pathogenicity value (e.g. BENIGN)
+              const statusKey = (activeSample?.Pathogenicity || "").trim().toUpperCase();
+              const theme = PATHOGENICITY_THEME[statusKey] || PATHOGENICITY_THEME.UNKNOWN;
+              
+              const idStr = activeSample?.SampleID || selectedSamples[0];
+              const xOffset = leftMarginOffset + (idStr.length * (estimatedCharWidth + 1)) + 25;
+
+              // Calculate width dynamically based on label length
+              const badgePadding = 20;
+              const badgeWidth = Math.max(90, (fullLabel.length * (estimatedCharWidth * 0.85)) + badgePadding);
+
+              return (
+                <g transform={`translate(${xOffset}, 10)`}>
+                  <rect width={badgeWidth} height="20" rx="8" fill={theme.bg} stroke={theme.stroke} strokeWidth="1" />
+                  <text x={badgeWidth / 2} y="14" textAnchor="middle" style={{ fill: theme.text, fontSize: `${baseFontSize - 2}px`, fontWeight: "800", fontFamily: currentFont }}>
+                    {fullLabel}
+                  </text>
+                </g>
+              );
+            })()}
+          </g>
         )}
 
         {/* REFERENCE GENOME LANE */}
@@ -213,7 +280,7 @@ export default function VisualizerCanvas({
             const yOffset = currentYTracker;
             const trackCount = sample.parsedDecomp?.length || 2;
             
-            const sampleLabelHeight = baseFontSize * 2.2;
+            const sampleLabelHeight = baseFontSize * 2.8;
             const tracksAreaHeight = (trackCount * TRACK_HEIGHT) + ((trackCount - 1) * TRACK_GAP);
             const sampleBlockHeight = sampleLabelHeight + tracksAreaHeight + SAMPLE_PADDING_BORDER;
             currentYTracker += sampleBlockHeight;
@@ -228,6 +295,33 @@ export default function VisualizerCanvas({
                   {sample.SampleID}
                   {trackCount > 2 && <tspan fill="#666" fontWeight="normal" fontSize={`${baseFontSize - 2}px`}> ({trackCount} alleles detected)</tspan>}
                 </text>
+
+                {/* BADGE IS RENDERED ONLY IN DECOMPOSITION MODE (COMBINED MODE HAS IT TOP-LEVEL) */}
+                {isDecomp && (() => {
+                  const fullLabel = formatPathogenicityLabel(sample.Pathogenicity, sample.Inheritance);
+                  
+                  if (!fullLabel) return null;
+
+                  const statusKey = (sample.Pathogenicity || "").trim().toUpperCase();
+                  const theme = PATHOGENICITY_THEME[statusKey] || PATHOGENICITY_THEME.UNKNOWN;
+                  
+                  const idLength = sample.SampleID ? sample.SampleID.length : 10;
+                  const xOffset = leftMarginOffset + (idLength * estimatedCharWidth) + 25;
+                  const yBadgePos = (baseFontSize * 1.4) - 13;
+
+                  // Calculate width dynamically based on label length
+                  const badgePadding = 20;
+                  const badgeWidth = Math.max(90, (fullLabel.length * (estimatedCharWidth * 0.85)) + badgePadding);
+
+                  return (
+                    <g transform={`translate(${xOffset}, ${yBadgePos})`}>
+                      <rect width={badgeWidth} height="20" rx="8" fill={theme.bg} stroke={theme.stroke} strokeWidth="1" />
+                      <text x={badgeWidth / 2} y="14" textAnchor="middle" style={{ fill: theme.text, fontSize: `${baseFontSize - 2}px`, fontWeight: "800", fontFamily: currentFont }}>
+                        {fullLabel}
+                      </text>
+                    </g>
+                  );
+                })()}
 
                 {sample.parsedDecomp.map((track, trackIdx) => {
                   const currentTrackY = sampleLabelHeight + (trackIdx * (TRACK_HEIGHT + TRACK_GAP));

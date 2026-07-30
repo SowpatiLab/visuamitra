@@ -264,7 +264,7 @@ async def vcf_to_tsv_cursor(
     next_cursor = None
     seen_header = False
     count = 0
-    header_line = "Chrom\tStart\tEnd\tID\tMotif\tMotif_size\tSampleID\tSampleIdx\tGT\tSequences\tRead_support\tDecomp_seq\tDecomp_info\tUnique_motifs\tMean_meth\tMeth_tag\tLPM\n"
+    header_line = "Chrom\tStart\tEnd\tID\tMotif\tMotif_size\tSampleID\tSampleIdx\tGT\tSequences\tRead_support\tDecomp_seq\tDecomp_info\tUnique_motifs\tMean_meth\tMeth_tag\tLPM\tPathogenicity\tInheritance\n"
     collected = [header_line]
 
     # MULTI-CHROMOSOME STREAMING LOOP 
@@ -289,7 +289,8 @@ async def vcf_to_tsv_cursor(
             chr=current_iter_chr, 
             start_coord=iter_start, 
             end_coord=end if (chr and current_iter_chr == chr) else None,
-            samples_index=sample_indices
+            samples_index=sample_indices,
+            include_header=False
         ):
             if isinstance(raw_line, bytes):
                 raw_line = raw_line.decode("utf-8")

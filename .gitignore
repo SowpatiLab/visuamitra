@@ -25,3 +25,7 @@ npm-debug.log*
 .idea/
 
 /test_api.py
+
+/assets/visuamitra_strchive_threshold.bed.gz
+/assets/visuamitra_strchive_threshold.bed.gz.tbi
+create_new_bed.py

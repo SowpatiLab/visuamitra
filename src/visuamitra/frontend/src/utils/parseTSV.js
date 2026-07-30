@@ -110,16 +110,22 @@ export function parseTSV(text) {
     if (trackLengths.length > sampleAlleleTracks.length) {
       trackLengths.length = sampleAlleleTracks.length;
     }
-// 1. Extract the allele lengths that HEAD needs
+    // Extract the allele lengths that HEAD needs
     const aLen1 = Number(obj.Allele_Len1) || 0;
     const aLen2 = Number(obj.Allele_Len2) || 0;
 
-    // 2. Parse the LPM metrics and track lengths
+    // Parse the LPM metrics and track lengths
     const rawLpmStr = obj.LPM || "NA:NA";
     const lpmArray = rawLpmStr.split(":");
     const maxSampleTrackLen = trackLengths.length > 0 ? Math.max(...trackLengths) : 0;
+    // Extract Pathogenicity and Inheritance explicitly
+    const pathogenicityVal = obj.Pathogenicity ? obj.Pathogenicity.trim() : "NA";
+    
+    // Fallback: If obj.Inheritance is undefined, grab the 19th field (fields[18])
+    const rawInheritance = obj.Inheritance || fields[18] || "NA";
+    const inheritanceVal = rawInheritance ? rawInheritance.trim() : "NA";
 
-    // 3. Build the single combined sampleData object
+    // Build the single combined sampleData object
     const sampleData = { 
       ...obj, 
       alleleLen1: aLen1, 
@@ -129,7 +135,9 @@ export function parseTSV(text) {
       sequences: sequences,
       meanMeth: meanMeth,
       SampleIdx: sIdx,
-      parsedDecomp: sampleAlleleTracks 
+      parsedDecomp: sampleAlleleTracks,
+      Pathogenicity:pathogenicityVal,
+      Inheritance: inheritanceVal
     };
 
     if (!groupedData.has(locusKey)) {
@@ -142,6 +150,8 @@ export function parseTSV(text) {
         Chrom: chrom, Start: start, End: end,
         ID: obj.ID || "NA",
         Motif: obj.Motif || "NA",
+        Pathogenicity: pathogenicityVal,
+        Inheritance: inheritanceVal,
         samples: {},
         refTrack: actualRefTrack,
         maxAlleleLen: maxSampleTrackLen
