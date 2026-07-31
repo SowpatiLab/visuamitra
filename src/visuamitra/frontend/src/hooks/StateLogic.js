@@ -319,6 +319,7 @@ const goNext = () => {
     // Trigger the fetch engine
     setFilterTrigger(p => p + 1); },
     goNext, goPrev, methThreshold,
+    refGenome,
     availableSamples, selectedSampleIndices, setSelectedSampleIndices,
     paginatedIndices, currentPage, setCurrentPage, totalPages,
     hoverX, setHoverX,
