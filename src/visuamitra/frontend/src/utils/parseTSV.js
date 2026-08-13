@@ -115,8 +115,8 @@ export function parseTSV(text) {
     const aLen2 = Number(obj.Allele_Len2) || 0;
 
     // Parse the LPM metrics and track lengths
-    const rawLpmStr = obj.LPM || "NA:NA";
-    const lpmArray = rawLpmStr.split(":");
+    const rawLpmStr = obj.LPM || "NA";
+    const lpmArray = rawLpmStr !== "NA" ? rawLpmStr.split(/[:|,/]/) : ["NA", "NA"];
     const maxSampleTrackLen = trackLengths.length > 0 ? Math.max(...trackLengths) : 0;
     // Extract Pathogenicity and Inheritance explicitly
     const pathogenicityVal = obj.Pathogenicity ? obj.Pathogenicity.trim() : "NA";

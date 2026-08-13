@@ -1,8 +1,10 @@
-// OverviewDashboard.jsx
 import React from "react";
 
+// Helper to add controlled visual jitter to overlapping coordinates
+const applyJitter = (val, spread = 0.5) => (val !== null && val !== undefined ? val + (Math.random() - 0.5) * spread : val);
+
 const parseMethylationValues = (val) => {
-  if (val === undefined || val === null || val === "" || val === "NA" || val === ".") {
+  if (val === undefined || val === null || val === "" || val === "NA" || val === "." || val === ".,.") {
     return [0, 0];
   }
   let parsed = val;
@@ -26,15 +28,96 @@ const parseMethylationValues = (val) => {
   return [num, num];
 };
 
-const extractCopyNumber = (str) => {
-  if (!str || str === "NA" || str === ".") return null;
-  const match = str.match(/(\d+)$/);
-  return match ? parseFloat(match[1]) : null;
+const extractMotifName = (str) => {
+  if (!str || typeof str !== "string") return null;
+  const cleaned = str.replace(/[^a-zA-Z0-9-:_]/g, "");
+  if (cleaned.includes("-")) return cleaned.split("-")[0].trim();
+  if (cleaned.includes(":")) return cleaned.split(":")[0].trim();
+  const match = cleaned.match(/[A-Za-z]+/);
+  return match ? match[0] : null;
 };
 
-const extractMotifName = (str) => {
-  if (!str || str === "NA" || str === "." || !str.includes("-")) return null;
-  return str.split("-")[0].trim();
+const extractPositiveNumber = (val) => {
+  if (val === null || val === undefined) return null;
+  if (typeof val === "number") return isNaN(val) || val <= 0 ? null : val;
+  
+  const str = String(val).trim();
+  if (str === "" || str === "NA" || str === "." || str === ".," || str === ".,." || str === "None") return null;
+
+  const matches = str.match(/\d+(?:\.\d+)?/g);
+  if (!matches) return null;
+  
+  const num = parseFloat(matches[matches.length - 1]);
+  return isNaN(num) || num <= 0 ? null : num;
+};
+
+const parseLpmValue = (val) => {
+  if (val === null || val === undefined || val === "" || val === "NA" || val === "." || val === ".,.") {
+    return [null, null];
+  }
+
+  let parsed = val;
+  if (typeof val === "string" && (val.includes("[") || val.includes("{"))) {
+    try {
+      parsed = JSON.parse(val.replace(/'/g, '"'));
+    } catch {
+      parsed = val;
+    }
+  }
+
+  if (Array.isArray(parsed)) {
+    let a1 = extractPositiveNumber(parsed[0]);
+    let a2 = extractPositiveNumber(parsed[1]);
+
+    if (a1 === null && a2 !== null) a1 = a2;
+    if (a2 === null && a1 !== null) a2 = a1;
+
+    return [a1, a2];
+  }
+
+  if (typeof parsed === "string") {
+    const alleleSegments = parsed.split(/[,|/]+/);
+    
+    let a1 = extractPositiveNumber(alleleSegments[0]);
+    let a2 = alleleSegments[1] ? extractPositiveNumber(alleleSegments[1]) : null;
+
+    if (a1 === null && a2 !== null) a1 = a2;
+    if (a2 === null && a1 !== null) a2 = a1;
+
+    return [a1, a2];
+  }
+
+  const single = extractPositiveNumber(parsed);
+  return [single, single];
+};
+
+const extractLpmFromDecompTrack = (track) => {
+  if (!track) return null;
+  const candidateValues = [];
+  
+  const check = (v) => {
+    const num = extractPositiveNumber(v);
+    if (num !== null) candidateValues.push(num);
+  };
+
+  check(track.lpm);
+  check(track.copies);
+  check(track.count);
+  check(track.length);
+  check(track.repeats);
+
+  if (Array.isArray(track.copies)) track.copies.forEach(check);
+  if (Array.isArray(track.motifs)) {
+    track.motifs.forEach(m => {
+      if (typeof m === "object" && m !== null) {
+        check(m.copies ?? m.count ?? m.lpm ?? m.length);
+      } else {
+        check(m);
+      }
+    });
+  }
+
+  return candidateValues.length > 0 ? Math.max(...candidateValues) : null;
 };
 
 export default function OverviewDashboard({ data, selectedSamples = [], availableSamples = [], baseFontSize = 13}) {
@@ -52,7 +135,6 @@ export default function OverviewDashboard({ data, selectedSamples = [], availabl
   const lpmScatterPoints = [];
   let discoveredMotif = row.Motif || "NA";
 
-  // Unified color variables used across both plots
   const allele1Color = "#2478d1"; 
   const allele2Color = "#eb1c3f"; 
 
@@ -76,91 +158,121 @@ export default function OverviewDashboard({ data, selectedSamples = [], availabl
 
     if (!sample) return;
 
-    //Methylation Check: Exit early if data is missing or marked "NA"
+    // 1. Calculate allele lengths
+    const track1Len = sample.parsedDecomp?.[0]?.lengths?.reduce((a, b) => a + (Number(b) || 0), 0) || 0;
+    const track2Len = sample.parsedDecomp?.[1]?.lengths?.reduce((a, b) => a + (Number(b) || 0), 0) || 0;
+    
+    const len1 = Number(sample.alleleLen1 || track1Len || 0);
+    const len2 = Number(sample.alleleLen2 || track2Len || (sample.parsedDecomp?.length > 1 ? len1 : 0));
+
+    const hasValidLen1 = !isNaN(len1) && len1 > 0;
+    const hasValidLen2 = !isNaN(len2) && len2 > 0;
+
+    if (!hasValidLen1 && !hasValidLen2) return;
+
+    // 2. Process Methylation Data
     const rawMeth = sample.Mean_meth || sample.meanMeth;
-    if (!rawMeth || rawMeth === "NA" || rawMeth === "." || rawMeth === "") return;
+    const hasMethData = rawMeth && rawMeth !== "NA" && rawMeth !== "." && rawMeth !== ".,." && rawMeth !== "";
 
-    const [rawM1, rawM2] = parseMethylationValues(rawMeth);
-    const m1 = rawM1 > 1.0 ? rawM1 / 100 : rawM1;
-    const m2 = rawM2 > 1.0 ? rawM2 / 100 : rawM2;
+    if (hasMethData) {
+      const [rawM1, rawM2] = parseMethylationValues(rawMeth);
+      const m1 = rawM1 > 1.0 ? rawM1 / 100 : rawM1;
+      const m2 = rawM2 > 1.0 ? rawM2 / 100 : rawM2;
 
-    if (isNaN(m1) || isNaN(m2)) return;
+      if (hasValidLen1 && !isNaN(m1)) {
+        scatterPoints.push({
+          sampleId: displayName,
+          fullName: fullSampleName || displayName,
+          alleleLength: applyJitter(len1, 0.6),
+          rawAlleleLength: len1,
+          methylation: applyJitter(m1, 0.012),
+          rawMethylation: m1,
+          alleleType: "Allele 1",
+          shape: "circle",
+          color: allele1Color
+        });
+      }
 
-    const track1Len = sample.parsedDecomp?.[0]?.lengths?.reduce((a, b) => a + b, 0) || 0;
-    const track2Len = sample.parsedDecomp?.[1]?.lengths?.reduce((a, b) => a + b, 0) || track1Len;
-    const len1 = Number(sample.alleleLen1 || track1Len);
-    const len2 = Number(sample.alleleLen2 || track2Len);
-    
-    // If length information is missing or 0, skip plotting.
-    
-    if (len1 <= 0 || len2 <= 0 || isNaN(len1) || isNaN(len2)) return;
+      if (hasValidLen2 && !isNaN(m2)) {
+        scatterPoints.push({
+          sampleId: displayName,
+          fullName: fullSampleName || displayName,
+          alleleLength: applyJitter(len2, 0.6),
+          rawAlleleLength: len2,
+          methylation: applyJitter(m2, 0.012),
+          rawMethylation: m2,
+          alleleType: "Allele 2",
+          shape: "diamond",
+          color: allele2Color
+        });
+      }
+    }
 
+    // 3. Process LPM Copy Numbers
     let a1LpmCount = null;
     let a2LpmCount = null;
 
-    const rawLpmSource = sample.lpm || (sample.LPM ? sample.LPM.split(":") : null);
+    const directA1 = extractPositiveNumber(
+      sample.lpm1 ?? sample.LPM1 ?? sample.allele1_lpm ?? sample.allele1_LPM ?? sample.a1_lpm
+    );
+    const directA2 = extractPositiveNumber(
+      sample.lpm2 ?? sample.LPM2 ?? sample.allele2_lpm ?? sample.allele2_LPM ?? sample.a2_lpm
+    );
 
-    if (Array.isArray(rawLpmSource)) {
-      const a1Str = String(rawLpmSource[0] || "").trim();
-      const a2Str = String(rawLpmSource[1] || "").trim();
+    if (directA1 !== null || directA2 !== null) {
+      a1LpmCount = directA1;
+      a2LpmCount = directA2 ?? directA1;
+    } else {
+      const rawLpm = 
+        sample.lpm ?? 
+        sample.LPM ?? 
+        sample.LPM_counts ?? 
+        sample.lpm_counts ?? 
+        sample.LPM_count ?? 
+        sample.lpm_count ?? 
+        sample.LPM_copies ?? 
+        sample.lpm_copies ?? 
+        sample.motif_lpm ?? 
+        sample.LPM_str;
 
-      a1LpmCount = extractCopyNumber(a1Str);
-      a2LpmCount = extractCopyNumber(a2Str);
+      if (rawLpm !== undefined && rawLpm !== null) {
+        const [parsedA1, parsedA2] = parseLpmValue(rawLpm);
+        a1LpmCount = parsedA1;
+        a2LpmCount = parsedA2;
 
-      if (discoveredMotif === "NA" || !discoveredMotif) {
-        discoveredMotif = extractMotifName(a1Str) || extractMotifName(a2Str) || row.Motif || "NA";
+        if (discoveredMotif === "NA" || !discoveredMotif) {
+          discoveredMotif = extractMotifName(String(rawLpm)) || row.Motif || "NA";
+        }
       }
     }
 
-    if (a1LpmCount === null && (sample.LPM || sample.LPM_counts)) {
-      const fallbackStr = String(sample.LPM || sample.LPM_counts);
-      if (fallbackStr.includes(":")) {
-        const parts = fallbackStr.split(":");
-        const p1 = parseFloat(parts[0]?.split("-")?.[1]);
-        const p2 = parseFloat(parts[1]?.split("-")?.[1]);
-        if (!isNaN(p1)) a1LpmCount = p1;
-        if (!isNaN(p2)) a2LpmCount = p2;
-      }
+    if ((a1LpmCount === null && a2LpmCount === null) && sample.parsedDecomp && Array.isArray(sample.parsedDecomp)) {
+      a1LpmCount = extractLpmFromDecompTrack(sample.parsedDecomp[0]);
+      a2LpmCount = extractLpmFromDecompTrack(sample.parsedDecomp[1]) ?? a1LpmCount;
     }
 
-    scatterPoints.push({
-      sampleId: displayName,
-      fullName: fullSampleName || displayName,
-      alleleLength: len1,
-      methylation: m1,
-      alleleType: "Allele 1",
-      shape: "circle",
-      color: allele1Color
-    });
-
-    scatterPoints.push({
-      sampleId: displayName,
-      fullName: fullSampleName || displayName,
-      alleleLength: len2,
-      methylation: m2,
-      alleleType: "Allele 2",
-      shape: "diamond",
-      color: allele2Color
-    });
-
-    if (a1LpmCount !== null) {
+    if (hasValidLen1 && a1LpmCount !== null) {
       lpmScatterPoints.push({
         sampleId: displayName,
         fullName: fullSampleName || displayName,
-        alleleLength: len1,
-        lpmCount: a1LpmCount,
+        alleleLength: applyJitter(len1, 0.6),    // Jittered X coordinate
+        rawAlleleLength: len1,                   // Pure X for Tooltip
+        lpmCount: applyJitter(a1LpmCount, 0.22), // Jittered Y coordinate
+        rawLpmCount: a1LpmCount,                 // Pure Y for Tooltip
         alleleType: "Allele 1",
         shape: "circle",
         color: allele1Color
       });
     }
 
-    if (a2LpmCount !== null) {
+    if (hasValidLen2 && a2LpmCount !== null) {
       lpmScatterPoints.push({
         sampleId: displayName,
         fullName: fullSampleName || displayName,
-        alleleLength: len2,
-        lpmCount: a2LpmCount,
+        alleleLength: applyJitter(len2, 0.6),    // Jittered X coordinate
+        rawAlleleLength: len2,                   // Pure X for Tooltip
+        lpmCount: applyJitter(a2LpmCount, 0.22), // Jittered Y coordinate
+        rawLpmCount: a2LpmCount,                 // Pure Y for Tooltip
         alleleType: "Allele 2",
         shape: "diamond",
         color: allele2Color
@@ -168,18 +280,19 @@ export default function OverviewDashboard({ data, selectedSamples = [], availabl
     }
   });
 
-  if (scatterPoints.length === 0) {
+  if (scatterPoints.length === 0 && lpmScatterPoints.length === 0) {
     return (
       <div style={{ padding: 40, textAlign: "center", color: "#666", background: "#fff", borderRadius: 10 }}>
-        No valid track data found for the selected cohort.
+        No valid data found for the selected cohort.
       </div>
     );
   }
 
-  const allLengths = scatterPoints.map(p => p.alleleLength);
+  // Calculate scales using clean raw lengths & values
+  const allLengths = [...scatterPoints, ...lpmScatterPoints].map(p => p.rawAlleleLength);
   const maxAxisLen = allLengths.length > 0 ? Math.max(...allLengths, 50) * 1.12 : 500;
   
-  const allLpmCounts = lpmScatterPoints.map(p => p.lpmCount);
+  const allLpmCounts = lpmScatterPoints.map(p => p.rawLpmCount);
   const maxLpmAxisVal = allLpmCounts.length > 0 ? Math.max(...allLpmCounts, 5) * 1.15 : 25;
 
   const chartWidth = 540;
@@ -192,8 +305,9 @@ export default function OverviewDashboard({ data, selectedSamples = [], availabl
   const getYMeth = (meth) => padding.top + plotHeight - (meth * plotHeight);
   const getYLpm = (count) => padding.top + plotHeight - ((count / maxLpmAxisVal) * plotHeight);
 
-  const pointRadius = scatterPoints.length > 50 ? 3.5 : 5.0;
-  const pointOpacity = scatterPoints.length > 100 ? 0.65 : 0.85;
+  // Set radius and opacity tuned for dense overlapping clusters
+  const pointRadius = lpmScatterPoints.length > 100 ? 3.5 : 4.5;
+  const pointOpacity = 1.0;
 
   return (
     <div style={{ width: "100%", background: "#fff", padding: "20px", borderRadius: "10px", border: "1px solid #eee", boxSizing: "border-box" }}>
@@ -201,14 +315,11 @@ export default function OverviewDashboard({ data, selectedSamples = [], availabl
       {/* TEXT LEGEND SUBHEADER */}
       <div style={{ borderBottom: "1px solid #f0f0f0", paddingBottom: "14px", marginBottom: "24px", display: "flex", justifyContent: "space-between", alignItems: "center" }}>
         <div>
-          {/* FIX: Set cross-sample header to scale dynamically */}
           <div style={{ fontSize: `${baseFontSize + 2}px`, color: "#555" }}>
             <strong>Cross-sample-wide statistics</strong>
           </div>
         </div>
 
-        {/* Right Side: Allele legend */}
-        {/* FIX: Set legend key container font scale */}
         <div style={{ display: "flex", alignItems: "center", gap: "16px", fontSize: `${baseFontSize - 1}px`, color: "#555" }}>
           <div style={{ display: "flex", alignItems: "center", gap: "6px" }}>
             <span style={{ width: 9, height: 9, borderRadius: "50%", backgroundColor: allele1Color, display: "inline-block" }}></span>
@@ -221,7 +332,6 @@ export default function OverviewDashboard({ data, selectedSamples = [], availabl
             <span>Allele 2</span>
           </div>
         </div>
-
       </div>
 
       {/* GRID CONTAINER */}
@@ -230,11 +340,9 @@ export default function OverviewDashboard({ data, selectedSamples = [], availabl
         {/* LEFT CHART AREA: METHYLATION */}
         <div style={{ flex: 1, minWidth: "0", border: "1px solid #f0f0f0", padding: "12px", borderRadius: "6px" }}>
           <div style={{ marginBottom: "14px" }}>
-            {/* FIX: Dynamic chart title sizing */}
             <h4 style={{ margin: 0, fontSize: `${baseFontSize}px`, fontWeight: "bold", color: "#333" }}>
               Allele Length vs. Mean Methylation
             </h4>
-            {/* FIX: Dynamic sub-label sizing */}
             <div style={{ fontSize: `${baseFontSize - 2}px`, color: "#666", marginTop: "2px" }}>
               Plotting <strong>{scatterPoints.length}</strong> alleles in total
             </div>
@@ -245,7 +353,6 @@ export default function OverviewDashboard({ data, selectedSamples = [], availabl
               return (
                 <g key={`y-grid-m-${i}`}>
                   <line x1={padding.left} y1={yPos} x2={chartWidth - padding.right} y2={yPos} stroke="#f5f5f5" strokeWidth={pct === 0 ? 1.5 : 1} />
-                  {/* FIX: SVG text elements must use numeric evaluation labels */}
                   <text x={padding.left - 10} y={yPos + 4} textAnchor="end" style={{ fontSize: `${baseFontSize - 3}px`, fill: "#666" }}>
                     {(pct * 100).toFixed(0)}%
                   </text>
@@ -259,7 +366,6 @@ export default function OverviewDashboard({ data, selectedSamples = [], availabl
               return (
                 <g key={`x-grid-m-${i}`}>
                   <line x1={xPos} y1={padding.top} x2={xPos} y2={padding.top + plotHeight} stroke="#f5f5f5" strokeWidth={i === 0 ? 1.5 : 1} />
-                  {/* FIX: Dynamic X axis values */}
                   <text x={xPos} y={padding.top + plotHeight + 16} textAnchor="middle" style={{ fontSize: `${baseFontSize - 3}px`, fill: "#666" }}>
                     {val}
                   </text>
@@ -270,7 +376,6 @@ export default function OverviewDashboard({ data, selectedSamples = [], availabl
             <line x1={padding.left} y1={padding.top + plotHeight} x2={chartWidth - padding.right} y2={padding.top + plotHeight} stroke="#666" strokeWidth="1.2" />
             <line x1={padding.left} y1={padding.top} x2={padding.left} y2={padding.top + plotHeight} stroke="#666" strokeWidth="1.2" />
 
-            {/* FIX: Primary Chart Label Axis Text Sizing */}
             <text x={padding.left + plotWidth / 2} y={chartHeight - 15} textAnchor="middle" style={{ fontSize: `${baseFontSize - 2}px`, fill: "#333", fontWeight: "600" }}>
               Allele Length (bp)
             </text>
@@ -289,7 +394,7 @@ export default function OverviewDashboard({ data, selectedSamples = [], availabl
                   ) : (
                     <polygon points={`${cx},${cy - r * 1.3} ${cx + r * 1.3},${cy} ${cx},${cy + r * 1.3} ${cx - r * 1.3},${cy}`} fill={pt.color} fillOpacity={pointOpacity} stroke="#fff" strokeWidth={0.5} />
                   )}
-                  <title>{`${pt.fullName}\n${pt.alleleType}\nLength: ${pt.alleleLength} bp\nMethylation: ${(pt.methylation * 100).toFixed(1)}%`}</title>
+                  <title>{`${pt.fullName}\n${pt.alleleType}\nLength: ${pt.rawAlleleLength} bp\nMethylation: ${(pt.rawMethylation * 100).toFixed(1)}%`}</title>
                 </g>
               );
             })}
@@ -299,11 +404,9 @@ export default function OverviewDashboard({ data, selectedSamples = [], availabl
         {/* RIGHT CHART AREA: LPM COPY NUMBER */}
         <div style={{ flex: 1, minWidth: "0", border: "1px solid #f0f0f0", padding: "12px", borderRadius: "6px" }}>
           <div style={{ marginBottom: "14px" }}>
-            {/* FIX: Title sizing */}
             <h4 style={{ margin: 0, fontSize: `${baseFontSize}px`, fontWeight: "bold", color: "#333" }}>
               Allele Length vs. LPM's (Longest Pure Motif) Copy Number
             </h4>
-            {/* FIX: Dynamic subtitle text */}
             <div style={{ fontSize: `${baseFontSize - 2}px`, color: "#666", marginTop: "2px" }}>
               Motif: <strong>{discoveredMotif}</strong> | Plotting <strong>{lpmScatterPoints.length}</strong> alleles in total
             </div>
@@ -315,7 +418,6 @@ export default function OverviewDashboard({ data, selectedSamples = [], availabl
               return (
                 <g key={`y-grid-l-${i}`}>
                   <line x1={padding.left} y1={yPos} x2={chartWidth - padding.right} y2={yPos} stroke="#f5f5f5" strokeWidth={i === 0 ? 1.5 : 1} />
-                  {/* FIX: Right axis label text */}
                   <text x={padding.left - 10} y={yPos + 4} textAnchor="end" style={{ fontSize: `${baseFontSize - 3}px`, fill: "#666" }}>
                     {countVal}
                   </text>
@@ -329,7 +431,6 @@ export default function OverviewDashboard({ data, selectedSamples = [], availabl
               return (
                 <g key={`x-grid-l-${i}`}>
                   <line x1={xPos} y1={padding.top} x2={xPos} y2={padding.top + plotHeight} stroke="#f5f5f5" strokeWidth={i === 0 ? 1.5 : 1} />
-                  {/* FIX: Bottom Axis text */}
                   <text x={xPos} y={padding.top + plotHeight + 16} textAnchor="middle" style={{ fontSize: `${baseFontSize - 3}px`, fill: "#666" }}>
                     {val}
                   </text>
@@ -340,7 +441,6 @@ export default function OverviewDashboard({ data, selectedSamples = [], availabl
             <line x1={padding.left} y1={padding.top + plotHeight} x2={chartWidth - padding.right} y2={padding.top + plotHeight} stroke="#666" strokeWidth="1.2" />
             <line x1={padding.left} y1={padding.top} x2={padding.left} y2={padding.top + plotHeight} stroke="#666" strokeWidth="1.2" />
 
-            {/* FIX: Primary Labels */}
             <text x={padding.left + plotWidth / 2} y={chartHeight - 15} textAnchor="middle" style={{ fontSize: `${baseFontSize - 2}px`, fill: "#333", fontWeight: "600" }}>
               Allele Length (bp)
             </text>
@@ -359,7 +459,7 @@ export default function OverviewDashboard({ data, selectedSamples = [], availabl
                   ) : (
                     <polygon points={`${cx},${cy - r * 1.3} ${cx + r * 1.3},${cy} ${cx},${cy + r * 1.3} ${cx - r * 1.3},${cy}`} fill={pt.color} fillOpacity={pointOpacity} stroke="#fff" strokeWidth={0.5} />
                   )}
-                  <title>{`${pt.fullName}\n${pt.alleleType}\nLength: ${pt.alleleLength} bp\nLPM Value: ${discoveredMotif}-${pt.lpmCount}`}</title>
+                  <title>{`${pt.fullName}\n${pt.alleleType}\nA. length: ${pt.rawAlleleLength} bp\nLPM copynumber: ${pt.rawLpmCount}`}</title>
                 </g>
               );
             })}
