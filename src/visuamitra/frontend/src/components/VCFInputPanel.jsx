@@ -137,7 +137,7 @@ export default function VCFUploadPanel({ onLoad }) {
     e.preventDefault();
     setError("");
 
-    // Run deep validation validation logic asynchronously
+    // Run deep validation logic asynchronously
     const submissionCheck = await validateSubmission({ vcfFile, tbiFile, isCLI });
     if (!submissionCheck.isValid) {
       setError(submissionCheck.errorMsg);
@@ -221,7 +221,7 @@ export default function VCFUploadPanel({ onLoad }) {
         <button 
           type="button" 
           onClick={() => navigate("/")} 
-          style={{ ...styles.linkBtn, marginBottom: 10 }}
+          style={{ ...styles.linkBtn, marginBottom: "0.625rem" }}
         >
           ← Back to Launch Options
         </button>
@@ -234,7 +234,7 @@ export default function VCFUploadPanel({ onLoad }) {
           />
         </h2>
         <p style={styles.subtitle}>
-          {isCLI ? "CLI Mode: Using local system files" : "Upload compressed VCF file (.vcf.gz) & its TBI file (.vcf.gz.tbi)"}
+          {isCLI ? "CLI Mode: Using local system files" : "Please upload compressed VCF file (.vcf.gz) & its TBI file (.vcf.gz.tbi)"}
         </p>
 
         {/* Hide input if in CLI mode */}
@@ -250,9 +250,9 @@ export default function VCFUploadPanel({ onLoad }) {
 
         {vcfFile && (
           <div style={styles.status}>
-            <div>📄 VCF: {vcfFile.name}</div>
+            <div>🧬 VCF: {vcfFile.name}</div>
             <div>
-              🧬 TBI:{" "}
+              📄 TBI:{" "}
               {tbiFile ? (
                 <span style={{ color: "green" }}>found</span>
               ) : (
@@ -269,29 +269,32 @@ export default function VCFUploadPanel({ onLoad }) {
             placeholder="Chromosome (chr1)"
             value={chr}
             onChange={(e) => setChr(e.target.value)}
+            style={styles.rowInput}
           />
           <input
             type="number"
             placeholder="Start"
             value={start}
             onChange={(e) => setStart(e.target.value)}
+            style={styles.rowInput}
           />
           <input
             type="number"
             placeholder="End"
             value={end}
             onChange={(e) => setEnd(e.target.value)}
+            style={styles.rowInput}
           />
         </div>
         
         {availableSamples.length > 0 && (
-          <div style={{ marginBottom: 16 }}>
-            <div style={{ display: "flex", justifyContent: "space-between", alignItems: "center", marginBottom: 6 }}>
-              <label style={{ fontSize: "14px", fontWeight: "600", color: "#333" }}>
+          <div style={{ marginBottom: "1rem" }}>
+            <div style={{ display: "flex", justifyContent: "space-between", alignItems: "center", marginBottom: "0.375rem" }}>
+              <label style={{ fontSize: "0.875rem", fontWeight: "600", color: "#333" }}>
                 Samples ({selectedSamples.length} selected)
               </label>
               {/* Global Actions */}
-              <div style={{ display: "flex", gap: "12px" }}>
+              <div style={{ display: "flex", gap: "0.75rem" }}>
                 <button type="button" onClick={selectFiltered} style={styles.linkBtn}>
                   {searchTerm ? 'Add Filtered' : 'Select All'}
                 </button>
@@ -347,45 +350,115 @@ export default function VCFUploadPanel({ onLoad }) {
 
 const styles = {
   page: {
-    minHeight: "100vh", display: "flex", alignItems: "center", justifyContent: "center", background: "linear-gradient(135deg, #f5f7fa, #e4e9f0)",
+    minHeight: "100vh",
+    display: "flex",
+    alignItems: "center",
+    justifyContent: "center",
+    background: "linear-gradient(135deg, #f5f7fa, #e4e9f0)",
+    padding: "1rem"
   },
   card: {
-    width: 600, padding: 30, borderRadius: 12, background: "#fff", boxShadow: "0 30px 30px rgba(0,0,0,0.1)",
+    width: "100%",
+    maxWidth: "44rem",
+    padding: "1.875rem",
+    borderRadius: "0.75rem",
+    background: "#fff",
+    boxShadow: "0 1.875rem 1.875rem rgba(0,0,0,0.1)",
+    boxSizing: "border-box"
   },
   title: {
-    margin: 0, marginBottom: 6, textAlign: "center",
+    margin: 0,
+    marginBottom: "0.775rem",
+    textAlign: "center"
   },
   subtitle: {
-    fontSize: 13, color: "#555", textAlign: "center", marginBottom: 16,
+    fontSize: "0.96rem",
+    color: "#444",
+    textAlign: "center",
+    marginBottom: "1rem",
   },
   fileInput: {
-    width: "100%", marginBottom: 12,
+    width: "100%",
+    marginBottom: "0.75rem",
+    fontSize: "0.9rem",
+    padding: "0 0",   // Increases overall click target area
+    cursor: "pointer"
+
   },
   status: {
-    fontSize: 13, marginBottom: 10,
+    fontSize: "0.8125rem",
+    marginBottom: "0.625rem"
   },
   error: {
-    color: "#b00020", fontSize: 13, marginBottom: 10,
+    color: "#b00020",
+    fontSize: "0.8125rem",
+    marginBottom: "0.625rem"
   },
   row: {
-    display: "flex", gap: 8, marginBottom: 14,
+    display: "flex",
+    gap: "0.6rem",
+    marginBottom: "0.875rem",
+    height: "2rem"
+  },
+  rowInput: {
+    flex: 1,
+    padding: "0.5rem",
+    border: "0.0625rem solid #ccc",
+    borderRadius: "0.375rem",
+    fontSize: "0.8125rem",
+    outline: "none"
   },
   button: {
-    width: "100%", padding: 10, fontWeight: 600, borderRadius: 8, border: "none", background: "#328547ff", color: "#fff", cursor: "pointer", opacity: 1,
+    width: "100%",
+    padding: "0.625rem",
+    fontWeight: 600,
+    borderRadius: "0.5rem",
+    border: "none",
+    background: "#328547ff",
+    color: "#fff",
+    cursor: "pointer",
+    opacity: 1,
+    fontSize: "0.875rem"
   },
   searchInput: {
-    width: "100%", padding: "8px", marginBottom: "8px", border: "1px solid #ddd", borderRadius: "6px", fontSize: "13px", boxSizing: "border-box", outline: "none"
+    width: "100%",
+    padding: "0.5rem",
+    marginBottom: "0.5rem",
+    border: "0.0625rem solid #ddd",
+    borderRadius: "0.375rem",
+    fontSize: "0.8125rem",
+    boxSizing: "border-box",
+    outline: "none"
   },
   sampleBox: {
-    maxHeight: "150px", overflowY: "auto", border: "1px solid #ccc", borderRadius: "6px", padding: "8px", background: "#fafafa" 
+    maxHeight: "9.375rem",
+    overflowY: "auto",
+    border: "0.0625rem solid #ccc",
+    borderRadius: "0.375rem",
+    padding: "0.5rem",
+    background: "#fafafa" 
   },
   sampleLabel: {
-    display: "flex", alignItems: "center", gap: "8px", padding: "4px 0", cursor: "pointer", fontSize: "13px"
+    display: "flex",
+    alignItems: "center",
+    gap: "0.5rem",
+    padding: "0.25rem 0",
+    cursor: "pointer",
+    fontSize: "0.9rem"
   },
   linkBtn: {
-    background: "none", border: "none", color: "#328547", fontSize: "11px", fontWeight: "bold", cursor: "pointer", padding: 0
+    background: "none",
+    border: "none",
+    color: "#328547",
+    fontSize: "0.9rem",
+    fontWeight: "bold",
+    cursor: "pointer",
+    padding: 0
   },
   logoImageStyle: {
-    width: "100px", height: "100px", borderRadius: 8, objectFit: "contain"
+    width: "7.75rem",
+    height: "7.75rem",
+    borderRadius: "0.5rem",
+    objectFit: "contain"
   }
 };

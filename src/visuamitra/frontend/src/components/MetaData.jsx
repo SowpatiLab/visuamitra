@@ -1,7 +1,6 @@
 import React from "react";
 import Tooltip from "./motifTooltip"; 
 
-// Helper to format values like [288, 272] or 0.856
 const formatValue = (val) => {
   if (val === undefined || val === null || val === "" || val === "NA") return "—";
   let parsed = val;
@@ -29,10 +28,8 @@ export default function MetadataDisplay({
    baseFontSize = 13
 }) {
 
-  // Safeguard: if data hasn't loaded yet
   if (!row || !row.samples) return null;
 
-  // Global Data (Top Pills)
   const firstAvailable = row.samples[Object.keys(row.samples)[0]] || {};
   const locusID = row.ID || row.id || firstAvailable.ID || firstAvailable.id || "N/A";
   const motif = row.Motif || firstAvailable.Motif || "N/A";
@@ -47,27 +44,23 @@ export default function MetadataDisplay({
   const hasHiddenItems = selectedIndices.length > 3;
 
   return (
-    <div style={containerStyle}>
+    <div style={{ ...styles.container, fontSize: `${baseFontSize}px` }}>
       
-
-      <div style={tableWrapperStyle}>
-        <table style={tableStyle}>
+      <div style={styles.tableWrapper}>
+        <table style={styles.table}>
           <thead>
             <tr>
-              <th style={thStyle}>Selected Sample</th>
-              <th style={thStyle}>Genotype</th>
-              <th style={thStyle}>Read Support (A1|A2)</th>
-              <th style={thStyle}>Mean Methylation (A1|A2)</th>
+              <th style={styles.th}>Selected Sample</th>
+              <th style={styles.th}>Genotype</th>
+              <th style={styles.th}>Read Support (A1|A2)</th>
+              <th style={styles.th}>Mean Methylation (A1|A2)</th>
             </tr>
           </thead>
           <tbody>
             {itemsToShow.map((idx) => {
               const fullSampleName = availableSamples[idx];
-              
-              // Use this ONLY for the text in the <td>
               const displayName = fullSampleName ? fullSampleName.split('-')[0] : "Unknown";
 
-              // Lookup using the full name which matches the backend TSV exactly
               const sample = 
                 row.samples[fullSampleName] ||                 
                 row.samples[idx] ||                        
@@ -82,9 +75,9 @@ export default function MetadataDisplay({
 
               if (!sample || typeof sample !== 'object') {
                 return (
-                  <tr key={idx} style={trStyle}>
-                    <td style={sampleNameTdStyle}>{displayName}</td>
-                    <td colSpan="3" style={{ ...tdStyle, color: "#999", fontStyle: "italic" }}>
+                  <tr key={idx} style={styles.tr}>
+                    <td style={styles.sampleNameTd}>{displayName}</td>
+                    <td colSpan="3" style={{ ...styles.td, color: "#999", fontStyle: "italic" }}>
                       Metadata not linked (ID: {fullSampleName || idx})
                     </td>
                   </tr>
@@ -92,10 +85,10 @@ export default function MetadataDisplay({
               }              
 
               return (
-                <tr key={idx} style={trStyle}>
-                  <td style={sampleNameTdStyle}>{displayName}</td>
-                  <td style={tdStyle}>{sample.GT || "—"}</td>
-                  <td style={tdStyle}>
+                <tr key={idx} style={styles.tr}>
+                  <td style={styles.sampleNameTd}>{displayName}</td>
+                  <td style={styles.td}>{sample.GT || "—"}</td>
+                  <td style={styles.td}>
                     {(() => {
                         const val = sample.Read_support;
                         if (!val || val === "NA") return "—";
@@ -106,18 +99,17 @@ export default function MetadataDisplay({
                         return Array.isArray(parsed) ? parsed.join(" | ") : parsed;
                     })()}
                   </td>
-                  <td style={tdStyle}>{formatValue(sample.Mean_meth || sample.meanMeth)}</td>
+                  <td style={styles.td}>{formatValue(sample.Mean_meth || sample.meanMeth)}</td>
                 </tr>
               );
             })}
           </tbody>
         </table>
 
-        {/* COMPACT BUTTON FOOTER */}
         {hasHiddenItems && !forceExpand && (
-          <div style={buttonContainerStyle}>
+          <div style={styles.buttonContainer}>
             <button 
-              style={expandButtonStyle} 
+              style={styles.expandButton} 
               onClick={onToggle}
             >
               {isExpanded ? (
@@ -130,62 +122,111 @@ export default function MetadataDisplay({
         )}
 
         {selectedIndices.length === 0 && (
-          <div style={{ ...tdStyle, textAlign: 'center', color: '#999', padding: '20px' }}>
+          <div style={{ ...styles.td, textAlign: 'center', color: '#999', padding: '1.25em' }}>
             No samples selected. Please select samples from the list above.
           </div>
         )}
       </div>
-      <div style={headerStyle} ref={titleRef}>
-        <div style={pillStyle}><strong>Locus ID:</strong> {locusID}</div>
-        <div style={pillStyle}>
+      
+      <div style={styles.header} ref={titleRef}>
+        <div style={styles.pill}><strong>Locus ID:</strong> {locusID}</div>
+        <div style={styles.pill}>
           <strong>Motif:</strong>{" "}
           {isLong ? (
             <Tooltip text={showMotifTooltip}>
-              <span style={{ ...motifStyle, borderBottom: "1px dotted #888", cursor: "zoom-in" }}>
+              <span style={{ ...styles.motif, borderBottom: "0.0625em dotted #888", cursor: "zoom-in" }}>
                 {motifDisplay}
               </span>
             </Tooltip>
           ) : (
-            <span style={motifStyle}>{motifDisplay}</span>
+            <span style={styles.motif}>{motifDisplay}</span>
           )}
         </div>
-        <div style={pillStyle}><strong>Size:</strong> {motifSize} bp</div>
+        <div style={styles.pill}><strong>Size:</strong> {motifSize} bp</div>
       </div>
     </div>
-    
   );
 } 
 
-const buttonContainerStyle = {
-  display: "flex",
-  justifyContent: "center", 
-  padding: "4px 0",       // Vertical breathing room
-  background: "#fff",
-  borderTop: "1px solid #f0f0f0"
+const styles = {
+  container: { 
+    width: "100%", 
+    maxWidth: "100%", // Fixed: expanded to 100% to match BASE_WIDTH (1200px) parent wrapper
+    marginBottom: "1.5em" // Fixed: added proper gap spacing below the ideogram
+  },
+  header: { 
+    display: "flex", 
+    gap: "0.625em", 
+    marginBottom: "0px", 
+    marginTop: "1.5em", 
+    fontSize: "1.25em" 
+  },
+  pill: { 
+    background: "rgba(0,0,0,0.03)", 
+    padding: "0.3125em 0.9375em", 
+    borderRadius: "6.25em", 
+    fontSize: "0.95em", 
+    color: "#222", 
+    border: "0.0625em solid rgba(0,0,0,0.05)" 
+  },
+  motif: { 
+    color: '#328547', 
+    fontWeight: 'bold' 
+  },
+  tableWrapper: { 
+    background: "#fff", 
+    borderRadius: "0.5em", 
+    border: "0.0625em solid #eee", 
+    overflow: "hidden", 
+    boxShadow: "0 0.125em 0.5em rgba(0,0,0,0.02)" 
+  },
+  table: { 
+    width: "100%", 
+    borderCollapse: "collapse", 
+    fontSize: "inherit" 
+  },
+  th: { 
+    textAlign: "left", 
+    padding: "0.75em 0.9375em", 
+    background: "#fafafa", 
+    color: "#666", 
+    fontWeight: "800", 
+    fontSize: "0.8em", 
+    textTransform: "uppercase", 
+    borderBottom: "0.0625em solid #eee" 
+  },
+  tr: { 
+    borderBottom: "0.0625em solid #f9f9f9" 
+  },
+  td: { 
+    padding: "0.75em 0.9375em", 
+    color: "#444" 
+  },
+  sampleNameTd: { 
+    padding: "0.75em 0.9375em", 
+    fontFamily: "inherit", 
+    fontWeight: "700", 
+    color: "#2d5a27" 
+  },
+  buttonContainer: {
+    display: "flex",
+    justifyContent: "center", 
+    padding: "0.25em 0", 
+    background: "#fff",
+    borderTop: "0.0625em solid #f0f0f0" 
+  },
+  expandButton: {
+    padding: "0.3125em 0.9375em", 
+    background: "#f8faf8",
+    border: "0.0625em solid #d0e0d0", 
+    borderRadius: "1em", 
+    color: "#2d5a27",
+    fontSize: "0.9em",         
+    fontWeight: "600",
+    cursor: "pointer",
+    transition: "all 0.2s ease",
+    display: "inline-flex",
+    alignItems: "center",
+    boxShadow: "0 0.0625em 0.1875em rgba(0,0,0,0.05)" 
+  }
 };
-
-const expandButtonStyle = {
-  padding: "5px 15px",     
-  background: "#f8faf8",    // Very subtle green tint
-  border: "1px solid #d0e0d0",
-  borderRadius: "16px",     
-  color: "#2d5a27",
-  fontSize: "0.9em",         
-  fontWeight: "600",
-  cursor: "pointer",
-  transition: "all 0.2s ease",
-  display: "inline-flex",
-  alignItems: "center",
-  boxShadow: "0 1px 3px rgba(0,0,0,0.05)" 
-};
-
-const containerStyle = { width: "100%", maxWidth: "1240px", marginBottom: "-25px" };
-const headerStyle = { display: "flex", gap: "10px", marginBottom: "0px", marginTop: "24px", fontSize: "1.25em"};
-const pillStyle = { background: "rgba(0,0,0,0.03)", padding: "5px 15px", borderRadius: "100px", fontSize: "0.95em", color: "#222", border: "1px solid rgba(0,0,0,0.05)" };
-const motifStyle = { color: '#328547', fontWeight: 'bold' };
-const tableWrapperStyle = { background: "#fff", borderRadius: "8px", border: "1px solid #eee", overflow: "hidden", boxShadow: "0 2px 8px rgba(0,0,0,0.02)" };
-const tableStyle = { width: "100%", borderCollapse: "collapse", fontSize: "inherit" };
-const thStyle = { textAlign: "left", padding: "12px 15px", background: "#fafafa", color: "#666", fontWeight: "800", fontSize: "0.8em", textTransform: "uppercase", borderBottom: "1px solid #eee" };
-const trStyle = { borderBottom: "1px solid #f9f9f9" };
-const tdStyle = { padding: "12px 15px", color: "#444" };
-const sampleNameTdStyle = { ...tdStyle, fontFamily: "inherit", fontWeight: "700", color: "#2d5a27" };

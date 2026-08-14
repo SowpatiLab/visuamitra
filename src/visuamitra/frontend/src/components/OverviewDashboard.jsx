@@ -120,12 +120,18 @@ const extractLpmFromDecompTrack = (track) => {
   return candidateValues.length > 0 ? Math.max(...candidateValues) : null;
 };
 
-export default function OverviewDashboard({ data, selectedSamples = [], availableSamples = [], baseFontSize = 13}) {
+export default function OverviewDashboard({ data, selectedSamples = [], availableSamples = [], baseFontSize = 13 }) {
   const row = data; 
   
+  const rootFontSizeRem = `${(baseFontSize / 16).toFixed(4)}rem`;
+  const subTitleFontSizeEm = `${((baseFontSize + 2) / baseFontSize).toFixed(4)}em`;
+  const legendFontSizeEm = `${((baseFontSize - 1) / baseFontSize).toFixed(4)}em`;
+  const metaFontSizeEm = `${((baseFontSize - 2) / baseFontSize).toFixed(4)}em`;
+  const tickFontSizeEm = `${((baseFontSize - 3) / baseFontSize).toFixed(4)}em`;
+
   if (!row || !row.samples || selectedSamples.length === 0) {
     return (
-      <div style={{ padding: 40, textAlign: "center", color: "#666", background: "#fff", borderRadius: 10 }}>
+      <div style={{ padding: "2.5em", textAlign: "center", color: "#666", background: "#fff", borderRadius: "0.625em", fontSize: rootFontSizeRem }}>
         No sample data compiled to generate summary plots.
       </div>
     );
@@ -282,7 +288,7 @@ export default function OverviewDashboard({ data, selectedSamples = [], availabl
 
   if (scatterPoints.length === 0 && lpmScatterPoints.length === 0) {
     return (
-      <div style={{ padding: 40, textAlign: "center", color: "#666", background: "#fff", borderRadius: 10 }}>
+      <div style={{ padding: "2.5em", textAlign: "center", color: "#666", background: "#fff", borderRadius: "0.625em", fontSize: rootFontSizeRem }}>
         No valid data found for the selected cohort.
       </div>
     );
@@ -310,22 +316,22 @@ export default function OverviewDashboard({ data, selectedSamples = [], availabl
   const pointOpacity = 1.0;
 
   return (
-    <div style={{ width: "100%", background: "#fff", padding: "20px", borderRadius: "10px", border: "1px solid #eee", boxSizing: "border-box" }}>
+    <div style={{ width: "100%", background: "#fff", padding: "1.25em", borderRadius: "0.625em", border: "0.0625em solid #eee", boxSizing: "border-box", fontSize: rootFontSizeRem }}>
       
       {/* TEXT LEGEND SUBHEADER */}
-      <div style={{ borderBottom: "1px solid #f0f0f0", paddingBottom: "14px", marginBottom: "24px", display: "flex", justifyContent: "space-between", alignItems: "center" }}>
+      <div style={{ borderBottom: "0.0625em solid #f0f0f0", paddingBottom: "0.875em", marginBottom: "1.5em", display: "flex", justifyContent: "space-between", alignItems: "center" }}>
         <div>
-          <div style={{ fontSize: `${baseFontSize + 2}px`, color: "#555" }}>
+          <div style={{ fontSize: subTitleFontSizeEm, color: "#555" }}>
             <strong>Cross-sample-wide statistics</strong>
           </div>
         </div>
 
-        <div style={{ display: "flex", alignItems: "center", gap: "16px", fontSize: `${baseFontSize - 1}px`, color: "#555" }}>
-          <div style={{ display: "flex", alignItems: "center", gap: "6px" }}>
-            <span style={{ width: 9, height: 9, borderRadius: "50%", backgroundColor: allele1Color, display: "inline-block" }}></span>
+        <div style={{ display: "flex", alignItems: "center", gap: "1em", fontSize: legendFontSizeEm, color: "#555" }}>
+          <div style={{ display: "flex", alignItems: "center", gap: "0.375em" }}>
+            <span style={{ width: "0.5625em", height: "0.5625em", borderRadius: "50%", backgroundColor: allele1Color, display: "inline-block" }}></span>
             <span>Allele 1</span>
           </div>
-          <div style={{ display: "flex", alignItems: "center", gap: "6px" }}>
+          <div style={{ display: "flex", alignItems: "center", gap: "0.375em" }}>
             <svg width="10" height="10" viewBox="0 0 10 10" style={{ display: "inline-block", verticalAlign: "middle" }}>
               <polygon points="5,0 10,5 5,10 0,5" fill={allele2Color} />
             </svg>
@@ -335,15 +341,15 @@ export default function OverviewDashboard({ data, selectedSamples = [], availabl
       </div>
 
       {/* GRID CONTAINER */}
-      <div style={{ display: "flex", flexDirection: "row", gap: "20px", width: "100%", boxSizing: "border-box" }}>
+      <div style={{ display: "flex", flexDirection: "row", gap: "1.25em", width: "100%", boxSizing: "border-box" }}>
         
         {/* LEFT CHART AREA: METHYLATION */}
-        <div style={{ flex: 1, minWidth: "0", border: "1px solid #f0f0f0", padding: "12px", borderRadius: "6px" }}>
-          <div style={{ marginBottom: "14px" }}>
-            <h4 style={{ margin: 0, fontSize: `${baseFontSize}px`, fontWeight: "bold", color: "#333" }}>
+        <div style={{ flex: 1, minWidth: "0", border: "0.0625em solid #f0f0f0", padding: "0.75em", borderRadius: "0.375em" }}>
+          <div style={{ marginBottom: "0.875em" }}>
+            <h4 style={{ margin: 0, fontSize: "1em", fontWeight: "bold", color: "#333" }}>
               Allele Length vs. Mean Methylation
             </h4>
-            <div style={{ fontSize: `${baseFontSize - 2}px`, color: "#666", marginTop: "2px" }}>
+            <div style={{ fontSize: metaFontSizeEm, color: "#666", marginTop: "0.125em" }}>
               Plotting <strong>{scatterPoints.length}</strong> alleles in total
             </div>
           </div>
@@ -353,7 +359,7 @@ export default function OverviewDashboard({ data, selectedSamples = [], availabl
               return (
                 <g key={`y-grid-m-${i}`}>
                   <line x1={padding.left} y1={yPos} x2={chartWidth - padding.right} y2={yPos} stroke="#f5f5f5" strokeWidth={pct === 0 ? 1.5 : 1} />
-                  <text x={padding.left - 10} y={yPos + 4} textAnchor="end" style={{ fontSize: `${baseFontSize - 3}px`, fill: "#666" }}>
+                  <text x={padding.left - 10} y={yPos + 4} textAnchor="end" style={{ fontSize: tickFontSizeEm, fill: "#666" }}>
                     {(pct * 100).toFixed(0)}%
                   </text>
                 </g>
@@ -366,7 +372,7 @@ export default function OverviewDashboard({ data, selectedSamples = [], availabl
               return (
                 <g key={`x-grid-m-${i}`}>
                   <line x1={xPos} y1={padding.top} x2={xPos} y2={padding.top + plotHeight} stroke="#f5f5f5" strokeWidth={i === 0 ? 1.5 : 1} />
-                  <text x={xPos} y={padding.top + plotHeight + 16} textAnchor="middle" style={{ fontSize: `${baseFontSize - 3}px`, fill: "#666" }}>
+                  <text x={xPos} y={padding.top + plotHeight + 16} textAnchor="middle" style={{ fontSize: tickFontSizeEm, fill: "#666" }}>
                     {val}
                   </text>
                 </g>
@@ -376,10 +382,10 @@ export default function OverviewDashboard({ data, selectedSamples = [], availabl
             <line x1={padding.left} y1={padding.top + plotHeight} x2={chartWidth - padding.right} y2={padding.top + plotHeight} stroke="#666" strokeWidth="1.2" />
             <line x1={padding.left} y1={padding.top} x2={padding.left} y2={padding.top + plotHeight} stroke="#666" strokeWidth="1.2" />
 
-            <text x={padding.left + plotWidth / 2} y={chartHeight - 15} textAnchor="middle" style={{ fontSize: `${baseFontSize - 2}px`, fill: "#333", fontWeight: "600" }}>
+            <text x={padding.left + plotWidth / 2} y={chartHeight - 15} textAnchor="middle" style={{ fontSize: metaFontSizeEm, fill: "#333", fontWeight: "600" }}>
               Allele Length (bp)
             </text>
-            <text x={15} y={padding.top + plotHeight / 2} transform={`rotate(-90, 15, ${padding.top + plotHeight / 2})`} textAnchor="middle" style={{ fontSize: `${baseFontSize - 2}px`, fill: "#333", fontWeight: "600" }}>
+            <text x={15} y={padding.top + plotHeight / 2} transform={`rotate(-90, 15, ${padding.top + plotHeight / 2})`} textAnchor="middle" style={{ fontSize: metaFontSizeEm, fill: "#333", fontWeight: "600" }}>
               Methylation Percentage
             </text>
 
@@ -402,12 +408,12 @@ export default function OverviewDashboard({ data, selectedSamples = [], availabl
         </div>
 
         {/* RIGHT CHART AREA: LPM COPY NUMBER */}
-        <div style={{ flex: 1, minWidth: "0", border: "1px solid #f0f0f0", padding: "12px", borderRadius: "6px" }}>
-          <div style={{ marginBottom: "14px" }}>
-            <h4 style={{ margin: 0, fontSize: `${baseFontSize}px`, fontWeight: "bold", color: "#333" }}>
+        <div style={{ flex: 1, minWidth: "0", border: "0.0625em solid #f0f0f0", padding: "0.75em", borderRadius: "0.375em" }}>
+          <div style={{ marginBottom: "0.875em" }}>
+            <h4 style={{ margin: 0, fontSize: "1em", fontWeight: "bold", color: "#333" }}>
               Allele Length vs. LPM's (Longest Pure Motif) Copy Number
             </h4>
-            <div style={{ fontSize: `${baseFontSize - 2}px`, color: "#666", marginTop: "2px" }}>
+            <div style={{ fontSize: metaFontSizeEm, color: "#666", marginTop: "0.125em" }}>
               Motif: <strong>{discoveredMotif}</strong> | Plotting <strong>{lpmScatterPoints.length}</strong> alleles in total
             </div>
           </div>
@@ -418,7 +424,7 @@ export default function OverviewDashboard({ data, selectedSamples = [], availabl
               return (
                 <g key={`y-grid-l-${i}`}>
                   <line x1={padding.left} y1={yPos} x2={chartWidth - padding.right} y2={yPos} stroke="#f5f5f5" strokeWidth={i === 0 ? 1.5 : 1} />
-                  <text x={padding.left - 10} y={yPos + 4} textAnchor="end" style={{ fontSize: `${baseFontSize - 3}px`, fill: "#666" }}>
+                  <text x={padding.left - 10} y={yPos + 4} textAnchor="end" style={{ fontSize: tickFontSizeEm, fill: "#666" }}>
                     {countVal}
                   </text>
                 </g>
@@ -431,7 +437,7 @@ export default function OverviewDashboard({ data, selectedSamples = [], availabl
               return (
                 <g key={`x-grid-l-${i}`}>
                   <line x1={xPos} y1={padding.top} x2={xPos} y2={padding.top + plotHeight} stroke="#f5f5f5" strokeWidth={i === 0 ? 1.5 : 1} />
-                  <text x={xPos} y={padding.top + plotHeight + 16} textAnchor="middle" style={{ fontSize: `${baseFontSize - 3}px`, fill: "#666" }}>
+                  <text x={xPos} y={padding.top + plotHeight + 16} textAnchor="middle" style={{ fontSize: tickFontSizeEm, fill: "#666" }}>
                     {val}
                   </text>
                 </g>
@@ -441,10 +447,10 @@ export default function OverviewDashboard({ data, selectedSamples = [], availabl
             <line x1={padding.left} y1={padding.top + plotHeight} x2={chartWidth - padding.right} y2={padding.top + plotHeight} stroke="#666" strokeWidth="1.2" />
             <line x1={padding.left} y1={padding.top} x2={padding.left} y2={padding.top + plotHeight} stroke="#666" strokeWidth="1.2" />
 
-            <text x={padding.left + plotWidth / 2} y={chartHeight - 15} textAnchor="middle" style={{ fontSize: `${baseFontSize - 2}px`, fill: "#333", fontWeight: "600" }}>
+            <text x={padding.left + plotWidth / 2} y={chartHeight - 15} textAnchor="middle" style={{ fontSize: metaFontSizeEm, fill: "#333", fontWeight: "600" }}>
               Allele Length (bp)
             </text>
-            <text x={15} y={padding.top + plotHeight / 2} transform={`rotate(-90, 15, ${padding.top + plotHeight / 2})`} textAnchor="middle" style={{ fontSize: `${baseFontSize - 2}px`, fill: "#333", fontWeight: "600" }}>
+            <text x={15} y={padding.top + plotHeight / 2} transform={`rotate(-90, 15, ${padding.top + plotHeight / 2})`} textAnchor="middle" style={{ fontSize: metaFontSizeEm, fill: "#333", fontWeight: "600" }}>
               LPM Copy-Number ({discoveredMotif})
             </text>
 

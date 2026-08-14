@@ -28,7 +28,9 @@ export default function GenomicLocationPicker({
   const [query, setQuery] = useState("");
   const ref = useRef(null);
 
-  /*  close on outside click  */
+  const rootFontSizeRem = `${(baseFontSize / 16).toFixed(4)}rem`;
+
+  /* close on outside click */
   useEffect(() => {
     const handler = (e) => {
       if (ref.current && !ref.current.contains(e.target)) {
@@ -50,9 +52,6 @@ export default function GenomicLocationPicker({
       return label.includes(query.toLowerCase());
     });
 
-  {/* Reason: By explicitly checking for valid string content and forcing the final output to a String primitive, 
-    we prevent React from seeing the raw Locus object during the render pass. */}
-
   const selectedRow = rows && selectedIdx != null ? rows[selectedIdx] : null;
 
   // Validate that this is a data row, not a header row/empty object
@@ -68,13 +67,20 @@ export default function GenomicLocationPicker({
     : "Select Locus...";
 
   return (
-    <div ref={ref} style={{ position: "relative", width: "280px" }}>
+    <div 
+      ref={ref} 
+      style={{ 
+        position: "relative", 
+        width: "17.5em", // 280px converted to em
+        fontSize: rootFontSizeRem 
+      }}
+    >
       {/* input */}
       <div
         style={{
-          border: "1px solid #aaa",
-          borderRadius: "4px",
-          padding: "6px 8px",
+          border: "0.0625em solid #aaa",
+          borderRadius: "0.25em",
+          padding: "0.375em 0.5em",
           display: "flex",
           alignItems: "center",
           background: "#fff",
@@ -95,9 +101,10 @@ export default function GenomicLocationPicker({
             outline: "none",
             flex: 1,
             fontSize: "inherit",
+            background: "transparent",
+            color: "inherit"
           }}
         />
-        
       </div>
 
       {/* dropdown */}
@@ -108,16 +115,18 @@ export default function GenomicLocationPicker({
             top: "100%",
             left: 0,
             right: 0,
-            maxHeight: "240px",
+            maxHeight: "15em", // 240px converted to em
             overflowY: "auto",
-            border: "1px solid #aaa",
+            border: "0.0625em solid #aaa",
+            borderRadius: "0 0 0.25em 0.25em",
             background: "#fff",
             zIndex: 1000,
             fontSize: "inherit", 
+            boxShadow: "0 0.25em 0.5em rgba(0,0,0,0.12)"
           }}
         >
           {filtered.length === 0 && (
-            <div style={{ padding: "8px", color: "#999" }}>
+            <div style={{ padding: "0.5em", color: "#999" }}>
               Not found
             </div>
           )}
@@ -137,12 +146,12 @@ export default function GenomicLocationPicker({
               <div
                 key={`${r.Chrom}-${r.Start}-${fIdx}`}
                 onClick={() => {
-                if (originalIdx !== -1) onSelect(originalIdx); 
-                setQuery("");
-                setOpen(false);
-              }}
+                  if (originalIdx !== -1) onSelect(originalIdx); 
+                  setQuery("");
+                  setOpen(false);
+                }}
                 style={{
-                  padding: "5px 8px", 
+                  padding: "0.3125em 0.5em", 
                   cursor: "pointer",
                   background: originalIdx === selectedIdx ? "#eef" : "transparent",
                 }}

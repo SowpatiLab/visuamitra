@@ -74,7 +74,7 @@ export default function VisualizerCanvas({
   if (!data || !data.samples || Object.keys(data.samples).length === 0) {
     return (
       <div style={containerStyle}>
-        <div style={{ padding: 40, textAlign: "center", color: "#666" }}>
+        <div style={{ padding: "40px", textAlign: "center", color: "#666" }}>
           {loading ? "Fetching genomic data..." : "No sample data available for this locus."}
         </div>
       </div>

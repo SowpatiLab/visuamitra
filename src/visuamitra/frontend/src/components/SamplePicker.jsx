@@ -49,32 +49,119 @@ export default function SamplePicker({
     onSelectionChange(newSelection);
   };
 
+  // Calculated relative font scales
+  const rootFontSizeRem = `${(baseFontSize / 16).toFixed(4)}rem`;
+  const btnFontSizeEm = `${((baseFontSize - 1) / baseFontSize).toFixed(4)}em`;
+  const arrowFontSizeEm = `${((baseFontSize - 3) / baseFontSize).toFixed(4)}em`;
+
   const inlineStyles = {
-    wrapper: { display: 'flex', alignItems: 'center', gap: '12px', fontFamily: 'inherit' },
-    label: { fontWeight: '700', fontSize: `${baseFontSize}px`, color: '#333' },
-    container: { position: 'relative', width: '280px' },
+    wrapper: { 
+      display: 'flex', 
+      alignItems: 'center', 
+      gap: '0.75em', 
+      fontFamily: 'inherit',
+      fontSize: rootFontSizeRem 
+    },
+    label: { 
+      fontWeight: '700', 
+      fontSize: '1em', 
+      color: '#333' 
+    },
+    container: { 
+      position: 'relative', 
+      width: '17.5em' 
+    },
     trigger: {
-      padding: '5px 12px', border: '1px solid #ccc', borderRadius: '4px',
-      background: '#fff', cursor: 'pointer', display: 'flex', height: '32px', boxSizing: 'border-box',
-      justifyContent: 'space-between', alignItems: 'center', boxShadow: '0 1px 2px rgba(0,0,0,0.05)'
+      padding: '0.3125em 0.75em', 
+      border: '0.0625em solid #ccc', 
+      borderRadius: '0.25em',
+      background: '#fff', 
+      cursor: 'pointer', 
+      display: 'flex', 
+      height: '2em', 
+      boxSizing: 'border-box',
+      justifyContent: 'space-between', 
+      alignItems: 'center', 
+      boxShadow: '0 0.0625em 0.125em rgba(0,0,0,0.05)'
     },
-    triggerText: { fontSize: `${baseFontSize}px`, color: '#333', whiteSpace: 'nowrap', overflow: 'hidden', textOverflow: 'ellipsis' },
+    triggerText: { 
+      fontSize: '1em', 
+      color: '#333', 
+      whiteSpace: 'nowrap', 
+      overflow: 'hidden', 
+      textOverflow: 'ellipsis' 
+    },
     dropdown: {
-      position: 'absolute', top: '100%', left: 0, right: 0, zIndex: 1000,
-      background: '#fff', border: '1px solid #ccc', borderRadius: '6px',
-      marginTop: '5px', maxHeight: '300px', overflowY: 'auto',
-      boxShadow: '0 10px 15px -3px rgba(0,0,0,0.1)'
+      position: 'absolute', 
+      top: '100%', 
+      left: 0, 
+      right: 0, 
+      zIndex: 1000,
+      background: '#fff', 
+      border: '0.0625em solid #ccc', 
+      borderRadius: '0.375em',
+      marginTop: '0.3125em', 
+      maxHeight: '18.75em', 
+      overflowY: 'auto',
+      boxShadow: '0 0.625em 0.9375em -0.1875em rgba(0,0,0,0.1)'
     },
-    searchContainer: { padding: '8px', background: '#fcfcfc', borderBottom: '1px solid #eee', position: 'sticky', top: 0, zIndex: 2 },
+    searchContainer: { 
+      padding: '0.5em', 
+      background: '#fcfcfc', 
+      borderBottom: '0.0625em solid #eee', 
+      position: 'sticky', 
+      top: 0, 
+      zIndex: 2 
+    },
     searchInput: {
-      width: '100%', padding: '5px 10px', fontSize: `${baseFontSize}px`, height: '30px',
-      border: '1px solid #ccc', borderRadius: '4px', outline: 'none', boxSizing: 'border-box'
+      width: '100%', 
+      padding: '0.3125em 0.625em', 
+      fontSize: '1em', 
+      height: '1.875em',
+      border: '0.0625em solid #ccc', 
+      borderRadius: '0.25em', 
+      outline: 'none', 
+      boxSizing: 'border-box'
     },
-    actionBar: { display: 'flex', gap: '8px', padding: '6px 12px', borderBottom: '1px solid #eee', background: '#fff', position: 'sticky', top: '46px', zIndex: 1 },
-    optionLabel: { display: 'flex', alignItems: 'center', padding: '8px 12px', cursor: 'pointer', borderBottom: '1px solid #f9f9f9', margin: 0 },
-    sampleName: { fontSize: `${baseFontSize}px`, color: '#444' },
-    smallBtn: { padding: '3px 8px', fontSize: `${baseFontSize - 1}px`, borderRadius: '4px', border: '1px solid #ccc', background: '#fff', cursor: 'pointer', color: '#328547', fontWeight: '600' },
-    checkbox: { marginRight: '10px', width: '14px', height: '14px', cursor: 'pointer', accentColor: '#328547' }
+    actionBar: { 
+      display: 'flex', 
+      gap: '0.5em', 
+      padding: '0.375em 0.75em', 
+      borderBottom: '0.0625em solid #eee', 
+      background: '#fff', 
+      position: 'sticky', 
+      top: '2.875em', 
+      zIndex: 1 
+    },
+    optionLabel: { 
+      display: 'flex', 
+      alignItems: 'center', 
+      padding: '0.5em 0.75em', 
+      cursor: 'pointer', 
+      borderBottom: '0.0625em solid #f9f9f9', 
+      margin: 0 
+    },
+    sampleName: { 
+      fontSize: '1em', 
+      color: '#444' 
+    },
+    smallBtn: { 
+      padding: '0.1875em 0.5em', 
+      fontSize: btnFontSizeEm, 
+      borderRadius: '0.25em', 
+      border: '0.0625em solid #ccc', 
+      background: '#fff', 
+      cursor: 'pointer', 
+      color: '#328547', 
+      fontWeight: '600' 
+    },
+    checkbox: { 
+      marginRight: '0.625em', 
+      width: '0.875em', 
+      height: '0.875em', 
+      cursor: 'pointer', 
+      accentColor: '#328547' 
+    }
   };
 
   return (
@@ -88,7 +175,9 @@ export default function SamplePicker({
               ? "Select Samples..." 
               : `(${selectedIndices.length}) samples selected`}
           </span>
-          <span style={{ fontSize: `${baseFontSize - 3}px`, color: '#666', marginLeft: '6px' }}>{isOpen ? '▲' : '▼'}</span>
+          <span style={{ fontSize: arrowFontSizeEm, color: '#666', marginLeft: '0.375em' }}>
+            {isOpen ? '▲' : '▼'}
+          </span>
         </div>
 
         {isOpen && (

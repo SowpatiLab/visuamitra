@@ -78,32 +78,67 @@ export default function SettingsPanel({ settings, onChange, onClose }) {
   const currentFontObj = FONTS.find(f => f.value === font) || FONTS[0];
   const isDark = theme === "dark";
 
+  // Dynamic relative font unit derivations
+  const rootFontSizeRem = `${(fontSize / 16).toFixed(4)}rem`;
+  const labelFontSizeEm = `${(12 / fontSize).toFixed(4)}em`;
+  const optionFontSizeEm = `${(14 / fontSize).toFixed(4)}em`;
+  const arrowFontSizeEm = `${(10 / fontSize).toFixed(4)}em`;
+  const closeBtnFontSizeEm = `${(20 / fontSize).toFixed(4)}em`;
+
   return (
     <div
       style={{
         position: "absolute",
-        top: 120,
-        right: 80,
-        padding: 14,
-        border: isDark ? "1px solid #444" : "1px solid #ccc",
-        borderRadius: 8,
+        top: "9.23em",
+        right: "6.15em",
+        padding: "1.0769em",
+        border: isDark ? "0.0769em solid #444" : "0.0769em solid #ccc",
+        borderRadius: "0.6154em",
         background: isDark ? "#222" : "#fff",
         color: isDark ? "#fff" : "#000",
         fontFamily: font,
+        fontSize: rootFontSizeRem,
         zIndex: 1000,
-        width: 210,
-        boxShadow: "0 4px 12px rgba(0, 0, 0, 0.15)",
+        width: "16.15em",
+        boxShadow: "0 0.3077em 0.9231em rgba(0, 0, 0, 0.15)",
+        boxSizing: "border-box"
       }}
     >
-      <div style={{ display: "flex", justifyContent: "space-between", alignItems: "center", marginBottom: 8 }}>
-        <h4 style={{ margin: "0 0 8px 0", fontFamily: font }}>View</h4>
-        <button onClick={onClose} style={{ background: "transparent", border: "none", fontSize: 20, cursor: "pointer", color: isDark ? "#fff" : "#000", marginTop: -10 }}>×</button>
+      <div style={{ display: "flex", justifyContent: "space-between", alignItems: "center", marginBottom: "0.6154em" }}>
+        <h4 style={{ margin: "0 0 0.6154em 0", fontFamily: font, fontSize: "1.15em", fontWeight: "bold" }}>View</h4>
+        <button 
+          onClick={onClose} 
+          style={{ 
+            background: "transparent", 
+            border: "none", 
+            fontSize: closeBtnFontSizeEm, 
+            cursor: "pointer", 
+            color: isDark ? "#fff" : "#000", 
+            marginTop: "-0.5em" 
+          }}
+        >
+          ×
+        </button>
       </div>
 
       {/* Motif Palette */}
-      <div style={{ marginBottom: 10 }}>
-        <label style={{ display: "block", marginBottom: 4, fontSize: "12px", fontWeight: "600" }}>Motif Palette:</label>
-        <select value={palette} onChange={handlePaletteChange} style={{ width: "100%", padding: "4px" }}>
+      <div style={{ marginBottom: "0.7692em" }}>
+        <label style={{ display: "block", marginBottom: "0.3077em", fontSize: labelFontSizeEm, fontWeight: "600" }}>
+          Motif Palette:
+        </label>
+        <select 
+          value={palette} 
+          onChange={handlePaletteChange} 
+          style={{ 
+            width: "100%", 
+            padding: "0.3077em", 
+            fontSize: "1em",
+            borderRadius: "0.3077em",
+            border: isDark ? "0.0769em solid #555" : "0.0769em solid #ccc",
+            background: isDark ? "#333" : "#fff",
+            color: isDark ? "#fff" : "#000"
+          }}
+        >
           {MOTIF_PALETTES.map((p) => (
             <option key={p} value={p}>{p}</option>
           ))}
@@ -111,9 +146,23 @@ export default function SettingsPanel({ settings, onChange, onClose }) {
       </div>
 
       {/* Methylation Color Scale */}
-      <div style={{ marginBottom: 10 }}>
-        <label style={{ display: "block", marginBottom: 4, fontSize: "12px", fontWeight: "600" }}>Methylation Scale:</label>
-        <select value={methPalette} onChange={handleMethPaletteChange} style={{ width: "100%", padding: "4px" }}>
+      <div style={{ marginBottom: "0.7692em" }}>
+        <label style={{ display: "block", marginBottom: "0.3077em", fontSize: labelFontSizeEm, fontWeight: "600" }}>
+          Methylation Scale:
+        </label>
+        <select 
+          value={methPalette} 
+          onChange={handleMethPaletteChange} 
+          style={{ 
+            width: "100%", 
+            padding: "0.3077em", 
+            fontSize: "1em",
+            borderRadius: "0.3077em",
+            border: isDark ? "0.0769em solid #555" : "0.0769em solid #ccc",
+            background: isDark ? "#333" : "#fff",
+            color: isDark ? "#fff" : "#000"
+          }}
+        >
           {METHYLATION_SCALES.map((p) => (
             <option key={p} value={p}>{p}</option>
           ))}
@@ -121,18 +170,20 @@ export default function SettingsPanel({ settings, onChange, onClose }) {
       </div>
 
       {/* Font */}
-      <div style={{ marginBottom: 10, position: "relative" }} ref={dropdownRef}>
-        <label style={{ display: "block", marginBottom: 4, fontSize: "12px", fontWeight: "600" }}>Font Style:</label>
+      <div style={{ marginBottom: "0.7692em", position: "relative" }} ref={dropdownRef}>
+        <label style={{ display: "block", marginBottom: "0.3077em", fontSize: labelFontSizeEm, fontWeight: "600" }}>
+          Font Style:
+        </label>
         
         <div 
           onClick={() => setIsFontDropdownOpen(!isFontDropdownOpen)}
           style={{
-            padding: "6px 10px",
-            border: "1px solid #999",
-            borderRadius: "4px",
+            padding: "0.4615em 0.7692em",
+            border: isDark ? "0.0769em solid #555" : "0.0769em solid #999",
+            borderRadius: "0.3077em",
             background: isDark ? "#333" : "#f9f9f9",
             cursor: "pointer",
-            fontSize: "13px",
+            fontSize: "1em",
             display: "flex",
             justifyContent: "space-between",
             alignItems: "center",
@@ -140,7 +191,7 @@ export default function SettingsPanel({ settings, onChange, onClose }) {
           }}
         >
           <span>{currentFontObj.name}</span>
-          <span style={{ fontSize: "10px", transform: isFontDropdownOpen ? "rotate(180deg)" : "none" }}>▼</span>
+          <span style={{ fontSize: arrowFontSizeEm, transform: isFontDropdownOpen ? "rotate(180deg)" : "none" }}>▼</span>
         </div>
 
         {/* Custom Font Options Container */}
@@ -152,13 +203,13 @@ export default function SettingsPanel({ settings, onChange, onClose }) {
               left: 0,
               right: 0,
               background: isDark ? "#2a2a2a" : "#ffffff",
-              border: isDark ? "1px solid #555" : "1px solid #ccc",
-              borderRadius: "4px",
-              marginTop: "4px",
-              maxHeight: "200px",
+              border: isDark ? "0.0769em solid #555" : "0.0769em solid #ccc",
+              borderRadius: "0.3077em",
+              marginTop: "0.3077em",
+              maxHeight: "15.38em",
               overflowY: "auto",
               zIndex: 1010,
-              boxShadow: "0 4px 10px rgba(0,0,0,0.2)"
+              boxShadow: "0 0.3077em 0.7692em rgba(0,0,0,0.2)"
             }}
           >
             {FONTS.map((f) => (
@@ -166,13 +217,13 @@ export default function SettingsPanel({ settings, onChange, onClose }) {
                 key={f.value}
                 onClick={() => handleFontSelect(f.value)}
                 style={{
-                  padding: "8px 10px",
+                  padding: "0.6154em 0.7692em",
                   cursor: "pointer",
                   fontFamily: f.value,
-                  fontSize: "14px",
+                  fontSize: optionFontSizeEm,
                   background: font === f.value ? (isDark ? "#444" : "#e6f7ff") : "transparent",
                   color: isDark ? "#fff" : "#333",
-                  borderBottom: isDark ? "1px solid #3a3a3a" : "1px solid #f0f0f0"
+                  borderBottom: isDark ? "0.0769em solid #3a3a3a" : "0.0769em solid #f0f0f0"
                 }}
                 onMouseEnter={(e) => e.target.style.background = isDark ? "#3c3c3c" : "#f5f5f5"}
                 onMouseLeave={(e) => e.target.style.background = font === f.value ? (isDark ? "#444" : "#e6f7ff") : "transparent"}
@@ -185,8 +236,10 @@ export default function SettingsPanel({ settings, onChange, onClose }) {
       </div>
 
       {/* Numeric Font Size Input */}
-      <div style={{ marginBottom: 4 }}>
-        <label style={{ display: "block", marginBottom: 4, fontSize: "12px", fontWeight: "600" }}>Font Size (px):</label>
+      <div style={{ marginBottom: "0.3077em" }}>
+        <label style={{ display: "block", marginBottom: "0.3077em", fontSize: labelFontSizeEm, fontWeight: "600" }}>
+          Font Size (px):
+        </label>
         <input 
           type="number" 
           value={fontSize} 
@@ -195,12 +248,13 @@ export default function SettingsPanel({ settings, onChange, onClose }) {
           max="21"
           style={{ 
             width: "100%", 
-            padding: "5px 6px", 
+            padding: "0.3846em 0.4615em", 
             boxSizing: "border-box", 
-            borderRadius: "4px", 
-            border: isDark ? "1px solid #555" : "1px solid #ccc",
+            borderRadius: "0.3077em", 
+            border: isDark ? "0.0769em solid #555" : "0.0769em solid #ccc",
             background: isDark ? "#333" : "#fff",
-            color: isDark ? "#fff" : "#000"
+            color: isDark ? "#fff" : "#000",
+            fontSize: "1em"
           }} 
         />
       </div>

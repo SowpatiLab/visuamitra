@@ -40,52 +40,50 @@ class IdeogramErrorBoundary extends Component {
   }
 }
 
-function IdeogramFallback({ height = 80 }) {
+function IdeogramFallback({ height = 90 }) {
   return (
-  <div style={{ 
-    display: "flex", 
-    justifyContent: "center", 
-    alignItems: "center",
-    width: "100%",
-    minHeight: `${height}px`
-  }}>
-    <div style={{
-      padding: "10px 20px",
-      background: "#f9fafb",
-      border: "1px dashed #d1d5db",
-      borderRadius: "6px",
-      color: "#6b7280",
-      fontSize: "13px",
-      fontWeight: "500",
-      textAlign: "center",
-      letterSpacing: "0.2px",
-      lineHeight: "1.5"
+    <div style={{ 
+      display: "flex", 
+      justifyContent: "center", 
+      alignItems: "center",
+      width: "100%",
+      minHeight: `${height / 16}em`
     }}>
-      T2T-CHM13 view coming soon
-      <br />
-      <span style={{ fontSize: "12px", color: "#9ca3af" }}>
-        (Currently available for hg38 builds & approximate T2T based on Hg38 bounds)
-      </span>
+      <div style={{
+        padding: "0.625em 1.25em",
+        background: "#f9fafb",
+        border: "1px dashed #d1d5db",
+        borderRadius: "0.375em",
+        color: "#6b7280",
+        fontSize: "0.8125em",
+        fontWeight: "500",
+        textAlign: "center",
+        letterSpacing: "0.0125em",
+        lineHeight: "1.5"
+      }}>
+        T2T-CHM13 view coming soon
+        <br />
+        <span style={{ fontSize: "0.75em", color: "#9ca3af" }}>
+          (Currently available for hg38 builds & approximate T2T based on Hg38 bounds)
+        </span>
+      </div>
     </div>
-  </div>
-);
+  );
 }
 
-function IdeogramInner({ chr, start, end, refGenome, height, chrHeight, chrWidth }) {
+function IdeogramInner({ chr, start, end, refGenome, height = 90, chrHeight, chrWidth }) {
   const containerRef = useRef(null);
   const ideogramRef = useRef(null);
   const SMALL_TRI_HEIGHT = 7;
 
   const pureChr = (chr || "").replace(/^chr/i, "").toUpperCase();
 
-  // Check 1: Explicit assembly prop check
   const isT2T = React.useMemo(() => {
     if (!refGenome) return false;
     const lower = refGenome.toLowerCase();
     return lower.includes("t2t") || lower.includes("chm13");
   }, [refGenome]);
 
-  // Check 2: Coordinate out-of-bounds validation against hg38 max lengths
   const isOutOfBounds = React.useMemo(() => {
     const maxLen = HG38_CHR_LENGTHS[pureChr];
     if (maxLen && Number(end) > maxLen) {
@@ -154,8 +152,8 @@ function IdeogramInner({ chr, start, end, refGenome, height, chrHeight, chrWidth
         id="visuamitra-ideogram-container"
         ref={containerRef}
         style={{
-          width: "1100px",
-          height: `${height}px`,
+          width: "1200px", // Matched exactly to BASE_WIDTH (1200px)
+          height: `${height / 16}em`,
           margin: "0 auto",
         }}
       />

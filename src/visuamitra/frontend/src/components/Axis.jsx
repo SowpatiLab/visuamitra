@@ -45,9 +45,13 @@ export default function Axis({
     ticks.push(max);
   }
 
+  // PROPORTIONAL OFFSETS & SCALING MULTIPLIERS (Derived from baseFontSize)
+  const tickLength = baseFontSize * 0.75; // Scalable tick height (approx 10px at base 13)
+  const staggerOffset = baseFontSize * 1.1; // Scalable stagger gap (approx 14px at base 13)
+  const visualThresholdPx = baseFontSize * 1.9; // Scalable collision threshold (approx 25px at base 13)
+
   // CONDITIONAL COLLISION DETECTION LOGIC
   let shouldStaggerLastTick = false;
-  const visualThresholdPx = 25; // Minimum pixel gap allowed before clashing
 
   if (ticks.length >= 2) {
     const lastTickX = scale(ticks[ticks.length - 1]);
@@ -59,45 +63,57 @@ export default function Axis({
     }
   }
 
-  const calculatedLabelGap = Math.max(14, baseFontSize * 1.15);
+  const calculatedLabelGap = baseFontSize * 1.15;
   const tickLabelY = bottomY + calculatedLabelGap;
   
-  // If we stagger, push the axis title lower down so the text doesn't overlap it
-  const axisLabelY = tickLabelY + Math.max(16, baseFontSize * 1.25) + (shouldStaggerLastTick ? 14 : 0);
+  // Dynamic placement of axis label to prevent text overlaps when staggered
+  const axisLabelY = tickLabelY + (baseFontSize * 1.25) + (shouldStaggerLastTick ? staggerOffset : 0);
+
+  // RELATIVE FONT SIZE CONVERSIONS (em/rem strings for crisp text rendering)
+  const tickFontSizeRem = `${(Math.max(13, baseFontSize - 2) / 16).toFixed(3)}rem`;
+  const axisLabelFontSizeRem = `${(baseFontSize / 16).toFixed(3)}rem`;
 
   return (
     <>
+      {/* Baseline Axis Line */}
       <line
         x1={leftMargin}
         y1={bottomY}
         x2={width - rightMargin}
         y2={bottomY}
         stroke="#444"
+        strokeWidth="1"
+        shapeRendering="crispEdges"
+        vectorEffect="non-scaling-stroke"
       />
 
       {ticks.map((val, i) => {
         const x = scale(val);
         const isLastTick = i === ticks.length - 1;
         
-        // Determine individual vertical placement offset
-        // If flag is true and this is the last item, push it down by 14px
+        // Dynamic vertical placement for staggered tick labels
         const currentTickY = (shouldStaggerLastTick && isLastTick) 
-          ? tickLabelY + 14 
+          ? tickLabelY + staggerOffset 
           : tickLabelY;
 
         return (
           <g key={i}>
+            {/* Tick Mark Line */}
             <line
               x1={x}
               y1={bottomY}
               x2={x}
-              y2={bottomY - 10}
+              y2={bottomY - tickLength}
               stroke="#444"
+              strokeWidth="1"
+              shapeRendering="crispEdges"
+              vectorEffect="non-scaling-stroke"
             />
+            {/* Tick Value Text */}
             <text
               x={x}
-              y={currentTickY} // Conditional coordinate placement
-              fontSize={`${Math.max(13, baseFontSize - 2)}px`} 
+              y={currentTickY}
+              fontSize={tickFontSizeRem}
               textAnchor="middle"
               fill="#444"
             >
@@ -107,11 +123,12 @@ export default function Axis({
         );
       })}
 
+      {/* Axis Title Label */}
       {label && (
         <text
           x={(leftMargin + width - rightMargin) / 2}
           y={axisLabelY} 
-          fontSize={`${baseFontSize}px`} 
+          fontSize={axisLabelFontSizeRem} 
           textAnchor="middle"
           fill="#444"
           style={{ fontWeight: "600", transition: "y 0.1s ease" }}

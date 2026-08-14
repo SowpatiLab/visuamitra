@@ -291,12 +291,12 @@ export default function DownloadManager({
       <button onClick={() => setIsOpen(!isOpen)} style={mainButtonStyle}>
         <Download size={16} />
         Download
-        <ChevronDown size={14} style={{ marginLeft: "4px", transform: isOpen ? "rotate(180deg)" : "none" }} />
+        <ChevronDown size={14} style={{ marginLeft: "0.25em", transform: isOpen ? "rotate(180deg)" : "none" }} />
       </button>
 
       {isOpen && (
         <div style={cardStyle}>
-          <h4 style={{ margin: "0 0 12px 0", fontSize: "14px", color: "#333" }}>Download Options</h4>
+          <h4 style={{ margin: "0 0 0.75em 0", fontSize: "0.875rem", color: "#333" }}>Download Options</h4>
           
           <div style={sectionLabelStyle}>INCLUDE CONTENT</div>
           <div style={optionGroupStyle}>
@@ -336,7 +336,7 @@ export default function DownloadManager({
             </button>
           </div>
 
-          <hr style={{ border: "0", borderTop: "1px solid #eee", margin: "12px 0" }} />
+          <hr style={{ border: "0", borderTop: "0.0625em solid #eee", margin: "0.75em 0" }} />
 
           <button 
             onClick={handleStartDownload}
@@ -351,10 +351,11 @@ export default function DownloadManager({
   );
 }
 
-const mainButtonStyle = { display: "flex", alignItems: "center", gap: "8px", padding: "10px 20px", background: "#328547", color: "white", border: "none", borderRadius: "8px", cursor: "pointer", fontWeight: "600", fontSize: "14px", boxShadow: "0 4px 6px rgba(0,0,0,0.1)" };
-const cardStyle = { position: "absolute", bottom: "110%", right: 0, width: "260px", background: "white", padding: "16px", borderRadius: "12px", boxShadow: "0 10px 25px rgba(0,0,0,0.15)", border: "1px solid #ddd", zIndex: 1000, textAlign: "left" };
-const sectionLabelStyle = { fontSize: "10px", fontWeight: "bold", color: "#888", letterSpacing: "0.5px", marginBottom: "6px", marginTop: "10px" };
-const optionGroupStyle = { display: "flex", gap: "8px", marginBottom: "8px" };
-const activeSubStyle = { flex: 1, display: "flex", alignItems: "center", justifyContent: "center", gap: "4px", padding: "6px", fontSize: "12px", background: "#e8f5e9", color: "#2e7d32", border: "1px solid #2e7d32", borderRadius: "6px", cursor: "pointer", fontWeight: "600" };
-const inactiveSubStyle = { flex: 1, padding: "6px", fontSize: "12px", background: "#f5f5f5", color: "#666", border: "1px solid #ddd", borderRadius: "6px", cursor: "pointer" };
-const confirmButtonStyle = { width: "100%", padding: "10px", background: "#333", color: "white", border: "none", borderRadius: "6px", cursor: "pointer", fontWeight: "bold" };
+// UI STYLES (CONVERTED TO RELATIVE UNITS)
+const mainButtonStyle = { display: "flex", alignItems: "center", gap: "0.5em", padding: "0.625em 1.25em", background: "#328547", color: "white", border: "none", borderRadius: "0.5em", cursor: "pointer", fontWeight: "600", fontSize: "0.875rem", boxShadow: "0 0.25em 0.375em rgba(0,0,0,0.1)" };
+const cardStyle = { position: "absolute", bottom: "110%", right: 0, width: "16.25em", background: "white", padding: "1em", borderRadius: "0.75em", boxShadow: "0 0.625em 1.5625em rgba(0,0,0,0.15)", border: "0.0625em solid #ddd", zIndex: 1000, textAlign: "left" };
+const sectionLabelStyle = { fontSize: "0.625rem", fontWeight: "bold", color: "#888", letterSpacing: "0.03125em", marginBottom: "0.375em", marginTop: "0.625em" };
+const optionGroupStyle = { display: "flex", gap: "0.5em", marginBottom: "0.5em" };
+const activeSubStyle = { flex: 1, display: "flex", alignItems: "center", justifyContent: "center", gap: "0.25em", padding: "0.375em", fontSize: "0.75rem", background: "#e8f5e9", color: "#2e7d32", border: "0.0625em solid #2e7d32", borderRadius: "0.375em", cursor: "pointer", fontWeight: "600" };
+const inactiveSubStyle = { flex: 1, padding: "0.375em", fontSize: "0.75rem", background: "#f5f5f5", color: "#666", border: "0.0625em solid #ddd", borderRadius: "0.375em", cursor: "pointer" };
+const confirmButtonStyle = { width: "100%", padding: "0.625em", background: "#333", color: "white", border: "none", borderRadius: "0.375em", cursor: "pointer", fontWeight: "bold" };

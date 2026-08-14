@@ -62,6 +62,7 @@ const FilterToolbar = ({
     setOpen(false);
     if (setError) setError(null);
   };
+
   return (
     <div style={filterToolbarStyle}>
       <span style={{ fontWeight: 600 }}>Genomic Region:</span>
@@ -75,7 +76,7 @@ const FilterToolbar = ({
                             setOpen(true); 
                             if (setError) setError(null); }} 
           onFocus={() => setOpen(true)}
-          style={inputStyle(100)} 
+          style={inputStyle("6.25em")} 
         />
         
         {open && suggestions.length > 0 && (
@@ -98,12 +99,12 @@ const FilterToolbar = ({
       <input 
         type="number" placeholder="start" value={start} 
         onChange={(e) => { setStart(e.target.value); if (setError) setError(null); }} 
-        style={inputStyle(100)} 
+        style={inputStyle("6.25em")} 
       />
       <input 
         type="number" placeholder="end" value={endPos} 
         onChange={(e) => { setEndPos(e.target.value); if (setError) setError(null); }} 
-        style={inputStyle(100)} 
+        style={inputStyle("6.25em")} 
       />
       
       <button onClick={onApply} disabled={loading} style={applyButtonStyle}>
@@ -142,58 +143,58 @@ const dropdownStyle = {
   position: "absolute",
   top: "110%",
   left: 0,
-  width: "120px",
-  maxHeight: "200px",
+  width: "7.5em",
+  maxHeight: "12.5em",
   overflowY: "auto",
   background: "#fff",
-  border: "1px solid #ccc",
-  borderRadius: "8px",
-  boxShadow: "0 4px 12px rgba(0,0,0,0.15)",
+  border: "0.0625em solid #ccc",
+  borderRadius: "0.5em",
+  boxShadow: "0 0.25em 0.75em rgba(0,0,0,0.15)",
   zIndex: 100,
-  padding: "4px 0"
+  padding: "0.25em 0"
 };
 
 const itemStyle = {
-  padding: "8px 12px",
+  padding: "0.5em 0.75em",
   cursor: "pointer",
-  fontSize: "13px",
-  borderBottom: "1px solid #f5f5f5",
+  fontSize: "0.8125em",
+  borderBottom: "0.0625em solid #f5f5f5",
   transition: "background 0.2s"
 };
 
 const parentContainer = {
   width: "100%",
-  maxWidth: "1200px",
-  margin: "0 auto 20px auto",
+  maxWidth: "75em",
+  margin: "0 auto 1.25em auto",
 };
 
 const topRowStyle = {
   display: "flex",
   justifyContent: "flex-start",
   alignItems: "center",
-  padding: "0 10px",
-  height: "100px", // Provides space for the logo and the toolbar "lift"
+  padding: "0 0.625em",
+  height: "6.25em", // Provides space for the logo and the toolbar "lift"
 };
 
 const logoContainerStyle = {
   background: "#f0fbfd", // Light pastel blue panel
-  padding: "8px",
-  borderRadius: "24px",
-  border: "1px solid #dcfce7",
+  padding: "0.5em",
+  borderRadius: "1.5em",
+  border: "0.0625em solid #dcfce7",
   display: "flex",
   alignItems: "center",
   justifyContent: "center"
 };
 
 const logoImageStyle = {
-  width: "100px",
-  height: "100px",
-  borderRadius: 8,
+  width: "6.25em",
+  height: "6.25em",
+  borderRadius: "0.5em",
   objectFit: "contain"
 };
 
 const toolbarWrapperStyle = {
-  marginTop: "-65px", // THIS PUSHES THE TOOLBAR UPWARDS
+  marginTop: "-4.0625em", // THIS PUSHES THE TOOLBAR UPWARDS
   display: "flex",
   justifyContent: "center",
   position: "relative", // Ensures it stays above the layout flow
@@ -204,26 +205,26 @@ const filterToolbarStyle = {
   display: "flex", 
   justifyContent: "center", 
   alignItems: "center", 
-  gap: "12px", 
-  padding: "10px 20px", 
-  border: "1px solid #ddd", 
-  borderRadius: "12px", 
+  gap: "0.75em", 
+  padding: "0.625em 1.25em", 
+  border: "0.0625em solid #ddd", 
+  borderRadius: "0.75em", 
   background: "#fff", // Pure white to pop against bg
-  boxShadow: "0px 6px 15px rgba(0,0,0,0.08)", 
+  boxShadow: "0em 0.375em 0.9375em rgba(0,0,0,0.08)", 
   width: "fit-content"
 };
 
 const inputStyle = (w) => ({
-  width: w, 
-  padding: "6px 10px", 
-  borderRadius: "6px", 
-  border: "1px solid #ccc",
+  width: typeof w === "number" ? `${w / 16}em` : w, 
+  padding: "0.375em 0.625em", 
+  borderRadius: "0.375em", 
+  border: "0.0625em solid #ccc",
   outline: "none"
 });
 
 const applyButtonStyle = {
-  padding: "7px 18px", 
-  borderRadius: "8px", 
+  padding: "0.4375em 1.125em", 
+  borderRadius: "0.5em", 
   border: "none", 
   background: "#328547", 
   color: "#fff", 
@@ -233,7 +234,7 @@ const applyButtonStyle = {
 
 const errorTextStyle = {
   color: "#b00020", 
-  fontSize: "13px", 
+  fontSize: "0.8125em", 
   textAlign: "center", 
-  marginTop: "12px"
+  marginTop: "0.75em"
 };

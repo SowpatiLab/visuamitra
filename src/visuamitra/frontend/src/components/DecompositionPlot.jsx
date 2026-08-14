@@ -17,6 +17,9 @@ export default function DecompositionPlot({
   const MAGNIFY_SIZE = 6;
   const [hover, setHover] = useState(null);
 
+  // RELATIVE FONT CONVERSIONS
+  const labelFontSizeRem = `${(baseFontSize / 16).toFixed(3)}rem`;
+
   const renderMotifs = (data, baseY, trackLabel, totalLen) => {
     const hasData = data && data.lengths && data.lengths.length > 0;
     const sumOfSegments = hasData ? data.lengths.reduce((a, b) => a + b, 0) : 0;
@@ -38,6 +41,8 @@ export default function DecompositionPlot({
           stroke="#AAA"
           strokeWidth={1}
           rx={4}
+          shapeRendering="crispEdges"
+          vectorEffect="non-scaling-stroke"
           onMouseEnter={() =>
             setHover({
               id: `${trackLabel}-total`,
@@ -76,19 +81,21 @@ export default function DecompositionPlot({
               stroke={isHovered ? "#000" : "#444"}
               strokeWidth={isHovered ? 2 : 1}
               rx={2}
+              shapeRendering="crispEdges"
+              vectorEffect="non-scaling-stroke"
               onMouseEnter={(e) => {
-              e.stopPropagation();
+                e.stopPropagation();
 
-              setHover({
-                id,
-                x: x1 + w / 2,
-                y: baseY - 12,
-                motif: rawMotif,
-                copy: currentCopies, 
-                len: len,
-                isNonRepeating: isNonRepetitive,
-              });
-            }}
+                setHover({
+                  id,
+                  x: x1 + w / 2,
+                  y: baseY - 12,
+                  motif: rawMotif,
+                  copy: currentCopies, 
+                  len: len,
+                  isNonRepeating: isNonRepetitive,
+                });
+              }}
               onMouseLeave={() => setHover(null)}
             />
           );
@@ -103,12 +110,12 @@ export default function DecompositionPlot({
       {decompRef && (
         <g>
           <text 
-            x={leftMargin - 15} 
+            x={leftMargin - baseFontSize * 1.15} 
             y={yOffset + (barHeight * 0.72)} 
             textAnchor="end"
             style={{ 
               fontFamily: "inherit", 
-              fontSize: `${baseFontSize}px`, 
+              fontSize: labelFontSizeRem, 
               fontWeight: "bold", 
               fill: "#222" 
             }}
@@ -131,19 +138,27 @@ export default function DecompositionPlot({
         <g pointerEvents="none">
           <foreignObject x={hover.x - 75} y={hover.y - 30} width="150" height="60" style={{ overflow: "visible" }}>
             <div style={{
-              display: "inline-block", padding: "6px 12px", background: "#f8f9fa",
-              border: "1px solid #666", borderRadius: "4px", fontSize: "12px",
-              fontWeight: "600", color: "#222", whiteSpace: "nowrap",
-              boxShadow: "0 4px 8px rgba(0,0,0,0.15)", transform: "translateX(-50%)", marginLeft: "75px"
+              display: "inline-block", 
+              padding: "0.375em 0.75em", 
+              background: "#f8f9fa",
+              border: "0.0625em solid #666", 
+              borderRadius: "0.25em", 
+              fontSize: "0.75em",
+              fontWeight: "600", 
+              color: "#222", 
+              whiteSpace: "nowrap",
+              boxShadow: "0 0.25em 0.5em rgba(0,0,0,0.15)", 
+              transform: "translateX(-50%)", 
+              marginLeft: "75px"
             }}>
               {hover.id.includes('-total') ? (
                 <span>{hover.motif}</span>
               ) : (
                 <div style={{ display: "flex", flexDirection: "column", alignItems: "center" }}>
-                  <span style={{ borderBottom: "1px solid #ddd", marginBottom: "2px", width: "100%", textAlign: "center" }}>
+                  <span style={{ borderBottom: "0.0625em solid #ddd", marginBottom: "0.125em", width: "100%", textAlign: "center" }}>
                     {hover.motif} {hover.copy > 1 ? `× ${hover.copy}` : ""}
                   </span>
-                  <span style={{ fontSize: "11px", color: "#444" }}>
+                  <span style={{ fontSize: "0.6875em", color: "#444" }}>
                     {hover.len} bp
                   </span>
                 </div>

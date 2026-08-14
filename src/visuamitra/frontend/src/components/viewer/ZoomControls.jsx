@@ -12,9 +12,9 @@ export default function ZoomControls({ zoomFactor, setZoomFactor }) {
   };
 
   return (
-    <div style={{ textAlign: "center", padding: "16px 0" }}>
+    <div style={{ textAlign: "center", padding: "1em 0" }}>
       <button onClick={shrinkRange} style={btnStyle}>–</button>
-      <span style={{ margin: "0 12px", fontSize: "15px" }}>
+      <span style={{ margin: "0 0.75em", fontSize: "0.9375em" }}>
         Scale: {Math.round(zoomFactor * 100)}%
       </span>
       <button onClick={expandRange} style={btnStyle}>+</button>
@@ -23,10 +23,10 @@ export default function ZoomControls({ zoomFactor, setZoomFactor }) {
 }
 
 const btnStyle = {
-  padding: "4px 12px",
-  fontSize: "18px",
+  padding: "0.25em 0.75em",
+  fontSize: "1.125em",
   cursor: "pointer",
-  borderRadius: "4px",
-  border: "1px solid #ccc",
+  borderRadius: "0.25em",
+  border: "0.0625em solid #ccc",
   background: "#fff"
 };

@@ -65,6 +65,8 @@ export default function MethylationPlot({
   const positions = meth1?.pos || [];
   const levels = meth1?.lvl || [];
 
+  const rootFontSizeRem = `${(baseFontSize / 16).toFixed(4)}rem`;
+
   return (
     <>
       {/* Background Track Container*/}
@@ -84,7 +86,7 @@ export default function MethylationPlot({
           x={leftMargin - 15} 
           y={y1 + (barHeight * 0.72)} 
           textAnchor="end" 
-          style={{ fontSize: `${baseFontSize}px`, fontWeight: "bold", fill: "#222" }}
+          style={{ fontSize: rootFontSizeRem, fontWeight: "bold", fill: "#222" }}
         >
           {alleleLabel}
         </text>
@@ -97,24 +99,24 @@ export default function MethylationPlot({
       {tooltip && (
         <g pointerEvents="none">
           <foreignObject
-            x={tooltip.x - 10} 
-            y={tooltip.y - 25} 
+            x={tooltip.x - 50} 
+            y={tooltip.y - 28} 
             width="100" 
-            height="30"
+            height="35"
             style={{ overflow: "visible" }}
           >
             <div
               style={{
                 display: "inline-block",
-                padding: "2px 8px",
+                padding: "0.15em 0.6em",
                 background: "white",
-                border: "1px solid #d3d3d3ff",
-                borderRadius: "4px",
-                fontSize: "13px",
-                fontWeight: "550",
+                border: "0.0625em solid #d3d3d3",
+                borderRadius: "0.3em",
+                fontSize: rootFontSizeRem,
+                fontWeight: "600",
                 color: "#222",
                 whiteSpace: "nowrap",
-                boxShadow: "0 2px 4px rgba(0,0,0,0.2)",
+                boxShadow: "0 0.125em 0.25em rgba(0,0,0,0.2)",
                 transform: "translateX(-50%)",
                 marginLeft: "50px"
               }}

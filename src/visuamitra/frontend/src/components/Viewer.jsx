@@ -168,7 +168,7 @@ export default function Viewer() {
   const isSingleSample = selectedSampleIndices.length === 1;
   const effectiveViewMode = (isSingleSample && viewMode !== "overview") ? "combined" : viewMode;
 
-  if (!vcfFile) return <div style={{ padding: 50 }}>No VCF file provided. Please go back to home.</div>;
+  if (!vcfFile) return <div style={{ padding: "3.125em" }}>No VCF file provided. Please go back to home.</div>;
 
   return (
     <div style={{
@@ -178,11 +178,10 @@ export default function Viewer() {
       flexDirection: "column", 
       alignItems: "center",
       fontFamily: settings.font, 
-      /* GLOBAL INHERITANCE */
-      fontSize: `${currentFontSize}px`, 
+      fontSize: `${currentFontSize / 16}em`, 
       background: settings.theme === "dark" ? "#111" : "#fafafa",
       color: settings.theme === "dark" ? "#eee" : "#000", 
-      padding: "30px 0"
+      padding: "1.875em 0"
     }}>
       
       {showSettings && (
@@ -194,7 +193,7 @@ export default function Viewer() {
         onApply={applyRegionFilter} loading={loading} error={error} setError={setError} rows={allLoadedRows}
       />
 
-      <div style={{ zIndex: 10, width: "100%", display: "flex", justifyContent: "center", marginTop: "-10px" }}>
+      <div style={{ zIndex: 10, width: "100%", display: "flex", justifyContent: "center", marginTop: "-0.625em" }}>
         <NavigationControls 
           onPrev={goPrev} onNext={goNext} rows={allLoadedRows} selectedIdx={globalSelectedIdx} 
           onSelect={(globalIdx) => {
@@ -215,28 +214,28 @@ export default function Viewer() {
         />
       </div>
 
-      <div style={{ marginTop: "-30px", marginBottom: "50px", position: "relative" }}>
+      <div style={{ marginTop: "-1.875em", marginBottom: "4.125em", position: "relative" }}>
         {row.Chrom && (
           <ChromosomeIdeogram chr={row.Chrom} start={Number(row.Start)} end={Number(row.End)} refGenome={refGenome} height={80} chrHeight={900} chrWidth={20} />
         )}
       </div>
 
       <div style={{ width: "100%", display: "flex", justifyContent: "center" }}>
-        <div ref={metadataRef} style={{ width: `${BASE_WIDTH}px`, display: "flex", flexDirection: "column", alignItems: "center", marginBottom: "20px", boxSizing: "border-box" }}>
+        <div ref={metadataRef} style={{ width: `68em`, display: "flex", flexDirection: "column", alignItems: "center", marginRight: "16em",marginBottom: "1.25em", boxSizing: "border-box" }}>
           <MetadataDisplay titleRef={titleRef} row={row} selectedIndices={paginatedIndices} availableSamples={availableSamples} isExpanded={isMetadataExpanded} onToggle={toggleMetadataExpansion} forceExpand={isExporting} />
         </div>
       </div>
 
       <div style={{ 
         width: `${BASE_WIDTH - 90}px`, 
-        margin: "0 auto 15px auto", 
+        margin: "0 auto 0.9375em auto", 
         display: "flex", 
         justifyContent: "flex-end", 
         alignItems: "center",
         boxSizing: "border-box"
       }}>
         {viewMode !== "overview" && totalPages > 1 && (
-          <div style={{ display: "flex", alignItems: "center", gap: "12px", fontSize: `${currentFontSize}px`, color: "#555" }}>
+          <div style={{ display: "flex", alignItems: "center", gap: "0.75em", fontSize: "inherit", color: "#555" }}>
             <button 
               disabled={currentPage === 1} 
               onClick={() => setCurrentPage(p => p - 1)}
@@ -259,7 +258,7 @@ export default function Viewer() {
       </div>
       
       <div style={{ width: "100%", display: "flex", justifyContent: "center" }}>
-        <div style={{ width: `${BASE_WIDTH - 90}px`, marginBottom: "-20px", paddingTop: "-20px", marginLeft: "-200px", display: "flex", flexDirection: "column" }}>
+        <div style={{ width: `${BASE_WIDTH - 90}px`, marginBottom: "-1.25em", paddingTop: "-1.25em", marginLeft: "-12.5em", display: "flex", flexDirection: "column" }}>
           <div style={controlsContainerStyle}>
             
             <div className="tab-buttons" style={{ display: "flex" }}>
@@ -285,16 +284,16 @@ export default function Viewer() {
               </button>
             </div>
 
-            <div style={{ paddingBottom: "4px" }}> 
+            <div style={{ paddingBottom: "0.25em" }}> 
               <SamplePicker availableSamples={availableSamples} selectedIndices={selectedSampleIndices} onSelectionChange={setSelectedSampleIndices} baseFontSize={currentFontSize} />
             </div>
           </div>
         </div>
       </div>
 
-      <div style={{ display: "flex", width: "100%", overflowX: "auto", maxWidth: "1400px", margin: "0 auto", justifyContent: "center", gap: "24px", marginTop: 20, overflow: "visible" }}>
+      <div style={{ display: "flex", width: "100%", overflowX: "auto", maxWidth: "87.5em", margin: "0 auto", justifyContent: "center", gap: "1.5em", marginTop: "1.25em", overflow: "visible" }}>
         
-        <div ref={visualizerRef} style={{ width: `${BASE_WIDTH}px`, border: "1px solid #eee", borderRadius: "10px", background: "#fff", flexShrink: 0 }}>
+        <div ref={visualizerRef} style={{ width: `${BASE_WIDTH}px`, border: "0.0625em solid #eee", borderRadius: "0.625em", background: "#fff", flexShrink: 0 }}>
           <VisualizerCanvas 
             data={row}
             viewMode={effectiveViewMode}
@@ -341,7 +340,7 @@ export default function Viewer() {
       </div>
       
       {viewMode !== "overview" && (
-        <div style={{ width: "100%", display: "flex", justifyContent: "center", marginTop: "10px", paddingBottom: "40px" }}>
+        <div style={{ width: "100%", display: "flex", justifyContent: "center", marginTop: "0.625em", paddingBottom: "2.5em" }}>
           <div style={{ width: `${BASE_WIDTH}px`, display: "flex", justifyContent: "space-between", alignItems: "center", boxSizing: "border-box" }}>
             <ZoomControls zoomFactor={zoomFactor} setZoomFactor={setZoomFactor} />
             <DownloadManager visualizerRef={visualizerRef} legendRef={legendRef} metadataRef={metadataRef} titleRef={titleRef} viewMode={viewMode} chrom={row.Chrom} start={row.Start} isExporting={isExporting} setIsExporting={setIsExporting} />
@@ -352,19 +351,55 @@ export default function Viewer() {
   );
 }
 
-const activeTabStyle = { padding: "8px 16px", background: "#328547", color: "#fff", border: "1px solid #328547", borderBottom: "none", borderRadius: "4px 4px 0 0", cursor: "pointer", fontWeight: "bold" };
-const inactiveTabStyle = { padding: "8px 16px", background: "#eee", color: "#333", border: "1px solid #999", borderBottom: "none", borderRadius: "4px 4px 0 0", cursor: "pointer", transition: "background 0.2s" };
-const controlsContainerStyle = { display: "flex", justifyContent: "space-between", alignItems: "flex-end", width: "100%", marginTop: "20px", borderBottom: "2px solid #328547" };
-const paginationStyle = { display: "flex", justifyContent: "center", alignItems: "center", gap: "20px", marginBottom: "15px", fontSize: "13px", color: "#555" };
+const activeTabStyle = { 
+  padding: "0.5em 1em", 
+  background: "#328547", 
+  color: "#fff", 
+  border: "0.0625em solid #328547", 
+  borderBottom: "none", 
+  borderRadius: "0.25em 0.25em 0 0", 
+  cursor: "pointer", 
+  fontWeight: "bold" 
+};
+
+const inactiveTabStyle = { 
+  padding: "0.5em 1em", 
+  background: "#eee", 
+  color: "#333", 
+  border: "0.0625em solid #999", 
+  borderBottom: "none", 
+  borderRadius: "0.25em 0.25em 0 0", 
+  cursor: "pointer", 
+  transition: "background 0.2s" 
+};
+
+const controlsContainerStyle = { 
+  display: "flex", 
+  justifyContent: "space-between", 
+  alignItems: "flex-end", 
+  width: "100%", 
+  marginTop: "1.25em", 
+  borderBottom: "0.125em solid #328547" 
+};
+
+const paginationStyle = { 
+  display: "flex", 
+  justifyContent: "center", 
+  alignItems: "center", 
+  gap: "1.25em", 
+  marginBottom: "0.9375em", 
+  fontSize: "0.8125em", 
+  color: "#555" 
+};
 
 const paginationButtonStyle = {
-  padding: "5px 12px",
+  padding: "0.3125em 0.75em",
   background: "#fff",
-  border: "1px solid #ccc",
-  borderRadius: "4px",
+  border: "0.0625em solid #ccc",
+  borderRadius: "0.25em",
   cursor: "pointer",
   fontSize: "inherit",
   fontWeight: "500",
   transition: "all 0.15s ease-in-out",
-  boxShadow: "0 1px 2px rgba(0,0,0,0.05)"
+  boxShadow: "0 0.0625em 0.125em rgba(0,0,0,0.05)"
 };
