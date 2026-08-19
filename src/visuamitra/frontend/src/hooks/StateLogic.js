@@ -83,13 +83,22 @@ export function useVisuaMiTRaLogic(vcfFile, tbiFile, initialState, viewMode = "d
     }
   }, [selectedSampleIndices.length, totalPages, currentPage]);
 
+  const lastLocusKeyRef = useRef(null);
+
   useEffect(() => {
-  const currentRows = pages[currentPageIndex] || [];
-  const currentRow = currentRows[selectedIdx] || {};
-  if (currentRow.Chrom) {
-    setExpectedMotifOverrideColor(null);
-  }
-}, [currentPageIndex, selectedIdx, pages]);
+    const currentRows = pages[currentPageIndex] || [];
+    const currentRow = currentRows[selectedIdx] || {};
+    
+    if (currentRow?.Chrom && currentRow?.Start && currentRow?.End) {
+      const locusKey = `${currentRow.Chrom}_${currentRow.Start}_${currentRow.End}`;
+      
+      // Clear manual color override ONLY when moving to a completely different locus row
+      if (lastLocusKeyRef.current && lastLocusKeyRef.current !== locusKey) {
+        setExpectedMotifOverrideColor(null);
+      }
+      lastLocusKeyRef.current = locusKey;
+    }
+  }, [currentPageIndex, selectedIdx, pages]);
 
   const fetchPageTSV = useCallback(async (cursor) => {
     const formData = new FormData();

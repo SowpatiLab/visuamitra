@@ -64,11 +64,21 @@ export default function DecompositionPlot({
           const isHovered = hover?.id === id;
           const rawMotif = (data.motifs[i] || "").toUpperCase();
           const currentCopies = data.copies[i] || 0;
-          const isNonRepetitive = currentCopies <= 1 || rawMotif.includes("N_REPETITIVE") || rawMotif.includes("FLANK");
-          // BYPASS CYCLIC VARIATION
-          const lookupKey = isNonRepetitive ? rawMotif : getCanonicalMotif(rawMotif, refMotif);
-          const isKnown = !!colorMap[lookupKey];  
-          const fillColor = isKnown ? colorMap[lookupKey] : "#bdbdbd";
+          
+          // Identify Non-repetitive segments
+          const isNonRepetitive = 
+            currentCopies <= 1 || 
+            rawMotif.includes("N_REPETITIVE") || 
+            rawMotif.includes("NON-REPETITIVE") || 
+            rawMotif.includes("FLANK");
+
+          // COLOR RESOLUTION:
+          // Strictly force grey (#bdbdbd) for non-repetitive sequences.
+          let fillColor = "#bdbdbd";
+          if (!isNonRepetitive) {
+            const canonicalKey = getCanonicalMotif(rawMotif, refMotif);
+            fillColor = colorMap[canonicalKey] || "#bdbdbd";
+          }
 
           return (
             <rect

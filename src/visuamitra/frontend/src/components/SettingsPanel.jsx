@@ -244,8 +244,8 @@ export default function SettingsPanel({ settings, onChange, onClose }) {
           type="number" 
           value={fontSize} 
           onChange={handleFontSizeChange} 
-          min="9" 
-          max="21"
+          min="10" 
+          max="30"
           style={{ 
             width: "100%", 
             padding: "0.3846em 0.4615em", 

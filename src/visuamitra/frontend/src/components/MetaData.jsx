@@ -47,13 +47,13 @@ export default function MetadataDisplay({
     <div style={{ ...styles.container, fontSize: `${baseFontSize}px` }}>
       
       <div style={styles.tableWrapper}>
-        <table style={styles.table}>
+        <table style={{ ...styles.table, fontSize: `${baseFontSize}px` }}>
           <thead>
             <tr>
-              <th style={styles.th}>Selected Sample</th>
-              <th style={styles.th}>Genotype</th>
-              <th style={styles.th}>Read Support (A1|A2)</th>
-              <th style={styles.th}>Mean Methylation (A1|A2)</th>
+              <th style={{ ...styles.th, fontSize: `${baseFontSize * 0.8}px` }}>Selected Sample</th>
+              <th style={{ ...styles.th, fontSize: `${baseFontSize * 0.8}px` }}>Genotype</th>
+              <th style={{ ...styles.th, fontSize: `${baseFontSize * 0.8}px` }}>Read Support (A1|A2)</th>
+              <th style={{ ...styles.th, fontSize: `${baseFontSize * 0.8}px` }}>Mean Methylation (A1|A2)</th>
             </tr>
           </thead>
           <tbody>
@@ -76,8 +76,8 @@ export default function MetadataDisplay({
               if (!sample || typeof sample !== 'object') {
                 return (
                   <tr key={idx} style={styles.tr}>
-                    <td style={styles.sampleNameTd}>{displayName}</td>
-                    <td colSpan="3" style={{ ...styles.td, color: "#999", fontStyle: "italic" }}>
+                    <td style={{ ...styles.sampleNameTd, fontSize: `${baseFontSize}px` }}>{displayName}</td>
+                    <td colSpan="3" style={{ ...styles.td, color: "#999", fontStyle: "italic", fontSize: `${baseFontSize}px` }}>
                       Metadata not linked (ID: {fullSampleName || idx})
                     </td>
                   </tr>
@@ -86,9 +86,9 @@ export default function MetadataDisplay({
 
               return (
                 <tr key={idx} style={styles.tr}>
-                  <td style={styles.sampleNameTd}>{displayName}</td>
-                  <td style={styles.td}>{sample.GT || "—"}</td>
-                  <td style={styles.td}>
+                  <td style={{ ...styles.sampleNameTd, fontSize: `${baseFontSize}px` }}>{displayName}</td>
+                  <td style={{ ...styles.td, fontSize: `${baseFontSize}px` }}>{sample.GT || "—"}</td>
+                  <td style={{ ...styles.td, fontSize: `${baseFontSize}px` }}>
                     {(() => {
                         const val = sample.Read_support;
                         if (!val || val === "NA") return "—";
@@ -99,7 +99,7 @@ export default function MetadataDisplay({
                         return Array.isArray(parsed) ? parsed.join(" | ") : parsed;
                     })()}
                   </td>
-                  <td style={styles.td}>{formatValue(sample.Mean_meth || sample.meanMeth)}</td>
+                  <td style={{ ...styles.td, fontSize: `${baseFontSize}px` }}>{formatValue(sample.Mean_meth || sample.meanMeth)}</td>
                 </tr>
               );
             })}
@@ -109,7 +109,7 @@ export default function MetadataDisplay({
         {hasHiddenItems && !forceExpand && (
           <div style={styles.buttonContainer}>
             <button 
-              style={styles.expandButton} 
+              style={{ ...styles.expandButton, fontSize: `${baseFontSize * 0.9}px` }} 
               onClick={onToggle}
             >
               {isExpanded ? (
@@ -122,15 +122,17 @@ export default function MetadataDisplay({
         )}
 
         {selectedIndices.length === 0 && (
-          <div style={{ ...styles.td, textAlign: 'center', color: '#999', padding: '1.25em' }}>
+          <div style={{ ...styles.td, textAlign: 'center', color: '#999', padding: '1.25em', fontSize: `${baseFontSize}px` }}>
             No samples selected. Please select samples from the list above.
           </div>
         )}
       </div>
       
       <div style={styles.header} ref={titleRef}>
-        <div style={styles.pill}><strong>Locus ID:</strong> {locusID}</div>
-        <div style={styles.pill}>
+        <div style={{ ...styles.pill, fontSize: `${baseFontSize}px` }}>
+          <strong>Locus ID:</strong> {locusID}
+        </div>
+        <div style={{ ...styles.pill, fontSize: `${baseFontSize}px` }}>
           <strong>Motif:</strong>{" "}
           {isLong ? (
             <Tooltip text={showMotifTooltip}>
@@ -142,7 +144,9 @@ export default function MetadataDisplay({
             <span style={styles.motif}>{motifDisplay}</span>
           )}
         </div>
-        <div style={styles.pill}><strong>Size:</strong> {motifSize} bp</div>
+        <div style={{ ...styles.pill, fontSize: `${baseFontSize}px` }}>
+          <strong>Size:</strong> {motifSize} bp
+        </div>
       </div>
     </div>
   );
@@ -151,21 +155,19 @@ export default function MetadataDisplay({
 const styles = {
   container: { 
     width: "100%", 
-    maxWidth: "100%", // Fixed: expanded to 100% to match BASE_WIDTH (1200px) parent wrapper
-    marginBottom: "1.5em" // Fixed: added proper gap spacing below the ideogram
+    maxWidth: "100%",
+    marginBottom: "1.5em"
   },
   header: { 
     display: "flex", 
     gap: "0.625em", 
     marginBottom: "0px", 
-    marginTop: "1.5em", 
-    fontSize: "1.25em" 
+    marginTop: "1.5em"
   },
   pill: { 
     background: "rgba(0,0,0,0.03)", 
     padding: "0.3125em 0.9375em", 
     borderRadius: "6.25em", 
-    fontSize: "0.95em", 
     color: "#222", 
     border: "0.0625em solid rgba(0,0,0,0.05)" 
   },
@@ -182,8 +184,7 @@ const styles = {
   },
   table: { 
     width: "100%", 
-    borderCollapse: "collapse", 
-    fontSize: "inherit" 
+    borderCollapse: "collapse"
   },
   th: { 
     textAlign: "left", 
@@ -191,7 +192,6 @@ const styles = {
     background: "#fafafa", 
     color: "#666", 
     fontWeight: "800", 
-    fontSize: "0.8em", 
     textTransform: "uppercase", 
     borderBottom: "0.0625em solid #eee" 
   },
@@ -220,8 +220,7 @@ const styles = {
     background: "#f8faf8",
     border: "0.0625em solid #d0e0d0", 
     borderRadius: "1em", 
-    color: "#2d5a27",
-    fontSize: "0.9em",         
+    color: "#2d5a27",       
     fontWeight: "600",
     cursor: "pointer",
     transition: "all 0.2s ease",

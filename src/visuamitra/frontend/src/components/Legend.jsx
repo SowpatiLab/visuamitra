@@ -59,7 +59,7 @@ export default function Legend({
         height: "fit-content", 
         width: "max-content",    
         minWidth: "7.8125em",       
-        maxWidth: "14em", // Dynamically scales with base font size
+        maxWidth: "14em",
         boxShadow: "0 0.25em 0.625em rgba(0, 0, 0, 0.04)",
         boxSizing: "border-box"
       }}

@@ -31,7 +31,7 @@ export default function Viewer() {
   const [viewMode, setViewMode] = useState("decomposition");
   const [zoomFactor, setZoomFactor] = useState(1);
   const [settings, setSettings] = useState({
-    palette: "Observable10", font: "Arial, sans-serif", theme: "light", methPalette: "Viridis", baseFontSize: 13
+    palette: "Observable10", font: "Arial, sans-serif", theme: "light", methPalette: "Viridis", baseFontSize: 15
   });
   const [isDropDownOpen, setIsDropDownOpen] = useState(false);
   const [isExporting, setIsExporting] = useState(false);
@@ -95,31 +95,55 @@ export default function Viewer() {
   }, [row.Chrom, row.Start, row.End, selectedIdx]);
 
   const colorMap = useMemo(() => {
-    const repeatingMotifSet = new Set();
-    if (row && row.samples && availableSamples.length > 0) {
-      availableSamples.forEach((sampleName) => {
-        const sample = row.samples[sampleName];
-        if (!sample || typeof sample === 'string' || !sample.parsedDecomp) return;
-        sample.parsedDecomp.forEach((track) => {
-          if (track && Array.isArray(track.motifs)) {
-            track.motifs.forEach((motif, i) => {
-              if (motif && track.copies[i] > 1) {
-                const canon = getCanonicalMotif(motif.trim().toUpperCase(), row.Motif?.toUpperCase());
-                repeatingMotifSet.add(canon);
-              }
-            });
-          }
+    if (!row || !row.Chrom) return {};
+
+    const allMotifs = new Set();
+    const canonicalRef = row.Motif ? getCanonicalMotif(row.Motif, row.Motif) : "";
+    if (canonicalRef) allMotifs.add(canonicalRef);
+
+    // Scan all loaded pages/loci matching current genomic coordinates
+    pages.forEach((page) => {
+      if (!Array.isArray(page)) return;
+      page.forEach((locusRow) => {
+        if (
+          !locusRow ||
+          locusRow.Chrom !== row.Chrom ||
+          locusRow.Start !== row.Start ||
+          locusRow.End !== row.End ||
+          !locusRow.samples
+        ) return;
+
+        Object.values(locusRow.samples).forEach((sample) => {
+          if (!sample || typeof sample === "string" || !sample.parsedDecomp) return;
+          sample.parsedDecomp.forEach((track) => {
+            if (track && Array.isArray(track.motifs)) {
+              track.motifs.forEach((motif, i) => {
+                if (motif && track.copies && track.copies[i] > 0) {
+                  const raw = motif.trim().toUpperCase();
+                  if (!raw.includes("N_REPETITIVE") && !raw.includes("FLANK")) {
+                    const canon = getCanonicalMotif(raw, row.Motif?.toUpperCase());
+                    if (canon) allMotifs.add(canon);
+                  }
+                }
+              });
+            }
+          });
         });
       });
-    }
-    const motifsArray = Array.from(repeatingMotifSet).sort((a,b) => a.localeCompare(b));
-    const generatedMap = generateMotifColors(motifsArray, settings.palette, row.Motif);
-    const canonicalRef = row.Motif ? getCanonicalMotif(row.Motif, row.Motif) : "";
+    });
+
+    const generatedMap = generateMotifColors(Array.from(allMotifs), settings.palette, row.Motif);
+
     if (canonicalRef && expectedMotifOverrideColor) {
       generatedMap[canonicalRef] = expectedMotifOverrideColor;
     }
+
     return generatedMap;
-  }, [row, availableSamples, settings.palette, expectedMotifOverrideColor]);
+  }, [row.Chrom, row.Start, row.End, row.Motif, pages, settings.palette, expectedMotifOverrideColor]);
+
+  const visibleColorMap = useMemo(() => {
+    return getVisibleColorMap(row, paginatedIndices, availableSamples, colorMap);
+  }, [row, paginatedIndices, availableSamples, colorMap]);
 
   const getMethylationColor = useMemo(() => 
     getMethylationColorFactory(settings.methPalette), 
@@ -195,7 +219,7 @@ export default function Viewer() {
 
       <div style={{ zIndex: 10, width: "100%", display: "flex", justifyContent: "center", marginTop: "-0.625em" }}>
         <NavigationControls 
-          onPrev={goPrev} onNext={goNext} rows={allLoadedRows} selectedIdx={globalSelectedIdx} 
+          onPrev={goPrev} onNext={goNext} rows={allLoadedRows} selectedIdx={globalSelectedIdx} baseFontSize={currentFontSize}
           onSelect={(globalIdx) => {
             let count = 0;
             for (let i = 0; i < pages.length; i++) {
@@ -222,7 +246,7 @@ export default function Viewer() {
 
       <div style={{ width: "100%", display: "flex", justifyContent: "center" }}>
         <div ref={metadataRef} style={{ width: `68em`, display: "flex", flexDirection: "column", alignItems: "center", marginRight: "16em",marginBottom: "1.25em", boxSizing: "border-box" }}>
-          <MetadataDisplay titleRef={titleRef} row={row} selectedIndices={paginatedIndices} availableSamples={availableSamples} isExpanded={isMetadataExpanded} onToggle={toggleMetadataExpansion} forceExpand={isExporting} />
+          <MetadataDisplay titleRef={titleRef} row={row} selectedIndices={paginatedIndices} availableSamples={availableSamples} isExpanded={isMetadataExpanded} onToggle={toggleMetadataExpansion} forceExpand={isExporting} baseFontSize={currentFontSize} />
         </div>
       </div>
 
@@ -319,7 +343,7 @@ export default function Viewer() {
 
         <div ref={legendRef} style={{ flexShrink: 0, width: "max-content", visibility: viewMode === "overview" ? "hidden" : "visible" }}>
           <Legend 
-            colorMap={getVisibleColorMap(row, paginatedIndices, availableSamples, colorMap)} 
+            colorMap={visibleColorMap} 
             refMotif={row?.Motif}
             methPalette={settings.methPalette} 
             hasDecomposition={viewMode === "decomposition" || isSingleSample} 
@@ -330,7 +354,7 @@ export default function Viewer() {
             hasAmbiguousMeth={
               selectedSampleIndices.some(idx => {
                 const sampleName = availableSamples[idx];
-                return row.samples?.[row.samples && availableSamples[idx]]?.Meth_tag?.includes("-1");
+                return row.samples?.[availableSamples[idx]]?.Meth_tag?.includes("-1");
               })
             }
             methThreshold={methThreshold}

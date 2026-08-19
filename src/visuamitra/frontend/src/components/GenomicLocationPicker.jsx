@@ -28,8 +28,6 @@ export default function GenomicLocationPicker({
   const [query, setQuery] = useState("");
   const ref = useRef(null);
 
-  const rootFontSizeRem = `${(baseFontSize / 16).toFixed(4)}rem`;
-
   /* close on outside click */
   useEffect(() => {
     const handler = (e) => {
@@ -42,9 +40,8 @@ export default function GenomicLocationPicker({
   }, []);
 
   const filtered = (rows || [])
-    .filter(Boolean) // Remove null/undefined entries from the array immediately
+    .filter(Boolean)
     .filter((r) => {
-      // Ensure r has the Chrom property before trying to use it
       if (!r || !r.Chrom) return false; 
       if (!query) return true;
       
@@ -54,14 +51,12 @@ export default function GenomicLocationPicker({
 
   const selectedRow = rows && selectedIdx != null ? rows[selectedIdx] : null;
 
-  // Validate that this is a data row, not a header row/empty object
   const isValidData = 
     selectedRow && 
     typeof selectedRow === 'object' && 
     selectedRow.Chrom && 
     selectedRow.Chrom !== "Chrom";
 
-  // Build the label only if data is valid; otherwise fallback to placeholder string
   const selectedLabel = isValidData
     ? `${selectedRow.Chrom}:${selectedRow.Start}-${selectedRow.End}`
     : "Select Locus...";
@@ -71,11 +66,11 @@ export default function GenomicLocationPicker({
       ref={ref} 
       style={{ 
         position: "relative", 
-        width: "17.5em", // 280px converted to em
-        fontSize: rootFontSizeRem 
+        width: "21.5em",
+        fontSize: `${baseFontSize}px` 
       }}
     >
-      {/* input */}
+      {/* input wrapper */}
       <div
         style={{
           border: "0.0625em solid #aaa",
@@ -100,7 +95,7 @@ export default function GenomicLocationPicker({
             border: "none",
             outline: "none",
             flex: 1,
-            fontSize: "inherit",
+            fontSize: `${baseFontSize}px`,
             background: "transparent",
             color: "inherit"
           }}
@@ -115,25 +110,25 @@ export default function GenomicLocationPicker({
             top: "100%",
             left: 0,
             right: 0,
-            maxHeight: "15em", // 240px converted to em
+            maxHeight: "15em",
             overflowY: "auto",
             border: "0.0625em solid #aaa",
             borderRadius: "0 0 0.25em 0.25em",
             background: "#fff",
             zIndex: 1000,
-            fontSize: "inherit", 
+            fontSize: `${baseFontSize}px`, 
             boxShadow: "0 0.25em 0.5em rgba(0,0,0,0.12)"
           }}
         >
           {filtered.length === 0 && (
-            <div style={{ padding: "0.5em", color: "#999" }}>
+            <div style={{ padding: "0.5em", color: "#999", fontSize: `${baseFontSize}px` }}>
               Not found
             </div>
           )}
 
           {filtered.map((r, fIdx) => {
             if (r.Chrom === "Chrom" || r.Start === "Start") return null;
-            // Defensive findIndex
+            
             const originalIdx = (rows || []).findIndex(original => 
               original && 
               original.Chrom === r.Chrom && 
@@ -153,6 +148,7 @@ export default function GenomicLocationPicker({
                 style={{
                   padding: "0.3125em 0.5em", 
                   cursor: "pointer",
+                  fontSize: `${baseFontSize}px`,
                   background: originalIdx === selectedIdx ? "#eef" : "transparent",
                 }}
               >
