@@ -33,63 +33,77 @@ def numerical_sort_key(s):
     return [int(text) if text.isdigit() else text.lower() 
             for text in re.split('([0-9]+)', s)]
 
-# Samples Endpoint
 @router.post("/get-vcf-metadata")
 async def get_vcf_metadata(
     vcf: Optional[UploadFile] = File(None),
     vcf_path: Optional[str] = Form(None)     
 ):
     """Returns the list of samples and metadata description."""
-    
-    # If a browser upload file is explicitly provided, skip CLI logic completely!
-    if vcf and hasattr(vcf, "filename") and vcf.filename:
-        _CLI_PATHS_CACHE["vcf"] = None
-        _CLI_PATHS_CACHE["tbi"] = None
+    try:
+        # CASE 1: Browser Upload Mode
+        if vcf and hasattr(vcf, "filename") and vcf.filename:
+            _CLI_PATHS_CACHE["vcf"] = None
+            _CLI_PATHS_CACHE["tbi"] = None
 
-        tmpdir = tempfile.mkdtemp(prefix="vcf_meta_")
-        actual_path = os.path.join(tmpdir, vcf.filename)
-        try:
-            with open(actual_path, "wb") as f:
-                shutil.copyfileobj(vcf.file, f)
-            cutoff_info, total_samples, ref_genome = extract_methcutoff(actual_path)
-            return {
-                "meth_cutoff": cutoff_info,
-                "samples": total_samples,
-                "ref_genome": ref_genome
-            }
-        finally:
-            if os.path.exists(actual_path):
-                shutil.rmtree(tmpdir)
+            tmpdir = tempfile.mkdtemp(prefix="vcf_meta_")
+            actual_path = os.path.join(tmpdir, vcf.filename)
+            try:
+                with open(actual_path, "wb") as f:
+                    shutil.copyfileobj(vcf.file, f)
+                
+                # Defensive tuple handling
+                res = extract_methcutoff(actual_path)
+                cutoff_info = res[0] if len(res) > 0 else {}
+                total_samples = res[1] if len(res) > 1 else []
+                ref_genome = res[2] if len(res) > 2 else "hg38"
 
-    # CASE 2: CLI Mode / Local Path execution
-    env_vcf_path = os.environ.get("VISUAMITRA_VCF")
-    resolved_input_path = vcf_path if (vcf_path and os.path.isabs(vcf_path)) else env_vcf_path
+                return {
+                    "meth_cutoff": cutoff_info,
+                    "samples": total_samples,
+                    "ref_genome": ref_genome
+                }
+            finally:
+                if os.path.exists(actual_path):
+                    shutil.rmtree(tmpdir)
 
-    if resolved_input_path:
-        if not os.path.exists(resolved_input_path):
-            raise HTTPException(
-                status_code=400, 
-                detail=f"Local VCF file path not found on disk: {resolved_input_path}"
-            )
-        absolute_vcf_path = os.path.abspath(resolved_input_path)
-        if os.path.exists(absolute_vcf_path):
-            p = Path(absolute_vcf_path)
-            absolute_tbi_path = p.with_suffix(p.suffix + ".tbi")
-            if not absolute_tbi_path.exists():
-                absolute_tbi_path = p.with_suffix(".tbi")
+        # CASE 2: Local File System / CLI Mode
+        env_vcf_path = os.environ.get("VISUAMITRA_VCF")
+        resolved_input_path = vcf_path if (vcf_path and os.path.isabs(vcf_path)) else env_vcf_path
 
-            _CLI_PATHS_CACHE["vcf"] = absolute_vcf_path
-            _CLI_PATHS_CACHE["tbi"] = os.path.abspath(absolute_tbi_path) if absolute_tbi_path.exists() else None
-            
-            actual_path = absolute_vcf_path            
-            cutoff_info, total_samples, ref_genome = extract_methcutoff(actual_path)
-            return {
-                "meth_cutoff": cutoff_info,
-                "samples": total_samples,
-                "ref_genome": ref_genome
-            }
-    
-    raise HTTPException(status_code=400, detail="No VCF source provided")
+        if resolved_input_path:
+            if not os.path.exists(resolved_input_path):
+                raise HTTPException(
+                    status_code=400, 
+                    detail=f"Local VCF file path not found on disk: {resolved_input_path}"
+                )
+            absolute_vcf_path = os.path.abspath(resolved_input_path)
+            if os.path.exists(absolute_vcf_path):
+                p = Path(absolute_vcf_path)
+                absolute_tbi_path = p.with_suffix(p.suffix + ".tbi")
+                if not absolute_tbi_path.exists():
+                    absolute_tbi_path = p.with_suffix(".tbi")
+
+                _CLI_PATHS_CACHE["vcf"] = absolute_vcf_path
+                _CLI_PATHS_CACHE["tbi"] = os.path.abspath(absolute_tbi_path) if absolute_tbi_path.exists() else None
+                
+                actual_path = absolute_vcf_path            
+                # Defensive tuple handling
+                res = extract_methcutoff(actual_path)
+                cutoff_info = res[0] if len(res) > 0 else {}
+                total_samples = res[1] if len(res) > 1 else []
+                ref_genome = res[2] if len(res) > 2 else "hg38"
+
+                return {
+                    "meth_cutoff": cutoff_info,
+                    "samples": total_samples,
+                    "ref_genome": ref_genome
+                }
+        
+        raise HTTPException(status_code=400, detail="No VCF source provided")
+    except HTTPException:
+        raise
+    except Exception as e:
+        raise HTTPException(status_code=500, detail=f"Failed to read VCF metadata: {str(e)}")
 
 @router.post("/vcf-to-tsv-cursor")
 async def vcf_to_tsv_cursor(

@@ -31,13 +31,21 @@ Prerequisites: Python 3.9+ and htslib (for Tabix functionality).
 
 
 ### Create and activate a python environment (recommended)
-```python -m venv venv
+```
+python -m venv venv
 source venv/bin/activate  # On Windows use: venv\Scripts\activate
 ```
 
 ### Install the package
+**Latest Patch (v1.0.4-patch)**
 ```
-pip install visuamitra
+pip install https://github.com/SowpatiLab/visuamitra/archive/refs/tags/v1.0.4-patch.tar.gz
+```
+*Note for Existing Users / Upgrading*
+
+If you have previously installed visuamitra, pip may serve an older cached version or omit updated files. Force-reinstall without caching to ensure a clean setup:
+```
+pip install --force-reinstall --no-cache-dir https://github.com/SowpatiLab/visuamitra/archive/refs/tags/v1.0.4-patch.tar.gz
 ```
 
 # Usage
