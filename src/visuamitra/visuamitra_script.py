@@ -1002,6 +1002,10 @@ def sample_collector(sample_fields, sample_index, format_fields, ALT, MOTIF_DECO
     return SAMPLE_dict
 
 def pathogenicity_check(coordinates, subject_status):
+    # Mapping definitions for pathogenic length and motif states
+    length_range = [0, 1, 2]  # [Benign/Normal, Intermediate, Pathogenic]
+    motif_range = [1, 2, 3]   # Motif severity state mappings
+
     vcf_chrom = coordinates[0]
     vcf_start = int(coordinates[1])
     vcf_end = int(coordinates[2])
@@ -1019,7 +1023,6 @@ def pathogenicity_check(coordinates, subject_status):
             overlap_start = max(vcf_start, db_start)
             overlap_end = min(vcf_end, db_end)
             
-            
             if overlap_start < overlap_end:
                 patho_row = row_parts
                 match_found = True
@@ -1033,13 +1036,13 @@ def pathogenicity_check(coordinates, subject_status):
 
     # Assign variables from the valid matched row
     disease_id = patho_row[5]
-    pathogenic_ranges = [int(i) if i!='NA' else -1 for i in patho_row[6:12]]
-    susceptible_motifs = [set(i.split(',')) if i!='NA' else set() for i in patho_row[12:15]]
+    pathogenic_ranges = [int(i) if i != 'NA' else -1 for i in patho_row[6:12]]
+    susceptible_motifs = [set(i.split(',')) if i != 'NA' else set() for i in patho_row[12:15]]
     Pathogenic_state = patho_row[15]
 
     inheritance_mode = patho_row[16] if len(patho_row) > 16 else "NA"
 
-    ## Determining the pathogenecity for each allele
+    ## Determining the pathogenicity for each allele
     Allele_states = []
     for each_allele in subject_status:
         subject_motif = set(get_cyclic_variants(each_allele[0]))
@@ -1055,43 +1058,30 @@ def pathogenicity_check(coordinates, subject_status):
             length_state = length_range[boolean_range.index(True)]
         ## if all values are False, then check the nearby length range
         elif -1 not in pathogenic_ranges: 
-            diff_with_benign_intermediate = [abs(pathogenic_ranges[1] - subject_copy), abs(pathogenic_ranges[3] - subject_copy)]
+            diff_with_benign_intermediate = [
+                abs(pathogenic_ranges[1] - subject_copy), 
+                abs(pathogenic_ranges[3] - subject_copy)
+            ]
             length_state = length_range[diff_with_benign_intermediate.index(min(diff_with_benign_intermediate))]
         else: 
-            length_state = 0 # Safe fallback to Unknown
+            length_state = 0 # Safe fallback to Unknown / Benign
 
-        ## Checking the motif type (FIXED: Type-safe empty check for sets)
+        ## Checking the motif type
         motif_state = 0 
         for midx, each_motif_group in enumerate(susceptible_motifs):
-            if not each_motif_group or len(each_motif_group) == 0: 
+            if not each_motif_group: 
                 continue
             if len(subject_motif & each_motif_group) > 0:
                 motif_state = motif_range[midx]
                 break
 
-        ## Finalising Allele state (FIXED: Fallback default values)
         if motif_state == 0: 
-            Allele_states.append(0) # Default to Benign range if not in pathogenic catalogs
+            Allele_states.append(0) # Benign
         elif motif_state == 1: 
             Allele_states.append(length_state)
         elif motif_state == 2: 
-            Allele_states.append(1)
+            Allele_states.append(1) # Intermediate
         else: 
             Allele_states.append(length_state if length_state != 0 else 1)
 
-
-    ### Determining the Subject condition
-    allele_state_set = set(Allele_states)
-    if Pathogenic_state == "Dominant":
-        Subject_health = health_states[max(Allele_states)]
-            
-    else: ##Pathogenic_state == "Recessive":
-        if len(allele_state_set) == 1:
-            Subject_health = health_states[Allele_states[0]]
-        elif 0 in allele_state_set: 
-            processed_set = list(allele_state_set - {0})
-            Subject_health = health_states[processed_set[0]] if processed_set else "Unknown"
-        else:
-            Subject_health = health_states[min(Allele_states)]
-            
-    return (Subject_health, inheritance_mode)
+    return (Allele_states, inheritance_mode)

@@ -9,43 +9,7 @@ const safeJson = (s) => {
   try { return JSON.parse(s.replace(/'/g, '"')); } catch { return null; }
 };
 
-const PATHOGENICITY_THEME = {
-  'BENIGN': { bg: '#DEF7EC', text: '#03543F', stroke: '#BCF0DA', label: 'Benign' },
-  'INTERMEDIATE': { bg: '#FEF08A', text: '#713F12', stroke: '#FDE047', label: 'Intermediate' },
-  'PATHOGENIC': { bg: '#FDE8E8', text: '#9B1C1C', stroke: '#FBD5D5', label: 'Pathogenic' },
-  'UNKNOWN': { bg: '#F3F4F6', text: '#374151', stroke: '#E5E7EB', label: 'Unknown' }
-};
-
-// Helper function to format tag with inheritance
-const formatPathogenicityLabel = (pathogenicity, inheritance, gt) => {
-
-  if (!pathogenicity) return "";
-  
-  const baseLabel = pathogenicity.trim();
-  const upperBase = baseLabel.toUpperCase();
-
-  // If the locus was not found in reference BED file or is untracked, DO NOT show a tag
-  if (!baseLabel || upperBase === "NOT_TRACKED" || upperBase === "UNKNOWN" || upperBase === "NA" ) {
-    return "";
-  }
-
-  const inh = inheritance ? inheritance.trim().toUpperCase() : "";
-  if (!inh || inh === "NA") return baseLabel;
-
-  const inheritanceMap = {
-    'AD': 'Dominant',
-    'AR': 'Recessive',
-    'XLR': 'X-linked Recessive',
-    'XLD': 'X-linked Dominant'
-  };
-
-  const formattedInh = inh.split(';').map(code => {
-    const cleanCode = code.trim();
-    return inheritanceMap[cleanCode] || cleanCode;
-  }).join(', ');
-
-  return `${baseLabel} (${formattedInh})`;
-};
+const ALLELE_CIRCLE_COLORS = { 0: "#10B981", 1: "#F59E0B", 2: "#EF4444" };
 
 export default function VisualizerCanvas({ 
   data,               
@@ -126,6 +90,33 @@ export default function VisualizerCanvas({
   const globalRef = data.refTrack;
   let currentYTracker = HEADER_TOP + REF_HEIGHT;
 
+  // Helper function to render allele label with pathogenicity circle indicator
+  const renderAlleleLabel = (sample, trackIdx) => {
+    const alleleStates = Array.isArray(sample?.Pathogenicity) ? sample.Pathogenicity : (safeJson(sample?.Pathogenicity) || []);
+    const stateVal = alleleStates[trackIdx];
+    const circleColor = ALLELE_CIRCLE_COLORS[stateVal];
+
+    const textX = leftMarginOffset - 15;
+    const circleRadius = baseFontSize * 0.35;
+    const circleX = textX - (estimatedCharWidth * 7.2);
+
+    return (
+      <g>
+        {circleColor && (
+          <circle 
+            cx={circleX} 
+            cy={TEXT_VERTICAL_OFFSET - (baseFontSize * 0.3)} 
+            r={circleRadius} 
+            fill={circleColor} 
+          />
+        )}
+        <text x={textX} y={TEXT_VERTICAL_OFFSET} textAnchor="end" style={{ fontSize: `${baseFontSize}px`, fill: "#333", fontWeight: "500", fontFamily: currentFont }}>
+          Allele {trackIdx + 1}
+        </text>
+      </g>
+    );
+  };
+
   return (
     <div style={{ ...containerStyle, paddingBottom: "35px", fontFamily: currentFont }}>
       <svg 
@@ -144,33 +135,6 @@ export default function VisualizerCanvas({
             <text x={leftMarginOffset} y={25} style={{ fontWeight: "bold", fontSize: `${baseFontSize + 2}px`, fill: "#222", fontFamily: currentFont }}>
               {data.samples[selectedSamples[0]]?.SampleID || selectedSamples[0]}
             </text>
-            
-            {(() => {
-              const activeSample = data.samples[selectedSamples[0]];
-              const fullLabel = formatPathogenicityLabel(activeSample?.Pathogenicity, activeSample?.Inheritance);
-              
-              if (!fullLabel) return null;
-
-              // Theme key is derived from the primary pathogenicity value (e.g. BENIGN)
-              const statusKey = (activeSample?.Pathogenicity || "").trim().toUpperCase();
-              const theme = PATHOGENICITY_THEME[statusKey] || PATHOGENICITY_THEME.UNKNOWN;
-              
-              const idStr = activeSample?.SampleID || selectedSamples[0];
-              const xOffset = leftMarginOffset + (idStr.length * (estimatedCharWidth + 1)) + 25;
-
-              // Calculate width dynamically based on label length
-              const badgePadding = 20;
-              const badgeWidth = Math.max(90, (fullLabel.length * (estimatedCharWidth * 0.85)) + badgePadding);
-
-              return (
-                <g transform={`translate(${xOffset}, 10)`}>
-                  <rect width={badgeWidth} height="20" rx="8" fill={theme.bg} stroke={theme.stroke} strokeWidth="1" />
-                  <text x={badgeWidth / 2} y="14" textAnchor="middle" style={{ fill: theme.text, fontSize: `${baseFontSize - 2}px`, fontWeight: "800", fontFamily: currentFont }}>
-                    {fullLabel}
-                  </text>
-                </g>
-              );
-            })()}
           </g>
         )}
 
@@ -219,9 +183,7 @@ export default function VisualizerCanvas({
 
                   return (
                     <g key={`decomp-${trackIdx}`} transform={`translate(0, ${currentTrackY})`}>
-                      <text x={leftMarginOffset - 15} y={TEXT_VERTICAL_OFFSET} textAnchor="end" style={{ fontSize: `${baseFontSize}px`, fill: "#333", fontWeight: "500", fontFamily: currentFont }}>
-                        Allele {trackIdx + 1}
-                      </text>
+                      {renderAlleleLabel(sample, trackIdx)}
                       <DecompositionPlot
                         decompRef={null} decompA1={track} decompA2={null} alleleLenRef={0} alleleLen1={displayLen} alleleLen2={0}
                         scaleX={scaleX} leftMargin={leftMarginOffset} colorMap={colorMap} refMotif={data.Motif} yOffset={0} rowGap={0}
@@ -258,9 +220,7 @@ export default function VisualizerCanvas({
 
                   return (
                     <g key={`meth-${trackIdx}`} transform={`translate(0, ${currentTrackY})`}>
-                      <text x={leftMarginOffset - 15} y={TEXT_VERTICAL_OFFSET} textAnchor="end" style={{ fontSize: `${baseFontSize}px`, fill: "#333", fontWeight: "500", fontFamily: currentFont }}>
-                        Allele {trackIdx + 1}
-                      </text>
+                      {renderAlleleLabel(sample, trackIdx)}
                       <MethylationPlot
                         meth1={mTrack} bgWidth1={trackPixelWidth} scaleX={scaleX} leftMargin={leftMarginOffset}
                         yStart={0} getColor={getMethylationColor} onHoverX={onHoverX} baseFontSize={baseFontSize}
@@ -296,33 +256,6 @@ export default function VisualizerCanvas({
                   {trackCount > 2 && <tspan fill="#666" fontWeight="normal" fontSize={`${baseFontSize - 2}px`}> ({trackCount} alleles detected)</tspan>}
                 </text>
 
-                {/* BADGE IS RENDERED ONLY IN DECOMPOSITION MODE (COMBINED MODE HAS IT TOP-LEVEL) */}
-                {isDecomp && (() => {
-                  const fullLabel = formatPathogenicityLabel(sample.Pathogenicity, sample.Inheritance);
-                  
-                  if (!fullLabel) return null;
-
-                  const statusKey = (sample.Pathogenicity || "").trim().toUpperCase();
-                  const theme = PATHOGENICITY_THEME[statusKey] || PATHOGENICITY_THEME.UNKNOWN;
-                  
-                  const idLength = sample.SampleID ? sample.SampleID.length : 10;
-                  const xOffset = leftMarginOffset + (idLength * estimatedCharWidth) + 25;
-                  const yBadgePos = (baseFontSize * 1.4) - 13;
-
-                  // Calculate width dynamically based on label length
-                  const badgePadding = 20;
-                  const badgeWidth = Math.max(90, (fullLabel.length * (estimatedCharWidth * 0.85)) + badgePadding);
-
-                  return (
-                    <g transform={`translate(${xOffset}, ${yBadgePos})`}>
-                      <rect width={badgeWidth} height="20" rx="8" fill={theme.bg} stroke={theme.stroke} strokeWidth="1" />
-                      <text x={badgeWidth / 2} y="14" textAnchor="middle" style={{ fill: theme.text, fontSize: `${baseFontSize - 2}px`, fontWeight: "800", fontFamily: currentFont }}>
-                        {fullLabel}
-                      </text>
-                    </g>
-                  );
-                })()}
-
                 {sample.parsedDecomp.map((track, trackIdx) => {
                   const currentTrackY = sampleLabelHeight + (trackIdx * (TRACK_HEIGHT + TRACK_GAP));
                   
@@ -332,9 +265,7 @@ export default function VisualizerCanvas({
 
                     return (
                       <g key={trackIdx} transform={`translate(0, ${currentTrackY})`}>
-                        <text x={leftMarginOffset - 15} y={TEXT_VERTICAL_OFFSET} textAnchor="end" style={{ fontSize: `${baseFontSize}px`, fill: "#333", fontFamily: currentFont }}>
-                          Allele {trackIdx + 1}
-                        </text>
+                        {renderAlleleLabel(sample, trackIdx)}
                         <DecompositionPlot
                           decompRef={null} decompA1={track} decompA2={null} alleleLenRef={0} alleleLen1={displayLen} alleleLen2={0}
                           scaleX={scaleX} leftMargin={leftMarginOffset} colorMap={colorMap} refMotif={data.Motif} yOffset={0} rowGap={0}
@@ -362,9 +293,7 @@ export default function VisualizerCanvas({
 
                     return (
                       <g key={trackIdx} transform={`translate(0, ${currentTrackY})`}>
-                        <text x={leftMarginOffset - 15} y={TEXT_VERTICAL_OFFSET} textAnchor="end" style={{ fontSize: `${baseFontSize}px`, fill: "#333", fontFamily: currentFont }}>
-                          Allele {trackIdx + 1}
-                        </text>
+                        {renderAlleleLabel(sample, trackIdx)}
                         <MethylationPlot
                           meth1={mTrack} bgWidth1={trackPixelWidth} scaleX={scaleX} leftMargin={leftMarginOffset}
                           yStart={0} getColor={getMethylationColor} onHoverX={onHoverX} baseFontSize={baseFontSize}
