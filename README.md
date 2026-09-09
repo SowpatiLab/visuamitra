@@ -37,7 +37,7 @@ source venv/bin/activate  # On Windows use: venv\Scripts\activate
 ```
 
 ### Install the package
-**Latest Patch (v1.0.4-patch)**
+**Latest version (v1.0.4-patch)**
 ```
 pip install https://github.com/SowpatiLab/visuamitra/archive/refs/tags/v1.0.4-patch.tar.gz
 ```
