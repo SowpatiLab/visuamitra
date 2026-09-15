@@ -30,3 +30,4 @@ visuamitra = ["frontend/build/**/*"]
 
 [tool.setuptools.packages.find]
 where = ["src"]
+exclude = ["visuamitra.frontend.node_modules*"]
