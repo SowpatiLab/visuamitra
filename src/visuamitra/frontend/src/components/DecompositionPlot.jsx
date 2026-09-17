@@ -75,9 +75,9 @@ export default function DecompositionPlot({
           // COLOR RESOLUTION:
           // Strictly force grey (#bdbdbd) for non-repetitive sequences.
           let fillColor = "#bdbdbd";
-          if (!isNonRepetitive) {
-            const canonicalKey = getCanonicalMotif(rawMotif, refMotif);
-            fillColor = colorMap[canonicalKey] || "#bdbdbd";
+          if (!isNonRepetitive && colorMap) {
+            const canonicalKey = getCanonicalMotif(rawMotif, refMotif || rawMotif);
+            fillColor = colorMap[canonicalKey] || colorMap[rawMotif] || "#bdbdbd";
           }
 
           return (
