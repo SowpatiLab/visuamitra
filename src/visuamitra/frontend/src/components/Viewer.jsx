@@ -29,6 +29,7 @@ export default function Viewer() {
 
   const [showSettings, setShowSettings] = useState(false);
   const [viewMode, setViewMode] = useState("decomposition");
+  const [tagViewMode, setTagViewMode] = useState("sample");
   const [zoomFactor, setZoomFactor] = useState(1);
   const [settings, setSettings] = useState({
     palette: "Observable10", font: "Arial, sans-serif", theme: "light", methPalette: "Viridis", baseFontSize: 15
@@ -56,6 +57,15 @@ export default function Viewer() {
     };
     return paletteMap[settings.palette] || paletteMap["Observable10"];
   }, [settings.palette]);
+
+  const [motifOverrideColors, setMotifOverrideColors] = useState({});
+
+  const handleOverrideColorChange = (motif, newColor) => {
+    setMotifOverrideColors(prev => ({
+      ...prev,
+      [motif]: newColor
+    }));
+  };
 
   const {
     loading, error, setError, pages, currentPageIndex, selectedIdx,
@@ -134,12 +144,14 @@ export default function Viewer() {
 
     const generatedMap = generateMotifColors(Array.from(allMotifs), settings.palette, row.Motif);
 
-    if (canonicalRef && expectedMotifOverrideColor) {
-      generatedMap[canonicalRef] = expectedMotifOverrideColor;
-    }
+    Object.entries(motifOverrideColors).forEach(([motif, overrideColor]) => {
+      if (overrideColor) {
+        generatedMap[motif] = overrideColor;
+      }
+    });
 
     return generatedMap;
-  }, [row.Chrom, row.Start, row.End, row.Motif, pages, settings.palette, expectedMotifOverrideColor]);
+  }, [row.Chrom, row.Start, row.End, row.Motif, pages, settings.palette, motifOverrideColors]);
 
   const visibleColorMap = useMemo(() => {
     return getVisibleColorMap(row, paginatedIndices, availableSamples, colorMap);
@@ -306,6 +318,15 @@ export default function Viewer() {
               <button onClick={() => setViewMode("overview")} style={{ ...(viewMode === "overview" ? activeTabStyle : inactiveTabStyle), fontSize: "inherit" }}>
                 Overview 
               </button>
+              {/* TOGGLE BUTTON FOR SAMPLE VS ALLELE TAGS */}
+              {viewMode !== "overview" && (
+                <button
+                  onClick={() => setTagViewMode(prev => prev === "sample" ? "allele" : "sample")}
+                  style={toggleButtonStyle}
+                >
+                  Tags: {tagViewMode === "sample" ? "Sample-Level" : "Allele-Level"}
+                </button>
+              )}
             </div>
 
             <div style={{ paddingBottom: "0.25em" }}> 
@@ -321,6 +342,7 @@ export default function Viewer() {
           <VisualizerCanvas 
             data={row}
             viewMode={effectiveViewMode}
+            tagViewMode={tagViewMode}
             selectedSamples={
               viewMode === "overview" 
                 ? selectedSampleIndices.map(idx => availableSamples[idx]) 
@@ -349,8 +371,8 @@ export default function Viewer() {
             hasDecomposition={viewMode === "decomposition" || isSingleSample} 
             showMethylation={viewMode === "methylation" || isSingleSample}
             paletteSwatches={activePaletteSwatches}
-            overrideColor={expectedMotifOverrideColor}
-            onOverrideColorChange={setExpectedMotifOverrideColor}
+            overrideColorMap={motifOverrideColors}
+            onOverrideColorChange={handleOverrideColorChange}
             hasAmbiguousMeth={
               selectedSampleIndices.some(idx => {
                 const sampleName = availableSamples[idx];
@@ -426,4 +448,16 @@ const paginationButtonStyle = {
   fontWeight: "500",
   transition: "all 0.15s ease-in-out",
   boxShadow: "0 0.0625em 0.125em rgba(0,0,0,0.05)"
+};
+
+const toggleButtonStyle = {
+  marginLeft: "0.75em",
+  padding: "0.4em 0.8em",
+  background: "#f0f4f8",
+  color: "#1e293b",
+  border: "0.0625em solid #cbd5e1",
+  borderRadius: "0.25em",
+  cursor: "pointer",
+  fontWeight: "600",
+  fontSize: "inherit"
 };

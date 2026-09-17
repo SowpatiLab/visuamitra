@@ -40,9 +40,23 @@ export function parseTSV(text) {
         return [];
       }
     };
+
     const sequences = safeParse(obj.Sequences);
     const meanMeth = safeParse(obj.Mean_meth);
     const rawDecomp = safeParse(obj.Decomp_info);
+
+    // Extract and parse AllelePathogenicity 
+    const rawAllelePathStr = obj.AllelePathogenicity || fields[19] || "[]";
+    let parsedAllelePath = safeParse(rawAllelePathStr);
+
+    // Fallback parser if safeParse returned an empty array for string input like "0,1"
+    if ((!parsedAllelePath || parsedAllelePath.length === 0) && rawAllelePathStr && rawAllelePathStr !== "[]") {
+      parsedAllelePath = rawAllelePathStr
+        .replace(/[\[\]']/g, "")
+        .split(",")
+        .map(s => s.trim())
+        .filter(Boolean);
+    }
 
     const transformTrack = (arr, rMotif) => {
       if (!Array.isArray(arr) || !Array.isArray(arr[0]) || !Array.isArray(arr[1])) {
@@ -63,11 +77,11 @@ export function parseTSV(text) {
         const rawUpper = String(m || "").toUpperCase().trim();
         const mLen = rawUpper.length || 1;
         const calculatedCopies = len / mLen;
-        // Identify non-repetitive context
+        
         const isNonRepetitive = calculatedCopies <= 1 || rawUpper.includes("N_REPETITIVE") || rawUpper.includes("FLANK");
         const activeMotifKey = isNonRepetitive ? rawUpper : getCanonicalMotif(m, safeRefMotif);
         const copies = isNonRepetitive ? calculatedCopies : len / (activeMotifKey.length || 1);
-        // Group adjacent matching motifs
+        
         if (finalMotifs.length > 0 && finalMotifs[finalMotifs.length - 1] === activeMotifKey) {
           finalLengths[finalLengths.length - 1] += len;
           finalCopies[finalCopies.length - 1] += copies;
@@ -81,51 +95,46 @@ export function parseTSV(text) {
       return { motifs: finalMotifs, lengths: finalLengths, copies: finalCopies };
     };
 
-   // Map raw tracks through transformer
     let parsedDecomp = Array.isArray(rawDecomp) 
       ? rawDecomp.map(track => transformTrack(track, obj.Motif)) 
       : [];
 
-    // Keep ALL elements because backend payload doesn't include a Ref track in Decomp_info
     const sampleAlleleTracks = parsedDecomp.slice(1);
     const isDiploidOrMore = obj.GT && (obj.GT.includes("|") || obj.GT.includes("/"));
 
-    // If it's a standard homozygous variant (1 track comes back), duplicate it for diploid display layout
+    // Align AllelePathogenicity array length when tracks are duplicated 
     if (sampleAlleleTracks.length === 1 && isDiploidOrMore) {
       sampleAlleleTracks.push(JSON.parse(JSON.stringify(sampleAlleleTracks[0])));
+      if (parsedAllelePath.length === 1) {
+        parsedAllelePath.push(parsedAllelePath[0]);
+      }
     }
 
-    // Fallback safeguard if empty
     if (sampleAlleleTracks.length === 0) {
       sampleAlleleTracks.push({ motifs: [], lengths: [], copies: [] });
     }
       
-    // Keep all elements from sequences array as well (no .slice(1))
     const trackLengths = (Array.isArray(sequences) ? sequences : []).map(seq => seq?.length || 0);
     
-    // Ensure trackLengths array matches the length of sampleAlleleTracks exactly
     while (trackLengths.length < sampleAlleleTracks.length) {
       trackLengths.push(0);
     }
     if (trackLengths.length > sampleAlleleTracks.length) {
       trackLengths.length = sampleAlleleTracks.length;
     }
-    // Extract the allele lengths that HEAD needs
+
     const aLen1 = Number(obj.Allele_Len1) || 0;
     const aLen2 = Number(obj.Allele_Len2) || 0;
 
-    // Parse the LPM metrics and track lengths
     const rawLpmStr = obj.LPM || "NA";
     const lpmArray = rawLpmStr !== "NA" ? rawLpmStr.split(/[:|,/]/) : ["NA", "NA"];
     const maxSampleTrackLen = trackLengths.length > 0 ? Math.max(...trackLengths) : 0;
-    // Extract Pathogenicity and Inheritance explicitly
-    const pathogenicityVal = obj.Pathogenicity ? obj.Pathogenicity.trim() : "NA";
     
-    // Fallback: If obj.Inheritance is undefined, grab the 19th field (fields[18])
+    const pathogenicityVal = obj.Pathogenicity ? obj.Pathogenicity.trim() : "NA";
     const rawInheritance = obj.Inheritance || fields[18] || "NA";
     const inheritanceVal = rawInheritance ? rawInheritance.trim() : "NA";
 
-    // Build the single combined sampleData object
+    // Attach AllelePathogenicity to sampleData 
     const sampleData = { 
       ...obj, 
       alleleLen1: aLen1, 
@@ -136,12 +145,12 @@ export function parseTSV(text) {
       meanMeth: meanMeth,
       SampleIdx: sIdx,
       parsedDecomp: sampleAlleleTracks,
-      Pathogenicity:pathogenicityVal,
-      Inheritance: inheritanceVal
+      Pathogenicity: pathogenicityVal,
+      Inheritance: inheritanceVal,
+      AllelePathogenicity: parsedAllelePath // <-- NOW ATTACHED
     };
 
     if (!groupedData.has(locusKey)) {
-      // Use local transformTrack to ensure global reference is also squashed
       const actualRefTrack = (Array.isArray(rawDecomp) && rawDecomp.length > 0)
           ? transformTrack(rawDecomp[0], obj.Motif)
           : { motifs: [], lengths: [], copies: [] };
@@ -152,6 +161,7 @@ export function parseTSV(text) {
         Motif: obj.Motif || "NA",
         Pathogenicity: pathogenicityVal,
         Inheritance: inheritanceVal,
+        AllelePathogenicity: parsedAllelePath,
         samples: {},
         refTrack: actualRefTrack,
         maxAlleleLen: maxSampleTrackLen

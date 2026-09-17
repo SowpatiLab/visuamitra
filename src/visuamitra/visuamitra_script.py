@@ -751,7 +751,7 @@ def visuamitra_data_extract_stream(file, chr=None, start_coord=None, end_coord=N
             'Chrom', 'Start', 'End', 'ID', 'Motif', 'Motif_size',
             'SampleID', 'SampleIdx', 'GT',
             'Sequences', 'Read_support', 'Decomp_seq', 'Decomp_info',
-            'Unique_motifs', 'Mean_meth', 'Meth_tag', 'LPM', 'Pathogenicity', 'Inheritance'
+            'Unique_motifs', 'Mean_meth', 'Meth_tag', 'LPM', 'Pathogenicity', 'Inheritance', 'AllelePathogenicity'
         ]
         yield "\t".join(header) + "\n"
     else:
@@ -815,11 +815,12 @@ def visuamitra_data_extract_stream(file, chr=None, start_coord=None, end_coord=N
                     s_name_full = total_samples[s_idx] if s_idx < len(total_samples) else f"S{s_idx}"
                     s_name_clean = s_name_full
 
-                    health_status, inheritance_val = data[9]
+                    health_status, inheritance_val, allele_states = data[9]
 
                     if health_status == "NOT_TRACKED":
                         pathogenicity_val = "NOT_TRACKED"
                         inheritance_str = "NA"
+                        allele_patho_str = "[]"
                     else:
                         pathogenicity_val = health_status if health_status else "NA"
                         
@@ -830,12 +831,15 @@ def visuamitra_data_extract_stream(file, chr=None, start_coord=None, end_coord=N
                         else:
                             inheritance_str = inh_raw
 
+                        # Format directly as string representation [0, 1]
+                        allele_patho_str = str(allele_states) if allele_states else "[]"
+
                     values = [
                         CHROM, START, END, ID, MOTIF, MOTIF_SIZE,
                         s_name_clean, s_idx, data[0], 
                         data[1], data[2], data[3], data[4], 
                         data[5], data[6], data[7], data[8],
-                        pathogenicity_val, inheritance_str
+                        pathogenicity_val, inheritance_str, allele_patho_str
                     ]
                     yield "\t".join(map(str, values)) + "\n"
                     row_yielded_count += 1
@@ -1002,9 +1006,9 @@ def sample_collector(sample_fields, sample_index, format_fields, ALT, MOTIF_DECO
     return SAMPLE_dict
 
 def pathogenicity_check(coordinates, subject_status):
-    # Mapping definitions for pathogenic length and motif states
-    length_range = [0, 1, 2]  # [Benign/Normal, Intermediate, Pathogenic]
-    motif_range = [1, 2, 3]   # Motif severity state mappings
+    length_range = [0, 1, 2]  # [0: Benign, 1: Intermediate, 2: Pathogenic]
+    motif_range = [1, 2, 3]
+    health_states = {0: "Benign", 1: "Intermediate", 2: "Pathogenic"}
 
     vcf_chrom = coordinates[0]
     vcf_start = int(coordinates[1])
@@ -1012,17 +1016,17 @@ def pathogenicity_check(coordinates, subject_status):
 
     patho_row = []
     match_found = False
-    
+
     try:
         records = list(threshold_tbx.fetch(vcf_chrom, vcf_start, vcf_end))        
         for row in records:
             row_parts = row.split("\t")
             db_start = int(row_parts[1])
             db_end = int(row_parts[2])
-            
+
             overlap_start = max(vcf_start, db_start)
             overlap_end = min(vcf_end, db_end)
-            
+
             if overlap_start < overlap_end:
                 patho_row = row_parts
                 match_found = True
@@ -1030,11 +1034,9 @@ def pathogenicity_check(coordinates, subject_status):
     except Exception as e:
         print(f"[TABIX CRASH] Failed to read from threshold_tbx index: {str(e)}")
 
-    # Fallback when no threshold catalog record exists
     if not match_found or len(patho_row) < 16:
-        return "NOT_TRACKED", "NA"
+        return "NOT_TRACKED", "NA", []
 
-    # Assign variables from the valid matched row
     disease_id = patho_row[5]
     pathogenic_ranges = [int(i) if i != 'NA' else -1 for i in patho_row[6:12]]
     susceptible_motifs = [set(i.split(',')) if i != 'NA' else set() for i in patho_row[12:15]]
@@ -1042,46 +1044,56 @@ def pathogenicity_check(coordinates, subject_status):
 
     inheritance_mode = patho_row[16] if len(patho_row) > 16 else "NA"
 
-    ## Determining the pathogenicity for each allele
+    # 1. EVALUATE INDIVIDUAL ALLELE-SPECIFIC TAGS
     Allele_states = []
+    benign_min, benign_max = pathogenic_ranges[0], pathogenic_ranges[1]
+    inter_min, inter_max = pathogenic_ranges[2], pathogenic_ranges[3]
+    path_min, path_max = pathogenic_ranges[4], pathogenic_ranges[5]
+
     for each_allele in subject_status:
-        subject_motif = set(get_cyclic_variants(each_allele[0]))
         subject_copy = each_allele[1]
-        
-        ## Checking the length range based on copy number
-        boolean_range = [
-            (pathogenic_ranges[0] <= subject_copy <= pathogenic_ranges[1]), 
-            (pathogenic_ranges[2] <= subject_copy <= pathogenic_ranges[3]), 
-            (pathogenic_ranges[4] <= subject_copy or pathogenic_ranges[5] <= subject_copy)
-        ]        
-        if any(boolean_range):
-            length_state = length_range[boolean_range.index(True)]
-        ## if all values are False, then check the nearby length range
-        elif -1 not in pathogenic_ranges: 
-            diff_with_benign_intermediate = [
-                abs(pathogenic_ranges[1] - subject_copy), 
-                abs(pathogenic_ranges[3] - subject_copy)
-            ]
-            length_state = length_range[diff_with_benign_intermediate.index(min(diff_with_benign_intermediate))]
-        else: 
-            length_state = 0 # Safe fallback to Unknown / Benign
 
-        ## Checking the motif type
-        motif_state = 0 
-        for midx, each_motif_group in enumerate(susceptible_motifs):
-            if not each_motif_group: 
-                continue
-            if len(subject_motif & each_motif_group) > 0:
-                motif_state = motif_range[midx]
-                break
+        # Determine individual allele pathogenicity state based purely on length bounds
+        if path_min != -1 and subject_copy >= path_min:
+            allele_length_state = 2
+        elif inter_min != -1 and inter_max != -1 and (inter_min <= subject_copy <= inter_max):
+            allele_length_state = 1
+        elif benign_max != -1 and subject_copy <= benign_max:
+            allele_length_state = 0
+        else:
+            # Safe distance fallback ignoring -1 placeholders
+            valid_upper_bounds = [b for b in [benign_max, inter_max] if b != -1]
+            if valid_upper_bounds and subject_copy <= max(valid_upper_bounds):
+                allele_length_state = 0
+            else:
+                allele_length_state = 0
 
-        if motif_state == 0: 
-            Allele_states.append(0) # Benign
-        elif motif_state == 1: 
-            Allele_states.append(length_state)
-        elif motif_state == 2: 
-            Allele_states.append(1) # Intermediate
-        else: 
-            Allele_states.append(length_state if length_state != 0 else 1)
+        Allele_states.append(allele_length_state)
 
-    return (Allele_states, inheritance_mode)
+    # Ensure Allele_states is non-empty
+    if not Allele_states:
+        return "NOT_TRACKED", inheritance_mode, []
+
+    # 2. EVALUATE OVERALL SAMPLE-SPECIFIC TAG
+    allele_state_set = set(Allele_states)
+    
+    is_dominant = (
+        "DOMINANT" in Pathogenic_state.upper() or 
+        "AD" in inheritance_mode.upper() or 
+        "XLD" in inheritance_mode.upper()
+    )
+
+    if is_dominant:
+        # Dominant: Maximum severity allele determines overall status
+        Subject_health = health_states.get(max(Allele_states), "Benign")
+    else: 
+        # Recessive: Requires both alleles to be pathogenic/intermediate
+        if len(allele_state_set) == 1:
+            Subject_health = health_states.get(Allele_states[0], "Benign")
+        elif 0 in allele_state_set: 
+            # If carrying one benign allele in recessive, overall sample stays Benign
+            Subject_health = "Benign"
+        else:
+            Subject_health = health_states.get(min(Allele_states), "Benign")
+
+    return (Subject_health, inheritance_mode, Allele_states)
