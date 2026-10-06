@@ -117,6 +117,10 @@ async def vcf_to_tsv_cursor(
     start: Optional[int] = Form(None),
     end: Optional[int] = Form(None),
     samples: Optional[str] = Form(None),
+    benign_max: Optional[int] = Form(None),
+    inter_min: Optional[int] = Form(None),
+    inter_max: Optional[int] = Form(None),
+    path_min: Optional[int] = Form(None),
 ):
     sample_indices = [0]
     if samples:
@@ -274,12 +278,25 @@ async def vcf_to_tsv_cursor(
     except ValueError:
         start_index = 0
 
-    collected = []
     next_cursor = None
     seen_header = False
     count = 0
-    header_line = "Chrom\tStart\tEnd\tID\tMotif\tMotif_size\tSampleID\tSampleIdx\tGT\tSequences\tRead_support\tDecomp_seq\tDecomp_info\tUnique_motifs\tMean_meth\tMeth_tag\tLPM\tPathogenicity\tInheritance\n"
-    collected = [header_line]
+    header_line = "Chrom\tStart\tEnd\tID\tMotif\tMotif_size\tSampleID\tSampleIdx\tGT\tSequences\tRead_support\tDecomp_seq\tDecomp_info\tUnique_motifs\tMean_meth\tMeth_tag\tLPM\tPathogenicity\tInheritance\tAllelePathogenicity\n"
+    collected = []
+    # Only append header line on initial page load (when no cursor exists)
+    if not last_cursor:
+        collected.append(header_line)
+
+    # Construct custom_cutoffs dictionary if any limit is provided
+    custom_cutoffs = {}
+    if benign_max is not None: custom_cutoffs["benign_max"] = benign_max
+    if inter_min is not None: custom_cutoffs["inter_min"] = inter_min
+    if inter_max is not None: custom_cutoffs["inter_max"] = inter_max
+    if path_min is not None: custom_cutoffs["path_min"] = path_min
+
+    # If no cutoffs were supplied, set to None so default BED thresholds are used
+    if not custom_cutoffs:
+        custom_cutoffs = None
 
     # MULTI-CHROMOSOME STREAMING LOOP 
     # This loop allows to jump to the next chr at the end of current chr
@@ -304,7 +321,8 @@ async def vcf_to_tsv_cursor(
             start_coord=iter_start, 
             end_coord=end if (chr and current_iter_chr == chr) else None,
             samples_index=sample_indices,
-            include_header=False
+            include_header=False,
+            custom_cutoffs=custom_cutoffs
         ):
             if isinstance(raw_line, bytes):
                 raw_line = raw_line.decode("utf-8")

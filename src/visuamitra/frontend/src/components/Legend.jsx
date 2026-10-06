@@ -8,11 +8,13 @@ export default function Legend({
    hasAmbiguousMeth, 
    methPalette, 
    methThreshold, 
+   customCutoff,
+   onCutoffChange,
    showMethylation, 
    paletteSwatches = [], 
    overrideColorMap = {}, 
    onOverrideColorChange,
-   baseFontSize = 13 // Receives explicit numeric font-sizes (e.g. 11, 12, 13...)
+   baseFontSize = 13
 }) {
   const canonicalMotifs = useMemo(() => {
     if (!colorMap) return [];
@@ -43,6 +45,11 @@ export default function Legend({
   const smallTextFontSizeEm = `${(Math.max(9, baseFontSize - 3) / baseFontSize).toFixed(4)}em`;
   const badgeFontSizeEm = `${(Math.max(10, baseFontSize - 1) / baseFontSize).toFixed(4)}em`;
 
+  const rawThreshold = customCutoff ?? methThreshold;
+  const displayCutoff = typeof rawThreshold === "object"
+    ? (rawThreshold?.methCutoff ?? rawThreshold?.cutoff ?? rawThreshold?.methylationCutoff ?? "")
+    : rawThreshold;
+
   return (
     <div
       className="legend-container"
@@ -68,100 +75,100 @@ export default function Legend({
       {hasDecomposition && (
         <div style={{ display: "flex", flexDirection: "column", gap: "0.375em", minWidth: 0 }}>
           <div style={{ display: "flex", alignItems: "center", justifyContent: "space-between", minWidth: 0 }}>
-  <div style={{ fontWeight: "700", fontSize: headerFontSizeEm, color: "#4a5568", textTransform: "uppercase", letterSpacing: "0.038em" }}>
-    Motifs
-  </div>
-  <button 
-    onClick={() => setActivePickerMotif(prev => prev ? null : canonicalMotifs[0]?.[0])}
-    data-html2canvas-ignore="true"
-    title="Customize motif colors- Click on motif & select color"
-    style={{
-      background: "none", 
-      border: "none", 
-      color: "#328547", 
-      fontSize: smallTextFontSizeEm, 
-      cursor: "pointer", 
-      padding: "0 0.125em", 
-      fontWeight: "700", 
-      flexShrink: 0
-    }}
-  >
-    {activePickerMotif ? "×" : "🎨"}
-  </button>
-</div>
+            <div style={{ fontWeight: "700", fontSize: headerFontSizeEm, color: "#4a5568", textTransform: "uppercase", letterSpacing: "0.038em" }}>
+              Motifs
+            </div>
+            <button 
+              onClick={() => setActivePickerMotif(prev => prev ? null : canonicalMotifs[0]?.[0])}
+              data-html2canvas-ignore="true"
+              title="Click to customize motif colors"
+              style={{
+                background: "none", 
+                border: "none", 
+                color: "#328547", 
+                fontSize: smallTextFontSizeEm, 
+                cursor: "pointer", 
+                padding: "0 0.125em", 
+                fontWeight: "700", 
+                flexShrink: 0
+              }}
+            >
+              {activePickerMotif ? "×" : "🎨"}
+            </button>
+          </div>
           <div style={{ display: "flex", flexDirection: "column", gap: "0.375em", minWidth: 0 }}>
             {canonicalMotifs.map(([motif, defaultColor]) => {
-  const currentColor = overrideColorMap[motif] || defaultColor;
-  const isPickerOpen = activePickerMotif === motif;
+              const currentColor = overrideColorMap[motif] || defaultColor;
+              const isPickerOpen = activePickerMotif === motif;
 
-  return (
-    <div key={motif} style={{ display: "flex", flexDirection: "column", gap: "0.125em", minWidth: 0 }}>
-      <div style={{ display: "flex", alignItems: "center", justifyContent: "space-between", gap: "0.375em", minWidth: 0 }}>
-        <div 
-          onClick={() => setActivePickerMotif(isPickerOpen ? null : motif)}
-          style={{ display: "flex", alignItems: "center", minWidth: 0, flexGrow: 1, cursor: "pointer" }}
-        >
-          <div 
-            style={{ 
-              width: boxDimensionEm, 
-              height: boxDimensionEm, 
-              background: currentColor, 
-              border: isPickerOpen ? "0.125em solid #2b6cb0" : "0.0625em solid #4a5568", 
-              marginRight: "0.375em", 
-              borderRadius: "0.125em",
-              flexShrink: 0
-            }} 
-          />
-          <span style={{ 
-            fontSize: "1em", 
-            fontWeight: isPickerOpen ? "700" : "500", 
-            color: "#2d3748",
-            whiteSpace: "nowrap",
-            overflow: "hidden",
-            textOverflow: "ellipsis"
-          }} title={motif}>
-            {motif}
-          </span>
-        </div>
-      </div>
+              return (
+                <div key={motif} style={{ display: "flex", flexDirection: "column", gap: "0.125em", minWidth: 0 }}>
+                  <div style={{ display: "flex", alignItems: "center", justifyContent: "space-between", gap: "0.375em", minWidth: 0 }}>
+                    <div 
+                      onClick={() => setActivePickerMotif(isPickerOpen ? null : motif)}
+                      style={{ display: "flex", alignItems: "center", minWidth: 0, flexGrow: 1, cursor: "pointer" }}
+                    >
+                      <div 
+                        style={{ 
+                          width: boxDimensionEm, 
+                          height: boxDimensionEm, 
+                          background: currentColor, 
+                          border: isPickerOpen ? "0.125em solid #2b6cb0" : "0.0625em solid #4a5568", 
+                          marginRight: "0.375em", 
+                          borderRadius: "0.125em",
+                          flexShrink: 0
+                        }} 
+                      />
+                      <span style={{ 
+                        fontSize: "1em", 
+                        fontWeight: isPickerOpen ? "700" : "500", 
+                        color: "#2d3748",
+                        whiteSpace: "nowrap",
+                        overflow: "hidden",
+                        textOverflow: "ellipsis"
+                      }} title={motif}>
+                        {motif}
+                      </span>
+                    </div>
+                  </div>
 
-      {/* Swatch Picker Dropdown */}
-      {isPickerOpen && (
-        <div
-          data-html2canvas-ignore="true" 
-          style={{ 
-            display: "grid", 
-            gridTemplateColumns: "repeat(5, 1fr)", 
-            gap: "0.1875em", 
-            background: "#f7fafc", 
-            padding: "0.25em", 
-            border: "0.0625em solid #e2e8f0", 
-            borderRadius: "0.25em",
-            marginTop: "0.125em"
-        }}>
-          {paletteSwatches.map((swatchColor) => (
-            <div
-              key={swatchColor}
-              onClick={() => {
-                if (onOverrideColorChange) {
-                  onOverrideColorChange(motif, swatchColor);
-                }
-              }}
-              style={{
-                height: "0.875em",
-                background: swatchColor,
-                borderRadius: "0.125em",
-                cursor: "pointer",
-                border: currentColor === swatchColor ? "0.125em solid #1a202c" : "0.0625em solid #cbd5e0",
-                boxSizing: "border-box"
-              }}
-            />
-          ))}
-        </div>
-      )}
-    </div>
-  );
-})}
+                  {/* Swatch Picker Dropdown */}
+                  {isPickerOpen && (
+                    <div
+                      data-html2canvas-ignore="true" 
+                      style={{ 
+                        display: "grid", 
+                        gridTemplateColumns: "repeat(5, 1fr)", 
+                        gap: "0.1875em", 
+                        background: "#f7fafc", 
+                        padding: "0.25em", 
+                        border: "0.0625em solid #e2e8f0", 
+                        borderRadius: "0.25em",
+                        marginTop: "0.125em"
+                    }}>
+                      {paletteSwatches.map((swatchColor) => (
+                        <div
+                          key={swatchColor}
+                          onClick={() => {
+                            if (onOverrideColorChange) {
+                              onOverrideColorChange(motif, swatchColor);
+                            }
+                          }}
+                          style={{
+                            height: "0.875em",
+                            background: swatchColor,
+                            borderRadius: "0.125em",
+                            cursor: "pointer",
+                            border: currentColor === swatchColor ? "0.125em solid #1a202c" : "0.0625em solid #cbd5e0",
+                            boxSizing: "border-box"
+                          }}
+                        />
+                      ))}
+                    </div>
+                  )}
+                </div>
+              );
+            })}
             
             {/* Non-repetitive seq block */}
             <div style={{ display: "flex", alignItems: "center", minWidth: 0 }}>

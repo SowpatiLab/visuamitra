@@ -1,21 +1,19 @@
 import React, { useState, useMemo, useRef } from "react";
 import { useLocation } from "react-router-dom";
-
 import { useVisuaMiTRaLogic } from "../hooks/StateLogic";
 import { parseDecompFromTSV } from "../utils/parseDecompInfo";
 import { generateMotifColors, getCanonicalMotif, getMethylationColorFactory, getVisibleColorMap } from "../utils/colorUtils";
-
 import HeaderSection from "./viewer/HeaderSection";
 import NavigationControls from "./viewer/NavigationControls";
 import VisualizerCanvas from "./viewer/VisualizerCanvas";
 import ZoomControls from "./viewer/ZoomControls";
-
 import MetadataDisplay from "./MetaData";
 import ChromosomeIdeogram from "./ChromosomeIdeogram";
 import SettingsPanel from "./SettingsPanel";
 import Legend from "./Legend";
 import SamplePicker from "./SamplePicker";
 import DownloadManager from "./DownloadManager";
+import CutoffModal from "./CutoffModal";
 
 const safeJson = (s) => {
   if (!s) return null;
@@ -36,6 +34,7 @@ export default function Viewer() {
   });
   const [isDropDownOpen, setIsDropDownOpen] = useState(false);
   const [isExporting, setIsExporting] = useState(false);
+  const [isCutoffModalOpen, setIsCutoffModalOpen] = useState(false);
 
   const visualizerRef = useRef(null);
   const legendRef = useRef(null);
@@ -70,7 +69,7 @@ export default function Viewer() {
   const {
     loading, error, setError, pages, currentPageIndex, selectedIdx,
     chr, setChr, start, setStart, endPos, setEndPos,
-    setSelectedIdx, applyRegionFilter, goNext, goPrev, methThreshold,
+    setSelectedIdx, applyRegionFilter, goNext, goPrev, methThreshold, customCutoffs, updateCutoffs, resetCutoffs, defaultCutoffs,
     availableSamples = [],
     selectedSampleIndices = [],
     setSelectedSampleIndices,
@@ -330,8 +329,14 @@ export default function Viewer() {
             </div>
 
             <div style={{ paddingBottom: "0.25em" }}> 
-              <SamplePicker availableSamples={availableSamples} selectedIndices={selectedSampleIndices} onSelectionChange={setSelectedSampleIndices} baseFontSize={currentFontSize} />
+              <SamplePicker 
+                availableSamples={availableSamples} 
+                selectedIndices={selectedSampleIndices} 
+                onSelectionChange={setSelectedSampleIndices} 
+                baseFontSize={currentFontSize} 
+              />
             </div>
+
           </div>
         </div>
       </div>
@@ -363,26 +368,56 @@ export default function Viewer() {
           />
         </div>
 
-        <div ref={legendRef} style={{ flexShrink: 0, width: "max-content", visibility: viewMode === "overview" ? "hidden" : "visible" }}>
-          <Legend 
-            colorMap={visibleColorMap} 
-            refMotif={row?.Motif}
-            methPalette={settings.methPalette} 
-            hasDecomposition={viewMode === "decomposition" || isSingleSample} 
-            showMethylation={viewMode === "methylation" || isSingleSample}
-            paletteSwatches={activePaletteSwatches}
-            overrideColorMap={motifOverrideColors}
-            onOverrideColorChange={handleOverrideColorChange}
-            hasAmbiguousMeth={
-              selectedSampleIndices.some(idx => {
-                const sampleName = availableSamples[idx];
-                return row.samples?.[availableSamples[idx]]?.Meth_tag?.includes("-1");
-              })
-            }
-            methThreshold={methThreshold}
-            baseFontSize={currentFontSize}
-          />
+        <div style={{ flexShrink: 0, width: "max-content", display: "flex", flexDirection: "column", gap: "0.75em", visibility: viewMode === "overview" ? "hidden" : "visible" }}>
+   
+          <button
+            onClick={() => setIsCutoffModalOpen(true)}
+            style={{
+              width: "100%",
+              padding: "0.5em 0.8em",
+              background: "#ffffff",
+              color: "#2e7d32",
+              border: "0.0625em solid #2e7d32",
+              borderRadius: "0.375em",
+              cursor: "pointer",
+              fontWeight: "700",
+              fontSize: `${currentFontSize - 1}px`,
+              display: "flex",
+              alignItems: "center",
+              justifyContent: "center",
+              gap: "0.4em",
+              boxShadow: "0 0.0625em 0.125em rgba(0,0,0,0.05)",
+              transition: "all 0.15s ease-in-out"
+            }}
+          >
+            ⚙ Edit Pathogenicity Cutoffs
+          </button>
+
+          {/* LEGEND SECTION */}
+          <div ref={legendRef}>
+            <Legend 
+              colorMap={visibleColorMap} 
+              refMotif={row?.Motif}
+              methPalette={settings.methPalette} 
+              hasDecomposition={viewMode === "decomposition" || isSingleSample} 
+              showMethylation={viewMode === "methylation" || isSingleSample}
+              paletteSwatches={activePaletteSwatches}
+              overrideColorMap={motifOverrideColors}
+              onOverrideColorChange={handleOverrideColorChange}
+              hasAmbiguousMeth={
+                selectedSampleIndices.some(idx => {
+                  const sampleName = availableSamples[idx];
+                  return row.samples?.[availableSamples[idx]]?.Meth_tag?.includes("-1");
+                })
+              }
+              methThreshold={methThreshold}
+              customCutoff={customCutoffs}         
+              onCutoffChange={updateCutoffs}
+              baseFontSize={currentFontSize}
+            />
+          </div>
         </div>
+
       </div>
       
       {viewMode !== "overview" && (
@@ -393,6 +428,22 @@ export default function Viewer() {
           </div>
         </div>
       )}
+      {/* CUTOFF MODAL DIALOG */}
+      <CutoffModal
+        key={`${row?.Chrom}-${row?.Start}-${row?.End}`}
+        isOpen={isCutoffModalOpen}
+        onClose={() => setIsCutoffModalOpen(false)}
+        cutoffs={customCutoffs}
+        defaultCutoffs={defaultCutoffs}
+        motif={row?.Motif}
+        onApply={(newCutoffs) => {
+          updateCutoffs(newCutoffs);
+        }}
+        onRestore={() => {
+          resetCutoffs();
+        }}
+        baseFontSize={currentFontSize}
+      />
     </div>
   );
 }

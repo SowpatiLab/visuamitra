@@ -1,0 +1,1052 @@
+{
+  "chr1:1435798-1435818": {
+    "benignMax": 2,
+    "interMin": null,
+    "interMax": null,
+    "pathMin": 1,
+    "gene": "HMNR7_VWA1"
+  },
+  "HMNR7_VWA1": {
+    "benignMax": 2,
+    "interMin": null,
+    "interMax": null,
+    "pathMin": 1,
+    "gene": "HMNR7_VWA1"
+  },
+  "chr1:57367043-57367121": {
+    "benignMax": 30,
+    "interMin": null,
+    "interMax": null,
+    "pathMin": 31,
+    "gene": "SCA37_DAB1"
+  },
+  "SCA37_DAB1": {
+    "benignMax": 30,
+    "interMin": null,
+    "interMax": null,
+    "pathMin": 31,
+    "gene": "SCA37_DAB1"
+  },
+  "chr1:94418421-94418444": {
+    "benignMax": 44,
+    "interMin": null,
+    "interMax": null,
+    "pathMin": 118,
+    "gene": "OPDM5_ABCD3"
+  },
+  "OPDM5_ABCD3": {
+    "benignMax": 44,
+    "interMin": null,
+    "interMax": null,
+    "pathMin": 118,
+    "gene": "OPDM5_ABCD3"
+  },
+  "chr1:149390802-149390842": {
+    "benignMax": 37,
+    "interMin": 38,
+    "interMax": 65,
+    "pathMin": 66,
+    "gene": "NIID_NOTCH2NLC"
+  },
+  "NIID_NOTCH2NLC": {
+    "benignMax": 37,
+    "interMin": 38,
+    "interMax": 65,
+    "pathMin": 66,
+    "gene": "NIID_NOTCH2NLC"
+  },
+  "chr1:155188505-155192239": {
+    "benignMax": null,
+    "interMin": null,
+    "interMax": null,
+    "pathMin": null,
+    "gene": "ADTKD_MUC1"
+  },
+  "ADTKD_MUC1": {
+    "benignMax": null,
+    "interMin": null,
+    "interMax": null,
+    "pathMin": null,
+    "gene": "ADTKD_MUC1"
+  },
+  "chr1:156591765-156591783": {
+    "benignMax": 7,
+    "interMin": null,
+    "interMax": null,
+    "pathMin": 200,
+    "gene": "NME_NAXE"
+  },
+  "NME_NAXE": {
+    "benignMax": 7,
+    "interMin": null,
+    "interMax": null,
+    "pathMin": 200,
+    "gene": "NME_NAXE"
+  },
+  "chr10:79826383-79826404": {
+    "benignMax": 16,
+    "interMin": null,
+    "interMax": null,
+    "pathMin": 161,
+    "gene": "OPML1_NUTM2B-AS1"
+  },
+  "OPML1_NUTM2B-AS1": {
+    "benignMax": 16,
+    "interMin": null,
+    "interMax": null,
+    "pathMin": 161,
+    "gene": "OPML1_NUTM2B-AS1"
+  },
+  "chr11:119206289-119206323": {
+    "benignMax": 79,
+    "interMin": 80,
+    "interMax": 100,
+    "pathMin": 101,
+    "gene": "JBS_CBL"
+  },
+  "JBS_CBL": {
+    "benignMax": 79,
+    "interMin": 80,
+    "interMax": 100,
+    "pathMin": 101,
+    "gene": "JBS_CBL"
+  },
+  "chr12:6936716-6936775": {
+    "benignMax": 35,
+    "interMin": 36,
+    "interMax": 47,
+    "pathMin": 48,
+    "gene": "DRPLA_ATN1"
+  },
+  "DRPLA_ATN1": {
+    "benignMax": 35,
+    "interMin": 36,
+    "interMax": 47,
+    "pathMin": 48,
+    "gene": "DRPLA_ATN1"
+  },
+  "chr12:50505001-50505024": {
+    "benignMax": 23,
+    "interMin": 139,
+    "interMax": 206,
+    "pathMin": 273,
+    "gene": "FRA12A_DIP2B"
+  },
+  "FRA12A_DIP2B": {
+    "benignMax": 23,
+    "interMin": 139,
+    "interMax": 206,
+    "pathMin": 273,
+    "gene": "FRA12A_DIP2B"
+  },
+  "chr12:111598949-111599019": {
+    "benignMax": 28,
+    "interMin": 29,
+    "interMax": 34,
+    "pathMin": 35,
+    "gene": "SCA2_ATXN2"
+  },
+  "SCA2_ATXN2": {
+    "benignMax": 28,
+    "interMin": 29,
+    "interMax": 34,
+    "pathMin": 35,
+    "gene": "SCA2_ATXN2"
+  },
+  "chr12:123533720-123533750": {
+    "benignMax": 16,
+    "interMin": null,
+    "interMax": null,
+    "pathMin": 120,
+    "gene": "OPDM4_RILPL1"
+  },
+  "OPDM4_RILPL1": {
+    "benignMax": 16,
+    "interMin": null,
+    "interMax": null,
+    "pathMin": 120,
+    "gene": "OPDM4_RILPL1"
+  },
+  "chr13:70139353-70139429": {
+    "benignMax": 50,
+    "interMin": 50,
+    "interMax": 70,
+    "pathMin": 71,
+    "gene": "SCA8_ATXN8OS"
+  },
+  "SCA8_ATXN8OS": {
+    "benignMax": 50,
+    "interMin": 50,
+    "interMax": 70,
+    "pathMin": 71,
+    "gene": "SCA8_ATXN8OS"
+  },
+  "chr13:99985448-99985494": {
+    "benignMax": 15,
+    "interMin": null,
+    "interMax": null,
+    "pathMin": 25,
+    "gene": "HPE5_ZIC2"
+  },
+  "HPE5_ZIC2": {
+    "benignMax": 15,
+    "interMin": null,
+    "interMax": null,
+    "pathMin": 25,
+    "gene": "HPE5_ZIC2"
+  },
+  "chr13:102161574-102161726": {
+    "benignMax": 179,
+    "interMin": 180,
+    "interMax": 319,
+    "pathMin": 320,
+    "gene": "SCA27B_FGF14"
+  },
+  "SCA27B_FGF14": {
+    "benignMax": 179,
+    "interMin": 180,
+    "interMax": 319,
+    "pathMin": 320,
+    "gene": "SCA27B_FGF14"
+  },
+  "chr14:23321472-23321503": {
+    "benignMax": 10,
+    "interMin": 11,
+    "interMax": 11,
+    "pathMin": 12,
+    "gene": "OPMD_PABPN1"
+  },
+  "OPMD_PABPN1": {
+    "benignMax": 10,
+    "interMin": 11,
+    "interMax": 11,
+    "pathMin": 12,
+    "gene": "OPMD_PABPN1"
+  },
+  "chr14:92071010-92071052": {
+    "benignMax": 44,
+    "interMin": 45,
+    "interMax": 59,
+    "pathMin": 60,
+    "gene": "SCA3_ATXN3"
+  },
+  "SCA3_ATXN3": {
+    "benignMax": 44,
+    "interMin": 45,
+    "interMax": 59,
+    "pathMin": 60,
+    "gene": "SCA3_ATXN3"
+  },
+  "chr15:22786677-22786703": {
+    "benignMax": 10,
+    "interMin": null,
+    "interMax": null,
+    "pathMin": 11,
+    "gene": "ALS1_NIPA1"
+  },
+  "ALS1_NIPA1": {
+    "benignMax": 10,
+    "interMin": null,
+    "interMax": null,
+    "pathMin": 11,
+    "gene": "ALS1_NIPA1"
+  },
+  "chr15:88569433-88569452": {
+    "benignMax": 4,
+    "interMin": null,
+    "interMax": null,
+    "pathMin": 3,
+    "gene": "CHNG3_MIR7-2"
+  },
+  "CHNG3_MIR7-2": {
+    "benignMax": 4,
+    "interMin": null,
+    "interMax": null,
+    "pathMin": 3,
+    "gene": "CHNG3_MIR7-2"
+  },
+  "chr15:89333579-89333629": {
+    "benignMax": 10,
+    "interMin": null,
+    "interMax": null,
+    "pathMin": null,
+    "gene": "CPEO_POLG"
+  },
+  "CPEO_POLG": {
+    "benignMax": 10,
+    "interMin": null,
+    "interMax": null,
+    "pathMin": null,
+    "gene": "CPEO_POLG"
+  },
+  "chr16:17470907-17470922": {
+    "benignMax": 20,
+    "interMin": null,
+    "interMax": null,
+    "pathMin": 72,
+    "gene": "DBQD2_XYLT1"
+  },
+  "DBQD2_XYLT1": {
+    "benignMax": 20,
+    "interMin": null,
+    "interMax": null,
+    "pathMin": 72,
+    "gene": "DBQD2_XYLT1"
+  },
+  "chr16:24613438-24613532": {
+    "benignMax": null,
+    "interMin": null,
+    "interMax": null,
+    "pathMin": 1100,
+    "gene": "FAME6_TNRC6A"
+  },
+  "FAME6_TNRC6A": {
+    "benignMax": null,
+    "interMin": null,
+    "interMax": null,
+    "pathMin": 1100,
+    "gene": "FAME6_TNRC6A"
+  },
+  "chr16:66490396-66490466": {
+    "benignMax": null,
+    "interMin": null,
+    "interMax": null,
+    "pathMin": 110,
+    "gene": "SCA31_BEAN1"
+  },
+  "SCA31_BEAN1": {
+    "benignMax": null,
+    "interMin": null,
+    "interMax": null,
+    "pathMin": 110,
+    "gene": "SCA31_BEAN1"
+  },
+  "chr16:67842862-67842950": {
+    "benignMax": 38,
+    "interMin": null,
+    "interMax": null,
+    "pathMin": 45,
+    "gene": "SCA_THAP11"
+  },
+  "SCA_THAP11": {
+    "benignMax": 38,
+    "interMin": null,
+    "interMax": null,
+    "pathMin": 45,
+    "gene": "SCA_THAP11"
+  },
+  "chr16:72787694-72787758": {
+    "benignMax": 26,
+    "interMin": 27,
+    "interMax": 45,
+    "pathMin": 46,
+    "gene": "SCA4_ZFHX3"
+  },
+  "SCA4_ZFHX3": {
+    "benignMax": 26,
+    "interMin": 27,
+    "interMax": 45,
+    "pathMin": 46,
+    "gene": "SCA4_ZFHX3"
+  },
+  "chr16:87604282-87604329": {
+    "benignMax": 28,
+    "interMin": 29,
+    "interMax": 39,
+    "pathMin": 40,
+    "gene": "HDL2_JPH3"
+  },
+  "HDL2_JPH3": {
+    "benignMax": 28,
+    "interMin": 29,
+    "interMax": 39,
+    "pathMin": 40,
+    "gene": "HDL2_JPH3"
+  },
+  "chr17:17808358-17808460": {
+    "benignMax": null,
+    "interMin": null,
+    "interMax": null,
+    "pathMin": 9,
+    "gene": "FAME8_RAI1"
+  },
+  "FAME8_RAI1": {
+    "benignMax": null,
+    "interMin": null,
+    "interMax": null,
+    "pathMin": 9,
+    "gene": "FAME8_RAI1"
+  },
+  "chr17:80147009-80147139": {
+    "benignMax": 12,
+    "interMin": 13,
+    "interMax": 13,
+    "pathMin": 14,
+    "gene": "RCPS_EIF4A3"
+  },
+  "RCPS_EIF4A3": {
+    "benignMax": 12,
+    "interMin": 13,
+    "interMax": 13,
+    "pathMin": 14,
+    "gene": "RCPS_EIF4A3"
+  },
+  "chr18:666891-667632": {
+    "benignMax": 172,
+    "interMin": null,
+    "interMax": null,
+    "pathMin": 210,
+    "gene": "CPUM_TYMS"
+  },
+  "CPUM_TYMS": {
+    "benignMax": 172,
+    "interMin": null,
+    "interMax": null,
+    "pathMin": 210,
+    "gene": "CPUM_TYMS"
+  },
+  "chr18:55586153-55586229": {
+    "benignMax": 39,
+    "interMin": 40,
+    "interMax": 50,
+    "pathMin": 51,
+    "gene": "FECD3_TCF4"
+  },
+  "FECD3_TCF4": {
+    "benignMax": 39,
+    "interMin": 40,
+    "interMax": 50,
+    "pathMin": 51,
+    "gene": "FECD3_TCF4"
+  },
+  "chr19:4510727-4513659": {
+    "benignMax": 31,
+    "interMin": null,
+    "interMax": null,
+    "pathMin": 37,
+    "gene": "MRUPAV_PLIN4"
+  },
+  "MRUPAV_PLIN4": {
+    "benignMax": 31,
+    "interMin": null,
+    "interMax": null,
+    "pathMin": 37,
+    "gene": "MRUPAV_PLIN4"
+  },
+  "chr19:13207858-13207898": {
+    "benignMax": 18,
+    "interMin": 19,
+    "interMax": 20,
+    "pathMin": 21,
+    "gene": "SCA6_CACNA1A"
+  },
+  "SCA6_CACNA1A": {
+    "benignMax": 18,
+    "interMin": 19,
+    "interMax": 20,
+    "pathMin": 21,
+    "gene": "SCA6_CACNA1A"
+  },
+  "chr19:14496041-14496075": {
+    "benignMax": 32,
+    "interMin": null,
+    "interMax": null,
+    "pathMin": 73,
+    "gene": "OPDM2_GIPC1"
+  },
+  "OPDM2_GIPC1": {
+    "benignMax": 32,
+    "interMin": null,
+    "interMax": null,
+    "pathMin": 73,
+    "gene": "OPDM2_GIPC1"
+  },
+  "chr19:18786034-18786050": {
+    "benignMax": 5,
+    "interMin": null,
+    "interMax": null,
+    "pathMin": 6,
+    "gene": "EDM1-PSACH_COMP"
+  },
+  "EDM1-PSACH_COMP": {
+    "benignMax": 5,
+    "interMin": null,
+    "interMax": null,
+    "pathMin": 6,
+    "gene": "EDM1-PSACH_COMP"
+  },
+  "chr19:45770204-45770266": {
+    "benignMax": 34,
+    "interMin": 35,
+    "interMax": 49,
+    "pathMin": 50,
+    "gene": "DM1_DMPK"
+  },
+  "DM1_DMPK": {
+    "benignMax": 34,
+    "interMin": 35,
+    "interMax": 49,
+    "pathMin": 50,
+    "gene": "DM1_DMPK"
+  },
+  "chr2:96197066-96197124": {
+    "benignMax": null,
+    "interMin": null,
+    "interMax": null,
+    "pathMin": 274,
+    "gene": "FAME2_STARD7"
+  },
+  "FAME2_STARD7": {
+    "benignMax": null,
+    "interMin": null,
+    "interMax": null,
+    "pathMin": 274,
+    "gene": "FAME2_STARD7"
+  },
+  "chr2:100104798-100104824": {
+    "benignMax": 20,
+    "interMin": null,
+    "interMax": null,
+    "pathMin": 300,
+    "gene": "FRA2A_AFF3"
+  },
+  "FRA2A_AFF3": {
+    "benignMax": 20,
+    "interMin": null,
+    "interMax": null,
+    "pathMin": 300,
+    "gene": "FRA2A_AFF3"
+  },
+  "chr2:176093058-176093103": {
+    "benignMax": 15,
+    "interMin": null,
+    "interMax": null,
+    "pathMin": 22,
+    "gene": "SD5_HOXD13"
+  },
+  "SD5_HOXD13": {
+    "benignMax": 15,
+    "interMin": null,
+    "interMax": null,
+    "pathMin": 22,
+    "gene": "SD5_HOXD13"
+  },
+  "chr2:190880872-190880920": {
+    "benignMax": 38,
+    "interMin": null,
+    "interMax": null,
+    "pathMin": 680,
+    "gene": "GDPAG_GLS"
+  },
+  "GDPAG_GLS": {
+    "benignMax": 38,
+    "interMin": null,
+    "interMax": null,
+    "pathMin": 680,
+    "gene": "GDPAG_GLS"
+  },
+  "chr20:2652732-2652775": {
+    "benignMax": 14,
+    "interMin": 15,
+    "interMax": 649,
+    "pathMin": 650,
+    "gene": "SCA36_NOP56"
+  },
+  "SCA36_NOP56": {
+    "benignMax": 14,
+    "interMin": 15,
+    "interMax": 649,
+    "pathMin": 650,
+    "gene": "SCA36_NOP56"
+  },
+  "chr20:4699370-4699493": {
+    "benignMax": 4,
+    "interMin": null,
+    "interMax": null,
+    "pathMin": 5,
+    "gene": "CJD_PRNP"
+  },
+  "CJD_PRNP": {
+    "benignMax": 4,
+    "interMin": null,
+    "interMax": null,
+    "pathMin": 5,
+    "gene": "CJD_PRNP"
+  },
+  "chr21:43776442-43776479": {
+    "benignMax": 3,
+    "interMin": null,
+    "interMax": null,
+    "pathMin": 30,
+    "gene": "EPM1_CSTB"
+  },
+  "EPM1_CSTB": {
+    "benignMax": 3,
+    "interMin": null,
+    "interMax": null,
+    "pathMin": 30,
+    "gene": "EPM1_CSTB"
+  },
+  "chr22:19766762-19766807": {
+    "benignMax": 15,
+    "interMin": null,
+    "interMax": null,
+    "pathMin": 25,
+    "gene": "TOF_TBX1"
+  },
+  "TOF_TBX1": {
+    "benignMax": 15,
+    "interMin": null,
+    "interMax": null,
+    "pathMin": 25,
+    "gene": "TOF_TBX1"
+  },
+  "chr22:45795354-45795424": {
+    "benignMax": 32,
+    "interMin": 33,
+    "interMax": 850,
+    "pathMin": 800,
+    "gene": "SCA10_ATXN10"
+  },
+  "SCA10_ATXN10": {
+    "benignMax": 32,
+    "interMin": 33,
+    "interMax": 850,
+    "pathMin": 800,
+    "gene": "SCA10_ATXN10"
+  },
+  "chr3:63912684-63912727": {
+    "benignMax": 27,
+    "interMin": 28,
+    "interMax": 35,
+    "pathMin": 37,
+    "gene": "SCA7_ATXN7"
+  },
+  "SCA7_ATXN7": {
+    "benignMax": 27,
+    "interMin": 28,
+    "interMax": 35,
+    "pathMin": 37,
+    "gene": "SCA7_ATXN7"
+  },
+  "chr3:129172576-129172734": {
+    "benignMax": 26,
+    "interMin": 27,
+    "interMax": 74,
+    "pathMin": 75,
+    "gene": "DM2_CNBP"
+  },
+  "DM2_CNBP": {
+    "benignMax": 26,
+    "interMin": 27,
+    "interMax": 74,
+    "pathMin": 75,
+    "gene": "DM2_CNBP"
+  },
+  "chr3:138946019-138946062": {
+    "benignMax": 14,
+    "interMin": null,
+    "interMax": null,
+    "pathMin": 15,
+    "gene": "BPES_FOXL2"
+  },
+  "BPES_FOXL2": {
+    "benignMax": 14,
+    "interMin": null,
+    "interMax": null,
+    "pathMin": 15,
+    "gene": "BPES_FOXL2"
+  },
+  "chr3:183712187-183712226": {
+    "benignMax": null,
+    "interMin": null,
+    "interMax": null,
+    "pathMin": 1000,
+    "gene": "FAME4_YEATS2"
+  },
+  "FAME4_YEATS2": {
+    "benignMax": null,
+    "interMin": null,
+    "interMax": null,
+    "pathMin": 1000,
+    "gene": "FAME4_YEATS2"
+  },
+  "chr4:3074876-3074969": {
+    "benignMax": 26,
+    "interMin": 27,
+    "interMax": 35,
+    "pathMin": 36,
+    "gene": "HD_HTT"
+  },
+  "HD_HTT": {
+    "benignMax": 26,
+    "interMin": 27,
+    "interMax": 35,
+    "pathMin": 36,
+    "gene": "HD_HTT"
+  },
+  "chr4:39348424-39348483": {
+    "benignMax": 11,
+    "interMin": 11,
+    "interMax": 200,
+    "pathMin": 400,
+    "gene": "CANVAS_RFC1"
+  },
+  "CANVAS_RFC1": {
+    "benignMax": 11,
+    "interMin": 11,
+    "interMax": 200,
+    "pathMin": 400,
+    "gene": "CANVAS_RFC1"
+  },
+  "chr4:41745972-41746032": {
+    "benignMax": 20,
+    "interMin": 21,
+    "interMax": 25,
+    "pathMin": 26,
+    "gene": "CCHS_PHOX2B"
+  },
+  "CCHS_PHOX2B": {
+    "benignMax": 20,
+    "interMin": 21,
+    "interMax": 25,
+    "pathMin": 26,
+    "gene": "CCHS_PHOX2B"
+  },
+  "chr4:159342526-159342618": {
+    "benignMax": null,
+    "interMin": null,
+    "interMax": null,
+    "pathMin": 60,
+    "gene": "FAME7_RAPGEF2"
+  },
+  "FAME7_RAPGEF2": {
+    "benignMax": null,
+    "interMin": null,
+    "interMax": null,
+    "pathMin": 60,
+    "gene": "FAME7_RAPGEF2"
+  },
+  "chr5:10356343-10356411": {
+    "benignMax": null,
+    "interMin": null,
+    "interMax": null,
+    "pathMin": 650,
+    "gene": "FAME3_MARCHF6"
+  },
+  "FAME3_MARCHF6": {
+    "benignMax": null,
+    "interMin": null,
+    "interMax": null,
+    "pathMin": 650,
+    "gene": "FAME3_MARCHF6"
+  },
+  "chr5:146878727-146878759": {
+    "benignMax": 32,
+    "interMin": 40,
+    "interMax": 49,
+    "pathMin": 51,
+    "gene": "SCA12_PPP2R2B"
+  },
+  "SCA12_PPP2R2B": {
+    "benignMax": 32,
+    "interMin": 40,
+    "interMax": 49,
+    "pathMin": 51,
+    "gene": "SCA12_PPP2R2B"
+  },
+  "chr6:16327633-16327724": {
+    "benignMax": 35,
+    "interMin": 36,
+    "interMax": 38,
+    "pathMin": 39,
+    "gene": "SCA1_ATXN1"
+  },
+  "SCA1_ATXN1": {
+    "benignMax": 35,
+    "interMin": 36,
+    "interMax": 38,
+    "pathMin": 39,
+    "gene": "SCA1_ATXN1"
+  },
+  "chr6:45422750-45422801": {
+    "benignMax": 17,
+    "interMin": null,
+    "interMax": null,
+    "pathMin": 20,
+    "gene": "CCD_RUNX2"
+  },
+  "CCD_RUNX2": {
+    "benignMax": 17,
+    "interMin": null,
+    "interMax": null,
+    "pathMin": 20,
+    "gene": "CCD_RUNX2"
+  },
+  "chr6:170561906-170562017": {
+    "benignMax": 40,
+    "interMin": 41,
+    "interMax": 48,
+    "pathMin": 49,
+    "gene": "SCA17_TBP"
+  },
+  "SCA17_TBP": {
+    "benignMax": 40,
+    "interMin": 41,
+    "interMax": 48,
+    "pathMin": 49,
+    "gene": "SCA17_TBP"
+  },
+  "chr7:27199678-27199732": {
+    "benignMax": 18,
+    "interMin": null,
+    "interMax": null,
+    "pathMin": 22,
+    "gene": "HFG_HOXA13-III"
+  },
+  "HFG_HOXA13-III": {
+    "benignMax": 18,
+    "interMin": null,
+    "interMax": null,
+    "pathMin": 22,
+    "gene": "HFG_HOXA13-III"
+  },
+  "chr7:27199825-27199861": {
+    "benignMax": 12,
+    "interMin": null,
+    "interMax": null,
+    "pathMin": 18,
+    "gene": "HFG_HOXA13-II"
+  },
+  "HFG_HOXA13-II": {
+    "benignMax": 12,
+    "interMin": null,
+    "interMax": null,
+    "pathMin": 18,
+    "gene": "HFG_HOXA13-II"
+  },
+  "chr7:27199924-27199966": {
+    "benignMax": 14,
+    "interMin": null,
+    "interMax": null,
+    "pathMin": 22,
+    "gene": "HFG_HOXA13-I"
+  },
+  "HFG_HOXA13-I": {
+    "benignMax": 14,
+    "interMin": null,
+    "interMax": null,
+    "pathMin": 22,
+    "gene": "HFG_HOXA13-I"
+  },
+  "chr7:55887600-55887639": {
+    "benignMax": 22,
+    "interMin": 42,
+    "interMax": 85,
+    "pathMin": 450,
+    "gene": "FRA7A_ZNF713"
+  },
+  "FRA7A_ZNF713": {
+    "benignMax": 22,
+    "interMin": 42,
+    "interMax": 85,
+    "pathMin": 450,
+    "gene": "FRA7A_ZNF713"
+  },
+  "chr8:104588970-104588999": {
+    "benignMax": 45,
+    "interMin": null,
+    "interMax": null,
+    "pathMin": 85,
+    "gene": "OPDM1_LRP12"
+  },
+  "OPDM1_LRP12": {
+    "benignMax": 45,
+    "interMin": null,
+    "interMax": null,
+    "pathMin": 85,
+    "gene": "OPDM1_LRP12"
+  },
+  "chr8:118366812-118366918": {
+    "benignMax": null,
+    "interMin": null,
+    "interMax": null,
+    "pathMin": 105,
+    "gene": "FAME1_SAMD12"
+  },
+  "FAME1_SAMD12": {
+    "benignMax": null,
+    "interMin": null,
+    "interMax": null,
+    "pathMin": 105,
+    "gene": "FAME1_SAMD12"
+  },
+  "chr9:27573484-27573546": {
+    "benignMax": 23,
+    "interMin": 24,
+    "interMax": 30,
+    "pathMin": 31,
+    "gene": "FTDALS1_C9orf72"
+  },
+  "FTDALS1_C9ORF72": {
+    "benignMax": 23,
+    "interMin": 24,
+    "interMax": 30,
+    "pathMin": 31,
+    "gene": "FTDALS1_C9orf72"
+  },
+  "chr9:69037270-69037304": {
+    "benignMax": 33,
+    "interMin": 34,
+    "interMax": 55,
+    "pathMin": 56,
+    "gene": "FRDA_FXN"
+  },
+  "FRDA_FXN": {
+    "benignMax": 33,
+    "interMin": 34,
+    "interMax": 55,
+    "pathMin": 56,
+    "gene": "FRDA_FXN"
+  },
+  "chr9:130681605-130681641": {
+    "benignMax": 14,
+    "interMin": null,
+    "interMax": null,
+    "pathMin": 18,
+    "gene": "HSAN-VIII_PRDM12"
+  },
+  "HSAN-VIII_PRDM12": {
+    "benignMax": 14,
+    "interMin": null,
+    "interMax": null,
+    "pathMin": 18,
+    "gene": "HSAN-VIII_PRDM12"
+  },
+  "chrX:25013529-25013565": {
+    "benignMax": 12,
+    "interMin": null,
+    "interMax": null,
+    "pathMin": 20,
+    "gene": "PRTS_ARX"
+  },
+  "PRTS_ARX": {
+    "benignMax": 12,
+    "interMin": null,
+    "interMax": null,
+    "pathMin": 20,
+    "gene": "PRTS_ARX"
+  },
+  "chrX:25013649-25013697": {
+    "benignMax": 16,
+    "interMin": null,
+    "interMax": null,
+    "pathMin": 17,
+    "gene": "EIEE1_ARX"
+  },
+  "EIEE1_ARX": {
+    "benignMax": 16,
+    "interMin": null,
+    "interMax": null,
+    "pathMin": 17,
+    "gene": "EIEE1_ARX"
+  },
+  "chrX:31284557-31284613": {
+    "benignMax": 33,
+    "interMin": null,
+    "interMax": null,
+    "pathMin": 59,
+    "gene": "DMD_DMD"
+  },
+  "DMD_DMD": {
+    "benignMax": 33,
+    "interMin": null,
+    "interMax": null,
+    "pathMin": 59,
+    "gene": "DMD_DMD"
+  },
+  "chrX:67545316-67545419": {
+    "benignMax": 34,
+    "interMin": 36,
+    "interMax": 37,
+    "pathMin": 38,
+    "gene": "SBMA_AR"
+  },
+  "SBMA_AR": {
+    "benignMax": 34,
+    "interMin": 36,
+    "interMax": 37,
+    "pathMin": 38,
+    "gene": "SBMA_AR"
+  },
+  "chrX:71453054-71453131": {
+    "benignMax": null,
+    "interMin": null,
+    "interMax": null,
+    "pathMin": 35,
+    "gene": "XDP_TAF1"
+  },
+  "XDP_TAF1": {
+    "benignMax": null,
+    "interMin": null,
+    "interMax": null,
+    "pathMin": 35,
+    "gene": "XDP_TAF1"
+  },
+  "chrX:137566826-137566856": {
+    "benignMax": 10,
+    "interMin": 11,
+    "interMax": 11,
+    "pathMin": 12,
+    "gene": "VACTERLX_ZIC3"
+  },
+  "VACTERLX_ZIC3": {
+    "benignMax": 10,
+    "interMin": 11,
+    "interMax": 11,
+    "pathMin": 12,
+    "gene": "VACTERLX_ZIC3"
+  },
+  "chrX:140504316-140504361": {
+    "benignMax": 15,
+    "interMin": null,
+    "interMax": null,
+    "pathMin": 22,
+    "gene": "XLID_SOX3"
+  },
+  "XLID_SOX3": {
+    "benignMax": 15,
+    "interMin": null,
+    "interMax": null,
+    "pathMin": 22,
+    "gene": "XLID_SOX3"
+  },
+  "chrX:147912049-147912111": {
+    "benignMax": 44,
+    "interMin": 45,
+    "interMax": 200,
+    "pathMin": 201,
+    "gene": "FXS_FMR1"
+  },
+  "FXS_FMR1": {
+    "benignMax": 44,
+    "interMin": 45,
+    "interMax": 200,
+    "pathMin": 201,
+    "gene": "FXS_FMR1"
+  },
+  "chrX:148500604-148500753": {
+    "benignMax": 39,
+    "interMin": 40,
+    "interMax": 200,
+    "pathMin": 201,
+    "gene": "FRAXE_AFF2"
+  },
+  "FRAXE_AFF2": {
+    "benignMax": 39,
+    "interMin": 40,
+    "interMax": 200,
+    "pathMin": 201,
+    "gene": "FRAXE_AFF2"
+  }
+}

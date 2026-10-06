@@ -730,7 +730,7 @@ def extract_methcutoff(file):
     except Exception as e:
         return f"Error: {str(e)}", [], "hg38"
 
-def visuamitra_data_extract_stream(file, chr=None, start_coord=None, end_coord=None, samples_index=None, include_header=True):
+def visuamitra_data_extract_stream(file, chr=None, start_coord=None, end_coord=None, samples_index=None, include_header=True, custom_cutoffs=None):
     # Normalize Chromosome
     if chr and not str(chr).startswith('chr'):
         chr = f"chr{chr}"
@@ -806,7 +806,7 @@ def visuamitra_data_extract_stream(file, chr=None, start_coord=None, end_coord=N
                 if not valid_indices: continue
 
                 # crash?
-                SAMPLE_dict = sample_collector(sample_fields, valid_indices, format_fields, ALT, MOTIF_DECOMP, REF_DECOMP, REF, MOTIF_SIZE, MOTIF, [CHROM, START, END])
+                SAMPLE_dict = sample_collector(sample_fields, valid_indices, format_fields, ALT, MOTIF_DECOMP, REF_DECOMP, REF, MOTIF_SIZE, MOTIF, [CHROM, START, END], custom_cutoffs=custom_cutoffs)
 
                 for s_idx in valid_indices:
                     data = SAMPLE_dict.get(s_idx)
@@ -858,7 +858,7 @@ def visuamitra_data_extract_stream(file, chr=None, start_coord=None, end_coord=N
     finally:
         vcf_obj.close()
 
-def sample_collector(sample_fields, sample_index, format_fields, ALT, MOTIF_DECOMP, REF_DECOMP, REF, MOTIF_SIZE, MOTIF, coordinates):
+def sample_collector(sample_fields, sample_index, format_fields, ALT, MOTIF_DECOMP, REF_DECOMP, REF, MOTIF_SIZE, MOTIF, coordinates, custom_cutoffs=None):
     """Logic to process specific sample columns."""
     SAMPLE_dict = {}
 
@@ -999,13 +999,13 @@ def sample_collector(sample_fields, sample_index, format_fields, ALT, MOTIF_DECO
                 cn_val = int(motif_and_copy[1]) if len(motif_and_copy) > 1 else (CN[lidx] if lidx < len(CN) else 0)
                 subject_status.append((m_name, cn_val))
 
-        Subject_health = pathogenicity_check(coordinates, subject_status)
+        Subject_health = pathogenicity_check(coordinates, subject_status, custom_cutoffs=custom_cutoffs)
 
         SAMPLE_dict[each_sidx] = [gt_value, complete_seqs, SD, complete_DS, DS_info, motif_set, MM, decoded_MV, lpm_counts_str, Subject_health]
 
     return SAMPLE_dict
 
-def pathogenicity_check(coordinates, subject_status):
+def pathogenicity_check(coordinates, subject_status, custom_cutoffs=None): 
     length_range = [0, 1, 2]  # [0: Benign, 1: Intermediate, 2: Pathogenic]
     motif_range = [1, 2, 3]
     health_states = {0: "Benign", 1: "Intermediate", 2: "Pathogenic"}
@@ -1044,11 +1044,20 @@ def pathogenicity_check(coordinates, subject_status):
 
     inheritance_mode = patho_row[16] if len(patho_row) > 16 else "NA"
 
-    # 1. EVALUATE INDIVIDUAL ALLELE-SPECIFIC TAGS
-    Allele_states = []
+    # Default cutoffs from BED record
     benign_min, benign_max = pathogenic_ranges[0], pathogenic_ranges[1]
     inter_min, inter_max = pathogenic_ranges[2], pathogenic_ranges[3]
     path_min, path_max = pathogenic_ranges[4], pathogenic_ranges[5]
+
+    # 2. OVERRIDE WITH USER INPUTS IF PROVIDED
+    if custom_cutoffs and isinstance(custom_cutoffs, dict):
+        benign_max = custom_cutoffs.get("benign_max", benign_max)
+        inter_min = custom_cutoffs.get("inter_min", inter_min)
+        inter_max = custom_cutoffs.get("inter_max", inter_max)
+        path_min = custom_cutoffs.get("path_min", path_min)
+
+    # 1. EVALUATE INDIVIDUAL ALLELE-SPECIFIC TAGS
+    Allele_states = []
 
     for each_allele in subject_status:
         subject_copy = each_allele[1]

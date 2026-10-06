@@ -162,6 +162,12 @@ export function parseTSV(text) {
         Pathogenicity: pathogenicityVal,
         Inheritance: inheritanceVal,
         AllelePathogenicity: parsedAllelePath,
+        benign_min: obj.benign_min || obj.Benign_Min || "NA",
+        benign_max: obj.benign_max || obj.Benign_Max || "NA",
+        intermediate_min: obj.intermediate_min || obj.Inter_Min || obj.inter_min || "NA",
+        intermediate_max: obj.intermediate_max || obj.Inter_Max || obj.inter_max || "NA",
+        pathogenic_min: obj.pathogenic_min || obj.Path_Min || obj.path_min || "NA",
+        pathogenic_max: obj.pathogenic_max || obj.Path_Max || obj.path_max || "NA",
         samples: {},
         refTrack: actualRefTrack,
         maxAlleleLen: maxSampleTrackLen
@@ -179,6 +185,6 @@ export function parseTSV(text) {
     locus.maxAlleleLen = Math.max(locus.maxAlleleLen, maxSampleTrackLen);
   });
 
-  console.log("Parsed Locus Data:", Array.from(groupedData.values()));
+  //console.log("Parsed Locus Data:", Array.from(groupedData.values()));
   return Array.from(groupedData.values());
 }
